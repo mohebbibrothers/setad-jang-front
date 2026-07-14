@@ -278,13 +278,19 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
     // rendered as media-type tiles with badges, not as broken image covers.
     const cover = (t.attachments ?? []).find((a) => a.media_type === 'image' && a.url);
     const videoOrAudio = (t.attachments ?? []).find((a) => a.duration);
+    const coverIsKnownPublic = Boolean(
+      cover?.url && !cover.url.includes('app-service.armansky.ir'),
+    );
     return {
       id: t.external_id,
       slug: t.external_id,
       title: t.title,
       summary: t.description,
-      coverUrl: cover?.url,
-      variant: cover ? 'cover' : 'quote',
+      // Mohtavanegar currently returns attachment URLs that answer 404 outside
+      // its private app. Do not feed those URLs into next/image; render a
+      // polished quote/media tile instead until a backend media proxy is added.
+      coverUrl: coverIsKnownPublic ? cover?.url : undefined,
+      variant: coverIsKnownPublic ? 'cover' : 'quote',
       mediaType: t.primary_media_type ?? 'image',
       durationSeconds: videoOrAudio?.duration,
       origin: t.origin,

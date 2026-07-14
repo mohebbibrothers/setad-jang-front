@@ -396,6 +396,9 @@ function TabyinTile({
   // The data-driven `it.tall` is intentionally ignored here.
   // In SPARSE mode every tile is short (a single centred row).
   const tall    = !sparse && forceTall;
+  const tileHref = it.sourceUrl || '#tabyin';
+  const tileTarget = it.sourceUrl ? '_blank' : undefined;
+  const tileRel = it.sourceUrl ? 'noreferrer' : undefined;
 
   // Width / height presets for sparse mode mirror each breakpoint's
   // column count so the visual rhythm stays identical to the dense grid.
@@ -422,7 +425,7 @@ function TabyinTile({
       {isQuote ? (
         /* ── Quote tile (solid brand-green text card) ───────────────── */
         <Link
-          href={`/tabyin/${it.slug}`}
+          href={tileHref} target={tileTarget} rel={tileRel}
           className="relative block w-full h-full p-4 md:p-5 text-white
                      flex items-center justify-center text-center
                      bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700"
@@ -446,7 +449,7 @@ function TabyinTile({
         </Link>
       ) : it.coverUrl ? (
         /* ── Cover tile (image) ─────────────────────────────────────── */
-        <Link href={`/tabyin/${it.slug}`} className="relative block w-full h-full">
+        <Link href={tileHref} target={tileTarget} rel={tileRel} className="relative block w-full h-full">
           <Image
             src={it.coverUrl}
             alt={it.title || 'محتوای تبیینی'}
@@ -487,7 +490,7 @@ function TabyinTile({
       ) : (
         /* ── Fallback gradient tile ─────────────────────────────────── */
         <Link
-          href={`/tabyin/${it.slug}`}
+          href={tileHref} target={tileTarget} rel={tileRel}
           className="block w-full h-full"
           style={{ background: `linear-gradient(135deg, ${it.toneFrom || '#0D8074'}, ${it.toneTo || '#053832'})` }}
         />
