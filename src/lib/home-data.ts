@@ -310,3 +310,17 @@ export async function loadReportSubjects(): Promise<ReportSubject[]> {
     description: s.description,
   }));
 }
+
+/* ─── Kindness Wall categories (used by the ThemeChip strip) ─────────── */
+type ApiKindnessCategory = { id?: number; slug: string; title: string; icon?: string };
+
+export type KindnessCategory = { slug: string; title: string; icon?: string };
+
+export async function loadKindnessCategories(): Promise<KindnessCategory[]> {
+  const data = await safeApiFetch<Paginated<ApiKindnessCategory>>(
+    '/kindness-wall/categories/?page_size=30',
+    { revalidate: 600, tags: ['kindness-categories'] },
+  );
+  const list = unwrap(data);
+  return list.map((c) => ({ slug: c.slug, title: c.title, icon: c.icon }));
+}

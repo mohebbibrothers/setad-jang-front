@@ -148,7 +148,7 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
     shortLabel: 'راهنماها',
     glyph: 'book',
     accent: 'sky',
-    endpoint: '/support-desk/knowledge/articles/',
+    endpoint: '/support/knowledge/articles/',
     seeAllHref: (q) => `/support?search=${encodeURIComponent(q)}`,
   },
 };
@@ -350,7 +350,7 @@ async function fetchKnowledge(q: string, signal?: AbortSignal): Promise<SearchHi
     category?: { title?: string };
   };
   const data = await apiFetch<Paginated<K>>(
-    `/support-desk/knowledge/articles/?search=${encodeURIComponent(q)}&page_size=${PER_SOURCE_LIMIT}`,
+    `/support/knowledge/articles/?search=${encodeURIComponent(q)}&page_size=${PER_SOURCE_LIMIT}`,
     { signal, revalidate: 300 } as never,
   );
   return unwrap(data).slice(0, PER_SOURCE_LIMIT).map((a) => ({
