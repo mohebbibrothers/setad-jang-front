@@ -40,6 +40,8 @@ const nextConfig = {
       { protocol: 'http', hostname: '127.0.0.1' },
       // Staging demo (http://188.253.2.86:18080)
       { protocol: 'http', hostname: '188.253.2.86' },
+      // External Tabyin/Mohtavanegar media host
+      { protocol: 'https', hostname: 'app-service.armansky.ir' },
       // Any host injected via NEXT_PUBLIC_API_URL at build time
       ...(dynamicApiPattern ? [dynamicApiPattern] : []),
     ],
