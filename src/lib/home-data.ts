@@ -274,8 +274,9 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
   );
   const list = unwrap(data);
   return list.map((t) => {
-    const cover = (t.attachments ?? []).find((a) => a.media_type === 'image' && a.url)
-      ?? (t.attachments ?? []).find((a) => a.url);
+    // Only image attachments are safe for next/image. Video/audio URLs are
+    // rendered as media-type tiles with badges, not as broken image covers.
+    const cover = (t.attachments ?? []).find((a) => a.media_type === 'image' && a.url);
     const videoOrAudio = (t.attachments ?? []).find((a) => a.duration);
     return {
       id: t.external_id,
