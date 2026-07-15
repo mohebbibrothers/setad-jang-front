@@ -71,7 +71,7 @@ export async function loadCampaigns(): Promise<CampaignCard[]> {
   // 8 cards = exactly 2 pager pages of 4 on desktop.  Newest first.
   const data = await safeApiFetch<Paginated<ApiCampaign>>(
     '/madadkar/campaigns/?page_size=8&ordering=-published_at',
-    { revalidate: 300, tags: ['campaigns'] },
+    { revalidate: 300, tags: ['homepage', 'campaigns', 'madadkar'] },
   );
   const list = unwrap(data);
   return list.map((c) => ({
@@ -117,7 +117,7 @@ type ApiCriminal = {
 export async function loadCriminals(): Promise<CriminalCard[]> {
   const data = await safeApiFetch<Paginated<ApiCriminal>>(
     '/r4j/criminals/?page_size=8&ordering=-total_bounty_toman',
-    { revalidate: 600, tags: ['criminals'] },
+    { revalidate: 600, tags: ['homepage', 'criminals', 'r4j'] },
   );
   const list = unwrap(data);
   return list.map((p) => {
@@ -158,7 +158,7 @@ type ApiCourse = {
 export async function loadLmsCategories(): Promise<EduCategory[]> {
   const data = await safeApiFetch<Paginated<ApiLmsCategory>>(
     '/lms/categories/?page_size=20',
-    { revalidate: 600, tags: ['lms-categories'] },
+    { revalidate: 600, tags: ['homepage', 'lms-categories', 'lms'] },
   );
   const list = unwrap(data);
   return list.map((c) => ({ slug: c.slug, title: c.title, count: c.courses_count }));
@@ -167,7 +167,7 @@ export async function loadLmsCategories(): Promise<EduCategory[]> {
 export async function loadCourses(): Promise<CourseCard[]> {
   const data = await safeApiFetch<Paginated<ApiCourse>>(
     '/lms/courses/?page_size=12&ordering=-published_at',
-    { revalidate: 300, tags: ['courses'] },
+    { revalidate: 300, tags: ['homepage', 'courses', 'lms'] },
   );
   const list = unwrap(data);
   return list.map((c) => ({
@@ -214,7 +214,7 @@ type ApiKindness = {
 export async function loadKindnessListings(): Promise<KindListing[]> {
   const data = await safeApiFetch<Paginated<ApiKindness>>(
     '/kindness-wall/listings/?page_size=12&ordering=-published_at',
-    { revalidate: 240, tags: ['kindness'] },
+    { revalidate: 240, tags: ['homepage', 'kindness'] },
   );
   const list = unwrap(data);
   return list.map((l) => ({
@@ -356,7 +356,7 @@ export type ReportSubject = { id: string; name: string; description?: string };
 export async function loadReportSubjects(): Promise<ReportSubject[]> {
   const data = await safeApiFetch<Paginated<ApiReportSubject>>(
     '/public-reports/subjects/?page_size=20',
-    { revalidate: 600, tags: ['report-subjects'] },
+    { revalidate: 600, tags: ['homepage', 'report-subjects', 'public-reports'] },
   );
   const list = unwrap(data);
   return list.map((s) => ({
