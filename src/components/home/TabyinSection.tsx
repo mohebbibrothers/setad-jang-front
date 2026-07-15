@@ -65,6 +65,8 @@ export type TabyinItem = {
   title?: string;
   summary?: string;
   coverUrl?: string;
+  videoUrl?: string;
+  thumbnailUrl?: string;
   /** When variant='quote' the tile renders as a brand-green text card */
   variant?: 'cover' | 'quote';
   /** Optional masonry sizing hints (height multipliers) */
@@ -166,20 +168,27 @@ const FILTERS = [
 ] as const;
 type FilterKey = (typeof FILTERS)[number]['key'];
 
+export type TabyinCounts = {
+  all: number;
+  image: number;
+  video: number;
+  audio: number;
+};
+
 /* ───────────────────────────────────────────────────────────────────────── */
 /*  Section                                                                  */
 /* ───────────────────────────────────────────────────────────────────────── */
 
-export function TabyinSection({ items }: { items: TabyinItem[] }) {
+export function TabyinSection({ items, counts: backendCounts }: { items: TabyinItem[]; counts?: TabyinCounts }) {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [page, setPage]     = useState(0);
 
   const counts = useMemo(() => ({
-    all:   items.length,
-    image: items.filter((i) => (i.mediaType ?? 'image') === 'image').length,
-    video: items.filter((i) => i.mediaType === 'video').length,
-    audio: items.filter((i) => i.mediaType === 'audio').length,
-  }), [items]);
+    all:   backendCounts?.all ?? items.length,
+    image: backendCounts?.image ?? items.filter((i) => (i.mediaType ?? 'image') === 'image').length,
+    video: backendCounts?.video ?? items.filter((i) => i.mediaType === 'video').length,
+    audio: backendCounts?.audio ?? items.filter((i) => i.mediaType === 'audio').length,
+  }), [items, backendCounts]);
 
   const filtered = useMemo(
     () => items.filter((i) => {
@@ -396,9 +405,9 @@ function TabyinTile({
   // The data-driven `it.tall` is intentionally ignored here.
   // In SPARSE mode every tile is short (a single centred row).
   const tall    = !sparse && forceTall;
-  const tileHref = it.sourceUrl || '#tabyin';
-  const tileTarget = it.sourceUrl ? '_blank' : undefined;
-  const tileRel = it.sourceUrl ? 'noreferrer' : undefined;
+  const tileHref = `/tabyin/${it.slug}`;
+  const tileTarget = undefined;
+  const tileRel = undefined;
 
   // Width / height presets for sparse mode mirror each breakpoint's
   // column count so the visual rhythm stays identical to the dense grid.
@@ -450,13 +459,32 @@ function TabyinTile({
       ) : it.coverUrl ? (
         /* ── Cover tile (image) ─────────────────────────────────────── */
         <Link href={tileHref} target={tileTarget} rel={tileRel} className="relative block w-full h-full">
-          <Image
-            src={it.coverUrl}
-            alt={it.title || 'محتوای تبیینی'}
-            fill
-            sizes="(max-width: 768px) 45vw, 22vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+          {isVideo && it.videoUrl ? (
+            <video
+              src={it.videoUrl}
+              poster={it.thumbnailUrl || it.coverUrl}
+              muted
+              loop
+              playsInline
+              preload="none"
+              onMouseEnter={(e) => {
+                e.currentTarget.play().catch(() => undefined);
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.pause();
+                e.currentTarget.currentTime = 0;
+              }}
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <Image
+              src={it.coverUrl}
+              alt={it.title || 'محتوای تبیینی'}
+              fill
+              sizes="(max-width: 768px) 45vw, 22vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          )}
           {/* Brand-teal duotone tint — unifies the wall */}
           <div aria-hidden="true"
                className="absolute inset-0 bg-gradient-to-br

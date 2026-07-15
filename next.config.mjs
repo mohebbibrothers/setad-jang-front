@@ -42,6 +42,8 @@ const nextConfig = {
       { protocol: 'http', hostname: '188.253.2.86' },
       // External Tabyin/Mohtavanegar media host
       { protocol: 'https', hostname: 'app-service.armansky.ir' },
+      // External Tabyin/Mohtavanegar public media host
+      { protocol: 'https', hostname: 'app-media.armansky.ir' },
       // Any host injected via NEXT_PUBLIC_API_URL at build time
       ...(dynamicApiPattern ? [dynamicApiPattern] : []),
     ],
