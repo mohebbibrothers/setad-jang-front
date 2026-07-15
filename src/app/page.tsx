@@ -14,6 +14,7 @@ import {
   loadLmsCategories,
   loadKindnessListings,
   loadTabyinItems,
+  loadTabyinCounts,
   loadReportSubjects,
 } from '@/lib/home-data';
 import { siteConfig } from '@/lib/site';
@@ -35,7 +36,7 @@ export const revalidate = 300;
 export default async function HomePage() {
   const [
     campaigns, criminals, lmsCategories, courses,
-    kindness, tabyin, reportSubjects,
+    kindness, tabyin, tabyinCounts, reportSubjects,
   ] = await Promise.all([
     loadCampaigns(),
     loadCriminals(),
@@ -43,6 +44,7 @@ export default async function HomePage() {
     loadCourses(),
     loadKindnessListings(),
     loadTabyinItems(),
+    loadTabyinCounts(),
     loadReportSubjects(),
   ]);
 
@@ -54,7 +56,7 @@ export default async function HomePage() {
       <JusticeSection criminals={criminals} />
       <EducationSection categories={lmsCategories} courses={courses} />
       <KindnessSection listings={kindness} />
-      <TabyinSection items={tabyin} />
+      <TabyinSection items={tabyin} counts={tabyinCounts} />
       <PublicReportSection subjects={reportSubjects} />
     </>
   );

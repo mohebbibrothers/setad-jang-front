@@ -25,7 +25,7 @@ import type { CourseCard, EduCategory } from '@/components/home/EducationSection
 import type { KindListing } from '@/components/home/KindnessSection';
 import type { TabyinItem } from '@/components/home/TabyinSection';
 
-type Paginated<T> = { results?: T[] } | T[];
+type Paginated<T> = { results?: T[]; count?: number } | T[];
 function unwrap<T>(x: Paginated<T> | null): T[] {
   if (!x) return [];
   if (Array.isArray(x)) return x;
@@ -255,6 +255,20 @@ type ApiTabyinAttachment = {
   title?: string;
   order?: number;
 };
+function deriveTabyinVideoThumbnailUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  try {
+    const u = new URL(url);
+    if (u.hostname !== 'app-media.armansky.ir') return undefined;
+    u.pathname = u.pathname
+      .replace('/org/uploads/', '/thumbnail/uploads/')
+      .replace(/\.[a-z0-9]+$/i, '.gif');
+    return u.toString();
+  } catch {
+    return undefined;
+  }
+}
+
 type ApiTabyin = {
   external_id: string;
   title?: string;
@@ -267,31 +281,65 @@ type ApiTabyin = {
   attachments?: ApiTabyinAttachment[];
 };
 
+export type TabyinCounts = {
+  all: number;
+  image: number;
+  video: number;
+  audio: number;
+};
+
+async function loadTabyinCount(mediaType?: 'image' | 'video' | 'audio'): Promise<number> {
+  const suffix = mediaType ? '&media_type=' + mediaType : '';
+  const data = await safeApiFetch<Paginated<ApiTabyin>>(
+    '/tabyin/contents/?page_size=1&ordering=-source_created_at' + suffix,
+    { revalidate: 180, tags: ['tabyin', 'homepage'] },
+  );
+
+  if (!data || Array.isArray(data)) return 0;
+  return data.count ?? 0;
+}
+
+export async function loadTabyinCounts(): Promise<TabyinCounts> {
+  const [all, image, video, audio] = await Promise.all([
+    loadTabyinCount(),
+    loadTabyinCount('image'),
+    loadTabyinCount('video'),
+    loadTabyinCount('audio'),
+  ]);
+
+  return { all, image, video, audio };
+}
+
 export async function loadTabyinItems(): Promise<TabyinItem[]> {
   const data = await safeApiFetch<Paginated<ApiTabyin>>(
-    '/tabyin/contents/?page_size=20&ordering=-source_created_at',
-    { revalidate: 180, tags: ['tabyin'] },
+    '/tabyin/contents/?page_size=100&ordering=-source_created_at',
+    { revalidate: 180, tags: ['tabyin', 'homepage'] },
   );
   const list = unwrap(data);
+
   return list.map((t) => {
-    // Only image attachments are safe for next/image. Video/audio URLs are
-    // rendered as media-type tiles with badges, not as broken image covers.
-    const cover = (t.attachments ?? []).find((a) => a.media_type === 'image' && a.url);
-    const videoOrAudio = (t.attachments ?? []).find((a) => a.duration);
+    const attachments = t.attachments ?? [];
+    const imageCover = attachments.find((a) => a.media_type === 'image' && a.url);
+    const video = attachments.find((a) => a.media_type === 'video' && a.url);
+    const videoOrAudio = attachments.find((a) => a.duration);
+
+    const videoThumbnailUrl = deriveTabyinVideoThumbnailUrl(video?.url);
+    const coverUrl = imageCover?.url || videoThumbnailUrl;
+
     const coverIsKnownPublic = Boolean(
-      cover?.url && !cover.url.includes('app-service.armansky.ir'),
+      coverUrl && !coverUrl.includes('app-service.armansky.ir'),
     );
+
     return {
       id: t.external_id,
       slug: t.external_id,
       title: t.title,
       summary: t.description,
-      // Mohtavanegar currently returns attachment URLs that answer 404 outside
-      // its private app. Do not feed those URLs into next/image; render a
-      // polished quote/media tile instead until a backend media proxy is added.
-      coverUrl: coverIsKnownPublic ? cover?.url : undefined,
+      coverUrl: coverIsKnownPublic ? coverUrl : undefined,
+      videoUrl: video?.url,
+      thumbnailUrl: videoThumbnailUrl,
       variant: coverIsKnownPublic ? 'cover' : 'quote',
-      mediaType: t.primary_media_type ?? 'image',
+      mediaType: t.primary_media_type ?? imageCover?.media_type ?? video?.media_type ?? 'image',
       durationSeconds: videoOrAudio?.duration,
       origin: t.origin,
       authorName: t.author_username,
