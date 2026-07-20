@@ -325,55 +325,64 @@ export function CampaignAlbum({
     setProgress(0);
   }, [index]);
 
+  // Slideshow is fully OFF while any of these are true. Extracted into
+  // its own memoised flag so the RAF effect below can bail out cheaply
+  // and the Ken-Burns motion component can freeze itself with the same
+  // single source of truth.
+  const slideshowPaused = hovering || helpOpen || zoom > 1;
+
   useEffect(() => {
     if (!open || !slideshow || total <= 1) {
-      // Slideshow off — reset everything cleanly
+      // Slideshow disabled entirely — clean reset.
       elapsedRef.current = 0;
       lastTickRef.current = 0;
       setProgress(0);
       return;
     }
-    // Zoom > 1 fully halts the slideshow (design)
-    if (zoom > 1) {
-      elapsedRef.current = 0;
-      lastTickRef.current = 0;
-      setProgress(0);
-      return;
-    }
-    // Hover PAUSES — do NOT reset elapsedRef (that's what freezes the
-    // bar exactly where the user found it, ready to resume on leave).
-    if (hovering || helpOpen) {
+    if (slideshowPaused) {
+      // Paused (hover / help / zoom). CRUCIAL: do NOT touch
+      // elapsedRef — that is exactly what freezes the progress bar
+      // at its current position and lets us pick up smoothly when
+      // the pause condition clears. Only reset lastTickRef so the
+      // first frame of the resumed loop seeds without retroactively
+      // counting the paused seconds.
       lastTickRef.current = 0;
       return;
     }
 
-    // Running → drive the RAF loop
     let raf = 0;
+    let cancelled = false;
     const tick = (t: number) => {
-      // First frame of the run (or first frame after a pause): seed
-      // lastTickRef without accumulating; we only start counting from
-      // the SECOND frame so hover-leave doesn't tally a bogus delta.
+      if (cancelled) return;
+      // Seed on first frame (or first frame after a pause) — do NOT
+      // accumulate the delta from an unrelated timestamp.
       if (lastTickRef.current === 0) {
         lastTickRef.current = t;
-      } else {
-        elapsedRef.current += t - lastTickRef.current;
-        lastTickRef.current = t;
+        raf = requestAnimationFrame(tick);
+        return;
       }
+      elapsedRef.current += t - lastTickRef.current;
+      lastTickRef.current = t;
       const p = Math.min(1, elapsedRef.current / SLIDESHOW_INTERVAL_MS);
       setProgress(p);
       if (p >= 1) {
-        // Reset for the NEXT slide BEFORE advancing so the incoming
-        // slide doesn't inherit a leftover elapsed value on its own
-        // first frame.
-        elapsedRef.current = 0;
-        lastTickRef.current = t;
-        nextRef.current();
+        // Paint the FULL 100% bar in this frame — with a tiny
+        // requestAnimationFrame delay before we advance the slide so
+        // the user sees the bar hit the far edge, not vanish while
+        // it's still 3-4% short of complete.
+        cancelled = true;
+        requestAnimationFrame(() => {
+          elapsedRef.current = 0;
+          lastTickRef.current = 0;
+          nextRef.current();
+        });
+        return;
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [open, slideshow, total, hovering, helpOpen, zoom]);
+    return () => { cancelled = true; cancelAnimationFrame(raf); };
+  }, [open, slideshow, total, slideshowPaused]);
 
   // ── Stage pointer handlers ─────────────────────────────────────────
   const onPointerDown = (e: React.PointerEvent) => {
@@ -480,46 +489,48 @@ export function CampaignAlbum({
   }, [current, index]);
 
   /**
-   * Copy the ACTIVE IMAGE ITSELF (as a real image blob) to the OS
-   * clipboard, so the user can paste it into Photos, Word, WhatsApp,
-   * Telegram, Photoshop etc. as a picture — NOT as a URL.
+   * Copy the ACTIVE IMAGE ITSELF (as raw image bytes) to the OS
+   * clipboard, so the user can paste it into Photos / Word / WhatsApp /
+   * Telegram / Photoshop as a REAL picture — not a URL, not an empty
+   * blob-URL that expires the moment we revoke it.
    *
-   * Strategy — three concentric layers of fallback:
+   * Three concentric fallback layers, each strictly stronger than the
+   * previous one falls back to:
    *
-   *   Layer A (best UX) — navigator.clipboard.write(ClipboardItem)
-   *     Requires a secure context (https:// or localhost). Writes the
-   *     raw PNG/JPEG bytes to the clipboard so Ctrl+V pastes an image.
-   *     Only Chromium (v76+) and Safari (v13.1+) natively accept
-   *     'image/png'; some engines demand PNG, so we transcode to PNG
-   *     via a hidden <canvas> whenever the source isn't already PNG.
+   *   Layer A — navigator.clipboard.write([ ClipboardItem ])
+   *     Requires a SECURE context (https:// or localhost). Writes the
+   *     raw PNG bytes; Ctrl+V pastes as an image on every modern
+   *     platform. Fails silently on plain HTTP → Layer B.
    *
-   *   Layer B (HTTP-safe) — copy a <canvas> selection via
-   *     document.execCommand('copy'). We draw the image into an
-   *     offscreen canvas, wrap it inside a same-origin <img> in a
-   *     contenteditable div, select the range, and issue the copy
-   *     command. Most Chromium builds honour this even on plain HTTP.
+   *   Layer B — execCommand('copy') on an <img> whose src is a
+   *     DATA URL (base64-encoded PNG). We use a data URL rather than
+   *     a blob:URL because clipboard entries only carry the URL
+   *     string, not the underlying blob's bytes: when the receiving
+   *     app tries to resolve the URL at paste-time, our blob:URL is
+   *     long gone (revoked) — the receiver ends up pasting nothing.
+   *     A data:URL, by contrast, is self-contained: the base64 bytes
+   *     travel with the URL string, so the paste target can render
+   *     the picture standalone. This is the trick that makes copy
+   *     work end-to-end on plain HTTP.
    *
-   *   Layer C (last resort) — copy the ABSOLUTE URL to the clipboard.
-   *     Retains the previous behaviour so the button is NEVER a dead
-   *     click; a follow-up toast can nudge the user to open the image
-   *     if their browser refused image copy.
+   *   Layer C — last resort: copy the ABSOLUTE image URL as text so
+   *     the click is never dead if the user's browser refused both A
+   *     and B (very old browsers, hostile CORS, private mode, ...).
    *
-   * The toast state (copied) still doubles as the visual confirmation.
+   * The `copied` toast confirms whichever path succeeded.
    */
   const onCopyUrl = useCallback(async () => {
     if (!current?.url) return;
     const abs = new URL(current.url, window.location.origin).href;
 
-    // Helper — turn any source into a PNG Blob via a <canvas>. Needed
-    // because the Clipboard API only guarantees 'image/png' support
-    // across every engine that implements it.
-    const fetchAsPngBlob = async (): Promise<Blob | null> => {
+    // Fetch → Blob, always as image/png. Returns { blob, dataUrl }.
+    const fetchAsPng = async (): Promise<{ blob: Blob; dataUrl: string } | null> => {
       try {
         const res = await fetch(current.url, { mode: 'cors', credentials: 'omit' });
         if (!res.ok) return null;
         const srcBlob = await res.blob();
-        if (srcBlob.type === 'image/png') return srcBlob;
-        // Transcode via canvas to guarantee PNG
+        // Transcode to PNG via <canvas> (clipboard API only guarantees
+        // PNG across engines, and data URLs stay small enough at PNG).
         const bitmap = await createImageBitmap(srcBlob);
         const canvas = document.createElement('canvas');
         canvas.width  = bitmap.width;
@@ -527,15 +538,18 @@ export function CampaignAlbum({
         const ctx = canvas.getContext('2d');
         if (!ctx) return null;
         ctx.drawImage(bitmap, 0, 0);
-        return await new Promise<Blob | null>((resolve) => {
+        const pngBlob = await new Promise<Blob | null>((resolve) => {
           canvas.toBlob((b) => resolve(b), 'image/png', 0.95);
         });
+        if (!pngBlob) return null;
+        const dataUrl = canvas.toDataURL('image/png');
+        return { blob: pngBlob, dataUrl };
       } catch {
         return null;
       }
     };
 
-    // Layer A — real image copy via the modern async Clipboard API
+    // ── Layer A — modern async Clipboard API ─────────────────────────
     if (
       typeof navigator !== 'undefined' &&
       typeof window !== 'undefined' &&
@@ -545,10 +559,10 @@ export function CampaignAlbum({
       typeof navigator.clipboard.write === 'function'
     ) {
       try {
-        const pngBlob = await fetchAsPngBlob();
-        if (pngBlob) {
+        const png = await fetchAsPng();
+        if (png) {
           await navigator.clipboard.write([
-            new window.ClipboardItem({ 'image/png': pngBlob }),
+            new window.ClipboardItem({ 'image/png': png.blob }),
           ]);
           setCopied(true);
           setTimeout(() => setCopied(false), 1600);
@@ -559,30 +573,28 @@ export function CampaignAlbum({
       }
     }
 
-    // Layer B — copy an <img> selection via execCommand. Works on many
-    // HTTP-only Chromium builds because the source is a same-origin
-    // blob:URL by the time we assemble the selection.
+    // ── Layer B — execCommand copy on a data-URL <img> ───────────────
+    // Data URL (not blob:) is key — the clipboard holds only the URL
+    // string, and a data URL carries the pixels inside it.
     try {
-      const pngBlob = await fetchAsPngBlob();
-      if (pngBlob) {
-        const objectUrl = URL.createObjectURL(pngBlob);
+      const png = await fetchAsPng();
+      if (png) {
         const wrapper = document.createElement('div');
         wrapper.setAttribute('contenteditable', 'true');
-        wrapper.style.position = 'fixed';
-        wrapper.style.top = '0';
-        wrapper.style.left = '0';
-        wrapper.style.opacity = '0';
-        wrapper.style.pointerEvents = 'none';
+        wrapper.style.cssText =
+          'position:fixed;top:0;left:0;opacity:0;pointer-events:none;user-select:text';
         const im = document.createElement('img');
-        im.src = objectUrl;
-        // Wait for the browser to actually load the blob into the DOM,
-        // otherwise the selection is empty and execCommand returns false.
+        im.src = png.dataUrl;
+        im.style.maxWidth = '10px'; // keep the DOM tiny; selection still works
         await new Promise<void>((resolve) => {
-          im.onload = () => resolve();
+          im.onload  = () => resolve();
           im.onerror = () => resolve();
           wrapper.appendChild(im);
           document.body.appendChild(wrapper);
         });
+        // Focus the wrapper so `document.execCommand('copy')` can act
+        // on our selection rather than on whatever previously had focus.
+        wrapper.focus();
         const range = document.createRange();
         range.selectNode(im);
         const sel = window.getSelection();
@@ -591,7 +603,6 @@ export function CampaignAlbum({
         const ok = document.execCommand('copy');
         sel?.removeAllRanges();
         wrapper.remove();
-        URL.revokeObjectURL(objectUrl);
         if (ok) {
           setCopied(true);
           setTimeout(() => setCopied(false), 1600);
@@ -602,7 +613,7 @@ export function CampaignAlbum({
       /* fall through to Layer C */
     }
 
-    // Layer C — last resort: copy the URL so the click is never dead
+    // ── Layer C — last-resort text copy of the absolute URL ──────────
     let urlOk = false;
     try {
       if (navigator.clipboard?.writeText && window.isSecureContext) {
@@ -615,10 +626,7 @@ export function CampaignAlbum({
         const ta = document.createElement('textarea');
         ta.value = abs;
         ta.setAttribute('readonly', '');
-        ta.style.position = 'fixed';
-        ta.style.top = '0';
-        ta.style.left = '0';
-        ta.style.opacity = '0';
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
         document.body.appendChild(ta);
         ta.focus();
         ta.select();
@@ -807,8 +815,16 @@ export function CampaignAlbum({
             {slideshow && total > 1 && (
               <div aria-hidden="true" className="absolute top-0 inset-x-0 h-[3px] z-[6] bg-white/10">
                 <div
-                  className="h-full bg-gradient-to-l from-mint-500 to-brand-500 transition-[width] duration-100 ease-linear"
-                  style={{ width: `${progress * 100}%` }}
+                  className="h-full bg-gradient-to-l from-mint-500 to-brand-500 ease-linear"
+                  style={{
+                    width: `${progress * 100}%`,
+                    // Smooth width changes while the loop is running,
+                    // NO transition while paused — otherwise the bar
+                    // visibly slides on hover (because React re-renders
+                    // once with the same `progress` value but a longer
+                    // frame gap has since elapsed).
+                    transition: slideshowPaused ? 'none' : 'width 90ms linear',
+                  }}
                 />
               </div>
             )}
@@ -1005,32 +1021,35 @@ export function CampaignAlbum({
                               second `onLoad` event that browsers famously
                               skip for cached responses.                    */}
                           {isCenter && slideshow && zoom === 1 && !reduced ? (
-                            <motion.img
+                            // Ken-Burns drift while the slideshow plays.
+                            // The animation is CSS-driven (via inline
+                            // animation-name + play-state) rather than
+                            // Framer-driven so we can pause / resume it
+                            // in perfect lock-step with the RAF-driven
+                            // progress bar just by flipping
+                            // `animation-play-state`.
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
                               key={`img-kb-${index}`}
                               src={img.url}
                               alt={img.alt || title}
                               draggable={false}
                               ref={(el) => {
                                 if (el && el.complete && el.naturalWidth > 0) {
-                                  // Fires when the browser served the
-                                  // image straight from cache — onLoad in
-                                  // that case is skipped in every engine.
                                   setImgReady(true);
                                 }
                               }}
                               onLoad={() => setImgReady(true)}
                               onError={() => setImgReady(true)}
-                              initial={{ scale: 1.00, x: '0%', y: '0%', opacity: 0 }}
-                              animate={{ scale: 1.06, x: '-1.2%', y: '-0.8%', opacity: imgReady ? 1 : 0 }}
-                              transition={{
-                                scale:   { duration: 5.4, ease: 'easeOut' },
-                                x:       { duration: 5.4, ease: 'easeOut' },
-                                y:       { duration: 5.4, ease: 'easeOut' },
-                                opacity: { duration: 0.3 },
-                              }}
                               className="max-w-[86%] sm:max-w-[94%] max-h-[82%] sm:max-h-[88%] object-contain pointer-events-none
-                                         drop-shadow-[0_20px_50px_rgba(0,0,0,.55)] rounded-[14px]"
-                              style={{ transformOrigin: 'center center' }}
+                                         drop-shadow-[0_20px_50px_rgba(0,0,0,.55)] rounded-[14px]
+                                         album-kenburns"
+                              style={{
+                                transformOrigin: 'center center',
+                                animationPlayState: slideshowPaused ? 'paused' : 'running',
+                                opacity: imgReady ? 1 : 0,
+                                transition: 'opacity .3s',
+                              }}
                             />
                           ) : (
                             // eslint-disable-next-line @next/next/no-img-element
