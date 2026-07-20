@@ -41,6 +41,7 @@
  */
 
 import { apiFetch } from './api';
+import { absoluteMediaUrl } from './utils';
 
 /* ───────────────────────────────────────────────────────────────────────── */
 /*  Public types                                                              */
@@ -227,7 +228,7 @@ async function fetchMadadkar(q: string, signal?: AbortSignal): Promise<SearchHit
     id: `madadkar:${c.slug}`,
     title: clean(c.title) || 'حرکت بدون عنوان',
     subtitle: c.sponsor?.name ? `مددکار: ${clean(c.sponsor.name)}` : undefined,
-    thumb: c.cover_image || c.gallery_images?.[0]?.image,
+    thumb: absoluteMediaUrl(c.cover_image || c.gallery_images?.[0]?.image),
     href: `/madadkar/${c.slug}`,
     badge: typeof c.progress_percent === 'number'
       ? `${fa(Math.round(c.progress_percent))}٪ تأمین شد`
@@ -255,7 +256,7 @@ async function fetchR4J(q: string, signal?: AbortSignal): Promise<SearchHit[]> {
       id: `r4j:${p.slug}`,
       title: fullName,
       subtitle: loc || undefined,
-      thumb: p.primary_photo?.image,
+      thumb: absoluteMediaUrl(p.primary_photo?.image),
       href: `/r4j/${p.slug}`,
       badge: p.total_bounty_toman ? formatToman(p.total_bounty_toman) : undefined,
       pill: p.bounties_count ? `${fa(p.bounties_count)} جایزه` : undefined,
@@ -279,7 +280,7 @@ async function fetchLms(q: string, signal?: AbortSignal): Promise<SearchHit[]> {
     id: `lms:${c.slug}`,
     title: clean(c.title),
     subtitle: c.instructor_name ? `مدرس: ${clean(c.instructor_name)}` : c.subtitle,
-    thumb: c.cover_image,
+    thumb: absoluteMediaUrl(c.cover_image),
     href: `/lms/courses/${c.slug}`,
     badge: c.lessons_count ? `${fa(c.lessons_count)} درس` : undefined,
     pill: c.level ? LEVEL_LABEL[c.level] ?? c.level : undefined,
@@ -303,7 +304,7 @@ async function fetchKindness(q: string, signal?: AbortSignal): Promise<SearchHit
       id: `kindness:${l.slug}`,
       title: clean(l.title),
       subtitle: [l.category?.title, loc].filter(Boolean).join(' · ') || undefined,
-      thumb: l.cover_image,
+      thumb: absoluteMediaUrl(l.cover_image),
       href: `/kindness-wall/${l.slug}`,
       badge: l.view_count ? `${fa(l.view_count)} بازدید` : undefined,
       pill: l.listing_type === 'need_help'
@@ -334,7 +335,7 @@ async function fetchTabyin(q: string, signal?: AbortSignal): Promise<SearchHit[]
       id: `tabyin:${t.external_id}`,
       title: clean(t.title) || (t.description ? clean(t.description).slice(0, 60) + '…' : 'محتوای تبیینی'),
       subtitle: t.author_username ? `@${clean(t.author_username)}` : undefined,
-      thumb: image,
+      thumb: absoluteMediaUrl(image),
       href: `/tabyin/${t.external_id}`,
       pill: t.primary_media_type
         ? MEDIA_LABEL[t.primary_media_type] ?? t.primary_media_type

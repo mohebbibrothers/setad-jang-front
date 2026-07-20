@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { siteConfig } from './site';
 
 /** Tailwind-merge + clsx helper for safe className composition. */
 export function cn(...inputs: ClassValue[]): string {
@@ -29,3 +30,35 @@ export function truncate(text: string, maxLen = 120): string {
   if (!text) return '';
   return text.length <= maxLen ? text : `${text.slice(0, maxLen).trim()}…`;
 }
+
+/**
+ * Normalise any backend-supplied media URL to an absolute one.
+ *
+ * Django's `ImageField.to_representation()` returns an absolute URL
+ * only when a request context is available. Some list serializers and
+ * SerializerMethodField overrides skip that context and return the
+ * relative `/media/xxx.jpg` path instead.
+ *
+ * When we hand such a relative URL to <img> or <Image>, the browser
+ * resolves it against the FRONT-END origin (188.253.2.86:3000) and
+ * inevitably 404s, because the media lives on the backend origin
+ * (188.253.2.86:18080). This helper resolves the URL against
+ * NEXT_PUBLIC_API_URL so the picture always loads.
+ *
+ * Behaviour:
+ *   ""                         → undefined
+ *   "https://cdn.example/x"     → passthrough (already absolute)
+ *   "http://…"                  → passthrough
+ *   "//cdn.example/x"           → passthrough (protocol-relative)
+ *   "/media/x.jpg"              → `${API_URL}/media/x.jpg`
+ *   "media/x.jpg"               → `${API_URL}/media/x.jpg`
+ */
+export function absoluteMediaUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  const trimmed = String(url).trim();
+  if (!trimmed) return undefined;
+  if (/^(https?:)?\/\//i.test(trimmed)) return trimmed;
+  const base = siteConfig.apiUrl.replace(/\/+$/, '');
+  return `${base}/${trimmed.replace(/^\/+/, '')}`;
+}
+
