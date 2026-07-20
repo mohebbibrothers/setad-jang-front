@@ -615,11 +615,19 @@ export function CampaignAlbum({
                           style={{
                             transformStyle: 'preserve-3d',
                             transformOrigin: 'center center',
-                            pointerEvents: mounted ? 'auto' : 'none',
+                            // Only side cards need to be clickable (to
+                            // jump). The center card must be transparent
+                            // to pointers so the HUD (z-[7]) and the
+                            // prev/next buttons (z-[6]) that overlap it
+                            // stay clickable. Stage-level pointerDown
+                            // still hits us for pan/swipe on the center.
+                            pointerEvents: isSide ? 'auto' : 'none',
                             cursor: isSide ? 'pointer'
                               : zoom > 1 ? (panStartRef.current ? 'grabbing' : 'grab') : 'zoom-in',
                             touchAction: zoom > 1 ? 'none' : 'pan-y',
-                            zIndex: 50 - abs,
+                            // Keep coverflow BELOW the HUD (z-[7]) and the
+                            // prev/next buttons (z-[6]) at all times.
+                            zIndex: 5 - abs,
                             willChange: 'transform, opacity, filter',
                           }}
                           animate={{
@@ -643,13 +651,32 @@ export function CampaignAlbum({
                           {isCenter && !imgReady && (
                             <div className="absolute inset-0 flex items-center justify-center text-white/70"><Spinner/></div>
                           )}
-                          {/* Center card gets pan/zoom + (optional) Ken-Burns */}
+                          {/* Center card gets pan/zoom + (optional) Ken-Burns
+
+                              Every <img> lives at its own `key` derived from
+                              the CURRENT active index — that way, whenever
+                              the user pages left/right, React unmounts the
+                              old node and mounts a fresh one. If the browser
+                              had the picture in its HTTP cache we STILL get
+                              a synchronous `.complete === true` on the new
+                              node (checked via ref-callback), so we can flip
+                              `imgReady = true` without ever waiting for a
+                              second `onLoad` event that browsers famously
+                              skip for cached responses.                    */}
                           {isCenter && slideshow && zoom === 1 && !reduced ? (
                             <motion.img
                               key={`img-kb-${index}`}
                               src={img.url}
                               alt={img.alt || title}
                               draggable={false}
+                              ref={(el) => {
+                                if (el && el.complete && el.naturalWidth > 0) {
+                                  // Fires when the browser served the
+                                  // image straight from cache — onLoad in
+                                  // that case is skipped in every engine.
+                                  setImgReady(true);
+                                }
+                              }}
                               onLoad={() => setImgReady(true)}
                               onError={() => setImgReady(true)}
                               initial={{ scale: 1.00, x: '0%', y: '0%', opacity: 0 }}
@@ -667,15 +694,18 @@ export function CampaignAlbum({
                           ) : (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
+                              key={isCenter ? `img-center-${index}` : `img-side-${i}`}
                               src={img.url}
                               alt={img.alt || title}
                               draggable={false}
                               loading={isCenter ? 'eager' : 'lazy'}
-                              // On load or error, reveal the frame — a broken
-                              // image is still preferable to a black frame
-                              // waiting forever for onLoad that never fires
-                              // (some CDNs 4xx a race; we don't want the
-                              // whole album to look "stuck loading").
+                              decoding="async"
+                              // Cached-image callback (see comment above).
+                              ref={isCenter ? (el) => {
+                                if (el && el.complete && el.naturalWidth > 0) {
+                                  setImgReady(true);
+                                }
+                              } : undefined}
                               onLoad={isCenter ? () => setImgReady(true) : undefined}
                               onError={isCenter ? () => setImgReady(true) : undefined}
                               className="max-w-[86%] sm:max-w-[94%] max-h-[82%] sm:max-h-[88%] object-contain pointer-events-none
@@ -766,10 +796,19 @@ export function CampaignAlbum({
                       reachable from this one place).
                    */}
                   <div
-                    className="absolute z-[7] bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2
+                    // `album-hud` is matched by the stage pointerDown
+                    // handler's `.closest()` selector so clicking a HUD
+                    // button never fires the pan/swipe path underneath.
+                    // `onPointerDown` stopPropagation is a belt-and-braces
+                    // safeguard in case the CSS selector ever gets renamed
+                    // — the buttons stay clickable regardless.
+                    className="album-hud absolute z-[7] bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2
                                inline-flex items-center gap-1 sm:gap-1.5 p-[5px] sm:p-1.5 rounded-full
                                bg-black/55 ring-1 ring-white/15 backdrop-blur
                                max-w-[calc(100%-1rem)] overflow-x-auto no-scrollbar"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onPointerUp={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {zoomControlsRender}
                     <span aria-hidden="true" className="w-px h-[18px] bg-white/18 mx-0.5 shrink-0" />
