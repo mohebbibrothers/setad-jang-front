@@ -103,7 +103,10 @@ export type SearchSourceMeta = {
  */
 export type SearchFacets = {
   madadkar?: {
-    status?:           'PUBLISHED' | 'COMPLETED' | 'CLOSED';
+    // Backend CampaignStatus values are stored as lowercase strings
+    // (draft / published / completed / closed). The public filter only
+    // exposes the three PUBLIC ones.
+    status?:           'published' | 'completed' | 'closed';
     has_deadline?:     boolean;
     is_fully_funded?:  boolean;
     sponsor_slug?:     string;
@@ -112,7 +115,7 @@ export type SearchFacets = {
     country?:  string;
     province?: string;
     city?:     string;
-    gender?:   'male' | 'female' | 'other';
+    gender?:   'male' | 'female' | 'unknown';
   };
   lms?: {
     category?: string; // category slug (iexact)
@@ -212,7 +215,13 @@ const MEDIA_LABEL: Record<string, string> = {
 };
 
 const CAMPAIGN_STATUS_LABEL: Record<string, string> = {
-  PUBLISHED: 'فعال',
+  // Backend stores CampaignStatus in lowercase (draft/published/…).
+  // Keep both casings mapped defensively.
+  published: 'در حال اجرا',
+  completed: 'تکمیل شد',
+  closed:    'بسته شد',
+  draft:     'پیش‌نویس',
+  PUBLISHED: 'در حال اجرا',
   COMPLETED: 'تکمیل شد',
   CLOSED:    'بسته شد',
 };
@@ -263,7 +272,11 @@ function buildQueryString(q: string, extra?: Record<string, string | boolean | u
   params.set('page_size', String(PER_SOURCE_LIMIT));
   if (extra) {
     Object.entries(extra).forEach(([k, v]) => {
-      if (v !== undefined && v !== '' && v !== false) params.set(k, String(v));
+      // NOTE — we DO want to send `false` (django BooleanFilter reads it
+      // literally). Only skip when the caller explicitly opts out via
+      // undefined / empty-string.
+      if (v === undefined || v === '') return;
+      params.set(k, typeof v === 'boolean' ? (v ? 'true' : 'false') : String(v));
     });
   }
   return params.toString();
