@@ -234,19 +234,10 @@
   height: 0;
 }
 
-/* ── Album — CSS-driven Ken-Burns drift ─────────────────────────────
-   The album's centre image gently zooms + drifts while the slideshow
-   plays. We drive it from CSS (not Framer Motion) specifically so we
-   can pause / resume it in perfect lock-step with the progress-bar
-   RAF loop just by toggling `animation-play-state` — no re-mount,
-   no state changes, no jank. */
-@keyframes album-kenburns-drift {
-  from { transform: scale(1) translate3d(0, 0, 0); }
-  to   { transform: scale(1.06) translate3d(-1.2%, -0.8%, 0); }
-}
-.album-kenburns {
-  animation: album-kenburns-drift 5400ms ease-out forwards;
-}
-@media (prefers-reduced-motion: reduce) {
-  .album-kenburns { animation: none; transform: none; }
-}
+/* ── Album — Ken-Burns drift is now progress-driven inline ─────────
+   The centre image's drift transform is derived DIRECTLY from the
+   progress state in CampaignAlbum.tsx. Keeping the calculation in
+   JS (rather than a CSS keyframe) means the pause / resume is
+   automatic — when the RAF loop that drives `progress` freezes on
+   hover / help / zoom, the transform freezes with it. No
+   animation-play-state races, no separate scheduler to sync. */

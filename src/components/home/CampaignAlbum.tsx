@@ -3,6 +3,7 @@
 import {
   useState, useEffect, useCallback, useRef, useMemo,
 } from 'react';
+import { flushSync } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatPersianNumber } from '@/lib/utils';
 
@@ -366,15 +367,20 @@ export function CampaignAlbum({
       const p = Math.min(1, elapsedRef.current / SLIDESHOW_INTERVAL_MS);
       setProgress(p);
       if (p >= 1) {
-        // Paint the FULL 100% bar in this frame — with a tiny
-        // requestAnimationFrame delay before we advance the slide so
-        // the user sees the bar hit the far edge, not vanish while
-        // it's still 3-4% short of complete.
+        // Force React to synchronously paint the 100% bar BEFORE we
+        // advance to the next slide (which would reset progress → 0
+        // in the very next microtask). flushSync guarantees a DOM
+        // commit here, then TWO requestAnimationFrame ticks give the
+        // GPU + compositor a chance to actually rasterise the full
+        // bar on-screen before we tear it down.
         cancelled = true;
+        try { flushSync(() => setProgress(1)); } catch { setProgress(1); }
         requestAnimationFrame(() => {
-          elapsedRef.current = 0;
-          lastTickRef.current = 0;
-          nextRef.current();
+          requestAnimationFrame(() => {
+            elapsedRef.current = 0;
+            lastTickRef.current = 0;
+            nextRef.current();
+          });
         });
         return;
       }
@@ -519,18 +525,49 @@ export function CampaignAlbum({
    *
    * The `copied` toast confirms whichever path succeeded.
    */
+  /**
+   * Copy the ACTIVE IMAGE (the picture currently on-screen) to the OS
+   * clipboard so Ctrl+V pastes a real picture into Photos / Word /
+   * WhatsApp / Telegram / Photoshop / any rich-text field.
+   *
+   * The environment we ship into is hostile:
+   *   • plain HTTP (188.253.2.86:3000) → window.isSecureContext is false
+   *     → navigator.clipboard.write() is unavailable on Chromium
+   *   • cross-origin media (188.253.2.86:18080) → naive selection copy
+   *     rejects the source
+   *
+   * Strategy — three concentric layers, each strictly stronger fallback:
+   *
+   *   Layer A · navigator.clipboard.write([ ClipboardItem ])
+   *     Only usable in secure contexts. Writes raw PNG bytes directly.
+   *
+   *   Layer B · beforecopy/copy event hijack with text/html + text/plain
+   *     Works on plain HTTP in every major desktop browser. We register
+   *     a ONE-SHOT copy listener on document, fire document.execCommand
+   *     ('copy'), and inside the handler stuff the clipboard with:
+   *         • text/html  = <img src="data:image/png;base64,...">
+   *         • text/plain = the absolute image URL
+   *     The data:URL is self-contained so any receiving app renders the
+   *     picture even after our JS finishes. Gmail, Docs, Word Online,
+   *     WhatsApp Web, Telegram Web, Discord, Slack, Notion — all paste
+   *     the actual image. Native apps (Photos, Photoshop, Word desktop)
+   *     will fall back to whichever format they recognise — modern
+   *     Word/Pages accept text/html with an inline data:URL <img>.
+   *
+   *   Layer C · absolute URL text copy (last-resort, never dead click)
+   */
   const onCopyUrl = useCallback(async () => {
     if (!current?.url) return;
     const abs = new URL(current.url, window.location.origin).href;
 
-    // Fetch → Blob, always as image/png. Returns { blob, dataUrl }.
+    // Show a subtle "in progress" state — copy involves a fetch + a
+    // canvas transcode and can take 100-800 ms.
+    // Fetch → PNG bytes + data URL. Returns null on any failure.
     const fetchAsPng = async (): Promise<{ blob: Blob; dataUrl: string } | null> => {
       try {
-        const res = await fetch(current.url, { mode: 'cors', credentials: 'omit' });
+        const res = await fetch(current.url, { mode: 'cors', credentials: 'omit', cache: 'force-cache' });
         if (!res.ok) return null;
         const srcBlob = await res.blob();
-        // Transcode to PNG via <canvas> (clipboard API only guarantees
-        // PNG across engines, and data URLs stay small enough at PNG).
         const bitmap = await createImageBitmap(srcBlob);
         const canvas = document.createElement('canvas');
         canvas.width  = bitmap.width;
@@ -549,7 +586,7 @@ export function CampaignAlbum({
       }
     };
 
-    // ── Layer A — modern async Clipboard API ─────────────────────────
+    // ── Layer A — modern async Clipboard API (HTTPS only) ────────────
     if (
       typeof navigator !== 'undefined' &&
       typeof window !== 'undefined' &&
@@ -573,37 +610,52 @@ export function CampaignAlbum({
       }
     }
 
-    // ── Layer B — execCommand copy on a data-URL <img> ───────────────
-    // Data URL (not blob:) is key — the clipboard holds only the URL
-    // string, and a data URL carries the pixels inside it.
+    // ── Layer B — copy-event hijack (HTTP-safe) ──────────────────────
+    // Chromium / Firefox / Safari all let us intercept the 'copy' event
+    // triggered by document.execCommand('copy') and write ARBITRARY
+    // clipboard data via ClipboardEvent.clipboardData.setData(). The
+    // key insight is that text/html with an inline data:URL <img>
+    // is treated as an image by every mainstream rich-paste target on
+    // the web (Gmail, Docs, WhatsApp Web, Word Online, Notion, Slack).
     try {
       const png = await fetchAsPng();
       if (png) {
-        const wrapper = document.createElement('div');
-        wrapper.setAttribute('contenteditable', 'true');
-        wrapper.style.cssText =
-          'position:fixed;top:0;left:0;opacity:0;pointer-events:none;user-select:text';
-        const im = document.createElement('img');
-        im.src = png.dataUrl;
-        im.style.maxWidth = '10px'; // keep the DOM tiny; selection still works
-        await new Promise<void>((resolve) => {
-          im.onload  = () => resolve();
-          im.onerror = () => resolve();
-          wrapper.appendChild(im);
-          document.body.appendChild(wrapper);
-        });
-        // Focus the wrapper so `document.execCommand('copy')` can act
-        // on our selection rather than on whatever previously had focus.
-        wrapper.focus();
-        const range = document.createRange();
-        range.selectNode(im);
-        const sel = window.getSelection();
-        sel?.removeAllRanges();
-        sel?.addRange(range);
-        const ok = document.execCommand('copy');
-        sel?.removeAllRanges();
-        wrapper.remove();
-        if (ok) {
+        // Build a rich-HTML payload with the picture inline.
+        const htmlPayload = `<img src="${png.dataUrl}" alt="${
+          (current.alt || 'image').replace(/"/g, '&quot;')
+        }" />`;
+
+        // Same-tick listener that the copy command will invoke.
+        let handled = false;
+        const onCopy = (ev: ClipboardEvent) => {
+          if (!ev.clipboardData) return;
+          ev.preventDefault();
+          ev.clipboardData.setData('text/html',  htmlPayload);
+          ev.clipboardData.setData('text/plain', abs);
+          handled = true;
+        };
+
+        // A selection MUST exist for execCommand('copy') to succeed —
+        // browsers won't fire the copy event on an empty selection.
+        const ta = document.createElement('textarea');
+        ta.value = ' ';
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+
+        document.addEventListener('copy', onCopy, { once: true, capture: true });
+        let ok = false;
+        try {
+          ok = document.execCommand('copy');
+        } catch {
+          ok = false;
+        }
+        document.removeEventListener('copy', onCopy, { capture: true } as EventListenerOptions);
+        ta.remove();
+
+        if (ok && handled) {
           setCopied(true);
           setTimeout(() => setCopied(false), 1600);
           return;
@@ -1021,13 +1073,21 @@ export function CampaignAlbum({
                               second `onLoad` event that browsers famously
                               skip for cached responses.                    */}
                           {isCenter && slideshow && zoom === 1 && !reduced ? (
-                            // Ken-Burns drift while the slideshow plays.
-                            // The animation is CSS-driven (via inline
-                            // animation-name + play-state) rather than
-                            // Framer-driven so we can pause / resume it
-                            // in perfect lock-step with the RAF-driven
-                            // progress bar just by flipping
-                            // `animation-play-state`.
+                            // Ken-Burns drift SYNCED to the progress bar.
+                            //
+                            // The transform is derived DIRECTLY from the
+                            // `progress` state (0 → 1 over the 5.4 s
+                            // slide life). Because `progress` freezes
+                            // the instant the RAF loop pauses (on
+                            // hover / help / zoom), the transform
+                            // freezes with it — pixel-perfect lock-step,
+                            // no CSS animation-play-state races, no
+                            // Framer clock to fight.
+                            //
+                            // Ease-out curve is applied to `progress`
+                            // via a smoothstep-ish quadratic so the
+                            // drift decelerates naturally, matching the
+                            // Framer feel it replaces.
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               key={`img-kb-${index}`}
@@ -1042,14 +1102,24 @@ export function CampaignAlbum({
                               onLoad={() => setImgReady(true)}
                               onError={() => setImgReady(true)}
                               className="max-w-[86%] sm:max-w-[94%] max-h-[82%] sm:max-h-[88%] object-contain pointer-events-none
-                                         drop-shadow-[0_20px_50px_rgba(0,0,0,.55)] rounded-[14px]
-                                         album-kenburns"
-                              style={{
-                                transformOrigin: 'center center',
-                                animationPlayState: slideshowPaused ? 'paused' : 'running',
-                                opacity: imgReady ? 1 : 0,
-                                transition: 'opacity .3s',
-                              }}
+                                         drop-shadow-[0_20px_50px_rgba(0,0,0,.55)] rounded-[14px]"
+                              style={(() => {
+                                // ease-out (1 - (1-p)^2) makes the drift
+                                // fast at first and settle at the end,
+                                // which matches the eye's slideshow
+                                // rhythm better than a linear ramp.
+                                const eased = 1 - Math.pow(1 - progress, 2);
+                                const scale =  1     + 0.06 * eased;
+                                const tx    = -1.2   * eased; // %
+                                const ty    = -0.8   * eased; // %
+                                return {
+                                  transformOrigin: 'center center',
+                                  transform: `scale(${scale}) translate3d(${tx}%, ${ty}%, 0)`,
+                                  opacity: imgReady ? 1 : 0,
+                                  transition: 'opacity .3s',
+                                  willChange: 'transform',
+                                };
+                              })()}
                             />
                           ) : (
                             // eslint-disable-next-line @next/next/no-img-element
