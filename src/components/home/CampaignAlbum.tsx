@@ -226,9 +226,27 @@ export function CampaignAlbum({
   }, [getFsElement]);
 
   // ── Keyboard shortcuts + body scroll lock ──────────────────────────
+  //
+  // Layout-independence
+  //   `e.key` reports the CHARACTER produced by the keystroke, which
+  //   depends on the active keyboard layout — on a Persian layout the
+  //   physical F key emits 'ب', H emits 'ا', so the old `e.key === 'f'`
+  //   comparison silently failed for RTL users.
+  //
+  //   `e.code` reports the PHYSICAL key ('KeyF', 'KeyH', 'Slash', etc.)
+  //   which is stable across every layout. Prefer code for letter
+  //   shortcuts and fall back to key for punctuation / arrows / space
+  //   that don't have a stable code across engines.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
+      // Ignore keystrokes originating from an editable element so we
+      // don't hijack typing in an <input> / <textarea>.
+      const t = e.target as HTMLElement | null;
+      const inField =
+        !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+      if (inField) return;
+
       if (e.key === 'Escape') {
         if (helpOpen)        setHelpOpen(false);
         else if (zoom > 1)   zoomReset();
@@ -236,14 +254,29 @@ export function CampaignAlbum({
         else                 onClose();
         return;
       }
-      if      (e.key === 'ArrowLeft')                            next();
-      else if (e.key === 'ArrowRight')                           prev();
-      else if (e.key === ' ')                                   { e.preventDefault(); setSlideshow((s) => !s); }
-      else if (e.key === 'f' || e.key === 'F')                  toggleFs();
-      else if (e.key === '?' || e.key === 'h' || e.key === 'H') setHelpOpen((h) => !h);
-      else if (e.key === '+' || e.key === '=')                  zoomIn();
-      else if (e.key === '-' || e.key === '_')                  zoomOut();
-      else if (e.key === '0')                                   zoomReset();
+      // Arrows + Space + Enter — always layout-independent
+      if (e.key === 'ArrowLeft')  { next(); return; }
+      if (e.key === 'ArrowRight') { prev(); return; }
+      if (e.code === 'Space')     { e.preventDefault(); setSlideshow((s) => !s); return; }
+      // Letter shortcuts — check e.code first (physical key), then
+      // e.key so Latin keyboards still get their friendly single-key
+      // bindings.
+      if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') { toggleFs();               return; }
+      if (e.code === 'KeyH' || e.key === 'h' || e.key === 'H'
+          || e.key === '?' || e.key === '؟')                   { setHelpOpen((h) => !h);  return; }
+      // Zoom — physical + / - / 0 (Digit0 / NumpadAdd / etc.)
+      if (
+        e.code === 'Equal' || e.code === 'NumpadAdd' ||
+        e.key === '+' || e.key === '='
+      ) { zoomIn(); return; }
+      if (
+        e.code === 'Minus' || e.code === 'NumpadSubtract' ||
+        e.key === '-' || e.key === '_'
+      ) { zoomOut(); return; }
+      if (
+        e.code === 'Digit0' || e.code === 'Numpad0' ||
+        e.key === '0' || e.key === '۰'
+      ) { zoomReset(); return; }
     };
     document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
@@ -255,51 +288,92 @@ export function CampaignAlbum({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, helpOpen, zoom, slideshow, next, prev, onClose, zoomIn, zoomOut, zoomReset]);
 
-  // ── Slideshow tick ─────────────────────────────────────────────────
+  // ── Slideshow tick — PAUSE-RESUMABLE ───────────────────────────────
   //
-  // The old implementation restarted the animation-frame loop on every
-  // `index` change (because `next` is a fresh useCallback whenever
-  // `index` changes). Result: at the moment the loop fired `next()`,
-  // the very next render tore down the effect, rebuilt it with a fresh
-  // `startedAt = performance.now()`, and the progress bar jumped BACK
-  // to 0 mid-tick — visible as a stutter or "the bar and the swap
-  // aren't in sync".
+  // Requirements
+  //   * The RAF loop must survive index changes (otherwise every swap
+  //     restarts the timer and the progress bar visibly jumps back to
+  //     zero mid-tick).
+  //   * Hovering the stage or opening the help overlay must PAUSE the
+  //     tick — freezing the progress bar exactly where it is — and
+  //     RESUME from that same position when the pointer leaves. The
+  //     bar must NEVER jump back to zero on hover.
+  //   * Zoom > 1 fully cancels the slideshow (design decision: users
+  //     inspecting a zoomed picture don't want it swapped out).
   //
-  // The fix keeps the RAF loop STABLE across index changes by:
-  //   1. Reading `next` from a ref so the effect no longer depends on it
-  //   2. Using a mutable ref for `startedAt` and resetting it inline
-  //      when we advance a slide — no re-render cycle involved
-  //   3. Only re-running the effect on true state changes:
-  //      open / slideshow / total / hovering / zoom
+  // Implementation
+  //   `elapsedRef` stores the total accumulated "playing" time for the
+  //   current slide. Every RAF tick appends (t - lastTickRef) to it as
+  //   long as the loop is running, so the timer is naturally resistant
+  //   to pauses: when we halt the loop and later restart it, we simply
+  //   set lastTickRef to the new frame's timestamp and elapsedRef keeps
+  //   its accumulated value. No math tricks, no drift, no re-render
+  //   cycle triggered by the pause/resume itself.
   //
-  // Progress is also written to a ref-driven imperative style: we still
-  // call setProgress so the bar reflects the ticks, but React can batch
-  // those updates safely because we cap to `raf` frequency (~60fps).
+  //   `next` is captured through a ref so the RAF closure always sees
+  //   the freshest callback without changing its own deps.
   const nextRef       = useRef(next);
-  const startedAtRef  = useRef<number>(0);
+  const elapsedRef    = useRef<number>(0);
+  const lastTickRef   = useRef<number>(0);
   useEffect(() => { nextRef.current = next; }, [next]);
 
+  // Reset the per-slide timer when the active image changes (whether by
+  // the user paging manually or by the slideshow itself advancing).
   useEffect(() => {
-    if (!open || !slideshow || total <= 1) { setProgress(0); return; }
-    if (hovering || zoom > 1)              { setProgress(0); return; }
+    elapsedRef.current = 0;
+    lastTickRef.current = 0;
+    setProgress(0);
+  }, [index]);
 
-    startedAtRef.current = performance.now();
+  useEffect(() => {
+    if (!open || !slideshow || total <= 1) {
+      // Slideshow off — reset everything cleanly
+      elapsedRef.current = 0;
+      lastTickRef.current = 0;
+      setProgress(0);
+      return;
+    }
+    // Zoom > 1 fully halts the slideshow (design)
+    if (zoom > 1) {
+      elapsedRef.current = 0;
+      lastTickRef.current = 0;
+      setProgress(0);
+      return;
+    }
+    // Hover PAUSES — do NOT reset elapsedRef (that's what freezes the
+    // bar exactly where the user found it, ready to resume on leave).
+    if (hovering || helpOpen) {
+      lastTickRef.current = 0;
+      return;
+    }
+
+    // Running → drive the RAF loop
     let raf = 0;
     const tick = (t: number) => {
-      const elapsed = t - startedAtRef.current;
-      const p = Math.min(1, elapsed / SLIDESHOW_INTERVAL_MS);
+      // First frame of the run (or first frame after a pause): seed
+      // lastTickRef without accumulating; we only start counting from
+      // the SECOND frame so hover-leave doesn't tally a bogus delta.
+      if (lastTickRef.current === 0) {
+        lastTickRef.current = t;
+      } else {
+        elapsedRef.current += t - lastTickRef.current;
+        lastTickRef.current = t;
+      }
+      const p = Math.min(1, elapsedRef.current / SLIDESHOW_INTERVAL_MS);
       setProgress(p);
       if (p >= 1) {
-        // Reset the clock BEFORE advancing so the next tick's elapsed
-        // starts from 0 without a visible flash-back.
-        startedAtRef.current = t;
+        // Reset for the NEXT slide BEFORE advancing so the incoming
+        // slide doesn't inherit a leftover elapsed value on its own
+        // first frame.
+        elapsedRef.current = 0;
+        lastTickRef.current = t;
         nextRef.current();
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [open, slideshow, total, hovering, zoom]);
+  }, [open, slideshow, total, hovering, helpOpen, zoom]);
 
   // ── Stage pointer handlers ─────────────────────────────────────────
   const onPointerDown = (e: React.PointerEvent) => {
@@ -406,38 +480,137 @@ export function CampaignAlbum({
   }, [current, index]);
 
   /**
-   * Copy the active image URL to the clipboard.
+   * Copy the ACTIVE IMAGE ITSELF (as a real image blob) to the OS
+   * clipboard, so the user can paste it into Photos, Word, WhatsApp,
+   * Telegram, Photoshop etc. as a picture — NOT as a URL.
    *
-   * `navigator.clipboard` is only available in secure contexts (HTTPS or
-   * localhost). Our staging deploy runs plain HTTP, so on many browsers
-   * `navigator.clipboard` is literally `undefined` and the old
-   * `try { await navigator.clipboard.writeText(...) }` block silently
-   * swallowed the failure — leaving the button looking dead.
+   * Strategy — three concentric layers of fallback:
    *
-   * The fallback uses the legacy `document.execCommand('copy')` trick
-   * on a hidden textarea, which works from any HTTP page as long as the
-   * call is inside a user-initiated event handler (which onClick is).
+   *   Layer A (best UX) — navigator.clipboard.write(ClipboardItem)
+   *     Requires a secure context (https:// or localhost). Writes the
+   *     raw PNG/JPEG bytes to the clipboard so Ctrl+V pastes an image.
+   *     Only Chromium (v76+) and Safari (v13.1+) natively accept
+   *     'image/png'; some engines demand PNG, so we transcode to PNG
+   *     via a hidden <canvas> whenever the source isn't already PNG.
+   *
+   *   Layer B (HTTP-safe) — copy a <canvas> selection via
+   *     document.execCommand('copy'). We draw the image into an
+   *     offscreen canvas, wrap it inside a same-origin <img> in a
+   *     contenteditable div, select the range, and issue the copy
+   *     command. Most Chromium builds honour this even on plain HTTP.
+   *
+   *   Layer C (last resort) — copy the ABSOLUTE URL to the clipboard.
+   *     Retains the previous behaviour so the button is NEVER a dead
+   *     click; a follow-up toast can nudge the user to open the image
+   *     if their browser refused image copy.
+   *
+   * The toast state (copied) still doubles as the visual confirmation.
    */
   const onCopyUrl = useCallback(async () => {
     if (!current?.url) return;
     const abs = new URL(current.url, window.location.origin).href;
 
-    let ok = false;
-    try {
-      if (
-        typeof navigator !== 'undefined' &&
-        navigator.clipboard &&
-        typeof navigator.clipboard.writeText === 'function' &&
-        window.isSecureContext
-      ) {
-        await navigator.clipboard.writeText(abs);
-        ok = true;
+    // Helper — turn any source into a PNG Blob via a <canvas>. Needed
+    // because the Clipboard API only guarantees 'image/png' support
+    // across every engine that implements it.
+    const fetchAsPngBlob = async (): Promise<Blob | null> => {
+      try {
+        const res = await fetch(current.url, { mode: 'cors', credentials: 'omit' });
+        if (!res.ok) return null;
+        const srcBlob = await res.blob();
+        if (srcBlob.type === 'image/png') return srcBlob;
+        // Transcode via canvas to guarantee PNG
+        const bitmap = await createImageBitmap(srcBlob);
+        const canvas = document.createElement('canvas');
+        canvas.width  = bitmap.width;
+        canvas.height = bitmap.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        ctx.drawImage(bitmap, 0, 0);
+        return await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob((b) => resolve(b), 'image/png', 0.95);
+        });
+      } catch {
+        return null;
       }
-    } catch {
-      /* fall through to legacy path */
+    };
+
+    // Layer A — real image copy via the modern async Clipboard API
+    if (
+      typeof navigator !== 'undefined' &&
+      typeof window !== 'undefined' &&
+      window.isSecureContext &&
+      typeof window.ClipboardItem === 'function' &&
+      navigator.clipboard &&
+      typeof navigator.clipboard.write === 'function'
+    ) {
+      try {
+        const pngBlob = await fetchAsPngBlob();
+        if (pngBlob) {
+          await navigator.clipboard.write([
+            new window.ClipboardItem({ 'image/png': pngBlob }),
+          ]);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1600);
+          return;
+        }
+      } catch {
+        /* fall through to Layer B */
+      }
     }
 
-    if (!ok) {
+    // Layer B — copy an <img> selection via execCommand. Works on many
+    // HTTP-only Chromium builds because the source is a same-origin
+    // blob:URL by the time we assemble the selection.
+    try {
+      const pngBlob = await fetchAsPngBlob();
+      if (pngBlob) {
+        const objectUrl = URL.createObjectURL(pngBlob);
+        const wrapper = document.createElement('div');
+        wrapper.setAttribute('contenteditable', 'true');
+        wrapper.style.position = 'fixed';
+        wrapper.style.top = '0';
+        wrapper.style.left = '0';
+        wrapper.style.opacity = '0';
+        wrapper.style.pointerEvents = 'none';
+        const im = document.createElement('img');
+        im.src = objectUrl;
+        // Wait for the browser to actually load the blob into the DOM,
+        // otherwise the selection is empty and execCommand returns false.
+        await new Promise<void>((resolve) => {
+          im.onload = () => resolve();
+          im.onerror = () => resolve();
+          wrapper.appendChild(im);
+          document.body.appendChild(wrapper);
+        });
+        const range = document.createRange();
+        range.selectNode(im);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+        const ok = document.execCommand('copy');
+        sel?.removeAllRanges();
+        wrapper.remove();
+        URL.revokeObjectURL(objectUrl);
+        if (ok) {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1600);
+          return;
+        }
+      }
+    } catch {
+      /* fall through to Layer C */
+    }
+
+    // Layer C — last resort: copy the URL so the click is never dead
+    let urlOk = false;
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(abs);
+        urlOk = true;
+      }
+    } catch { /* keep going */ }
+    if (!urlOk) {
       try {
         const ta = document.createElement('textarea');
         ta.value = abs;
@@ -450,14 +623,11 @@ export function CampaignAlbum({
         ta.focus();
         ta.select();
         ta.setSelectionRange(0, abs.length);
-        ok = document.execCommand('copy');
+        urlOk = document.execCommand('copy');
         ta.remove();
-      } catch {
-        ok = false;
-      }
+      } catch { urlOk = false; }
     }
-
-    if (ok) {
+    if (urlOk) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     }
