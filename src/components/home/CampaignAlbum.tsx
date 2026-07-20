@@ -164,18 +164,66 @@ export function CampaignAlbum({
   }, [zoom]);
 
   // ── Fullscreen ─────────────────────────────────────────────────────
+  // Full vendor-prefix coverage — Safari, older Chrome/Edge and any
+  // embedded webview still ship the webkit-prefixed API only. Without
+  // these fallbacks the F key silently does nothing on Safari macOS/iOS.
+  const getFsElement = useCallback((): Element | null => {
+    if (typeof document === 'undefined') return null;
+    const d = document as Document & {
+      webkitFullscreenElement?: Element | null;
+      mozFullScreenElement?: Element | null;
+      msFullscreenElement?: Element | null;
+    };
+    return (
+      d.fullscreenElement ??
+      d.webkitFullscreenElement ??
+      d.mozFullScreenElement ??
+      d.msFullscreenElement ??
+      null
+    );
+  }, []);
+
   const toggleFs = useCallback(async () => {
     const el = panelRef.current; if (!el) return;
+    const anyEl = el as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void>;
+      mozRequestFullScreen?: () => Promise<void>;
+      msRequestFullscreen?: () => Promise<void>;
+    };
+    const anyDoc = document as Document & {
+      webkitExitFullscreen?: () => Promise<void>;
+      mozCancelFullScreen?: () => Promise<void>;
+      msExitFullscreen?: () => Promise<void>;
+    };
     try {
-      if (!document.fullscreenElement) { await el.requestFullscreen?.(); setIsFs(true); }
-      else { await document.exitFullscreen?.(); setIsFs(false); }
-    } catch { /* user-cancelled */ }
-  }, []);
+      if (!getFsElement()) {
+        // Enter fullscreen — try every known API in order of ubiquity.
+        if      (anyEl.requestFullscreen)        await anyEl.requestFullscreen();
+        else if (anyEl.webkitRequestFullscreen)  await anyEl.webkitRequestFullscreen();
+        else if (anyEl.mozRequestFullScreen)     await anyEl.mozRequestFullScreen();
+        else if (anyEl.msRequestFullscreen)      await anyEl.msRequestFullscreen();
+        setIsFs(true);
+      } else {
+        if      (anyDoc.exitFullscreen)          await anyDoc.exitFullscreen();
+        else if (anyDoc.webkitExitFullscreen)    await anyDoc.webkitExitFullscreen();
+        else if (anyDoc.mozCancelFullScreen)     await anyDoc.mozCancelFullScreen();
+        else if (anyDoc.msExitFullscreen)        await anyDoc.msExitFullscreen();
+        setIsFs(false);
+      }
+    } catch { /* user-cancelled or unsupported */ }
+  }, [getFsElement]);
+
   useEffect(() => {
-    const onChange = () => setIsFs(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', onChange);
-    return () => document.removeEventListener('fullscreenchange', onChange);
-  }, []);
+    const onChange = () => setIsFs(!!getFsElement());
+    const events = [
+      'fullscreenchange',
+      'webkitfullscreenchange',
+      'mozfullscreenchange',
+      'MSFullscreenChange',
+    ];
+    events.forEach((ev) => document.addEventListener(ev, onChange));
+    return () => events.forEach((ev) => document.removeEventListener(ev, onChange));
+  }, [getFsElement]);
 
   // ── Keyboard shortcuts + body scroll lock ──────────────────────────
   useEffect(() => {
@@ -208,20 +256,50 @@ export function CampaignAlbum({
   }, [open, helpOpen, zoom, slideshow, next, prev, onClose, zoomIn, zoomOut, zoomReset]);
 
   // ── Slideshow tick ─────────────────────────────────────────────────
+  //
+  // The old implementation restarted the animation-frame loop on every
+  // `index` change (because `next` is a fresh useCallback whenever
+  // `index` changes). Result: at the moment the loop fired `next()`,
+  // the very next render tore down the effect, rebuilt it with a fresh
+  // `startedAt = performance.now()`, and the progress bar jumped BACK
+  // to 0 mid-tick — visible as a stutter or "the bar and the swap
+  // aren't in sync".
+  //
+  // The fix keeps the RAF loop STABLE across index changes by:
+  //   1. Reading `next` from a ref so the effect no longer depends on it
+  //   2. Using a mutable ref for `startedAt` and resetting it inline
+  //      when we advance a slide — no re-render cycle involved
+  //   3. Only re-running the effect on true state changes:
+  //      open / slideshow / total / hovering / zoom
+  //
+  // Progress is also written to a ref-driven imperative style: we still
+  // call setProgress so the bar reflects the ticks, but React can batch
+  // those updates safely because we cap to `raf` frequency (~60fps).
+  const nextRef       = useRef(next);
+  const startedAtRef  = useRef<number>(0);
+  useEffect(() => { nextRef.current = next; }, [next]);
+
   useEffect(() => {
     if (!open || !slideshow || total <= 1) { setProgress(0); return; }
-    if (hovering || zoom > 1)                { setProgress(0); return; }
-    let raf = 0; let startedAt = performance.now();
+    if (hovering || zoom > 1)              { setProgress(0); return; }
+
+    startedAtRef.current = performance.now();
+    let raf = 0;
     const tick = (t: number) => {
-      const elapsed = t - startedAt;
+      const elapsed = t - startedAtRef.current;
       const p = Math.min(1, elapsed / SLIDESHOW_INTERVAL_MS);
       setProgress(p);
-      if (p >= 1) { startedAt = t; setProgress(0); next(); }
+      if (p >= 1) {
+        // Reset the clock BEFORE advancing so the next tick's elapsed
+        // starts from 0 without a visible flash-back.
+        startedAtRef.current = t;
+        nextRef.current();
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [open, slideshow, total, hovering, zoom, next]);
+  }, [open, slideshow, total, hovering, zoom]);
 
   // ── Stage pointer handlers ─────────────────────────────────────────
   const onPointerDown = (e: React.PointerEvent) => {
@@ -274,22 +352,115 @@ export function CampaignAlbum({
 
   // ── Action handlers ────────────────────────────────────────────────
   const current = images[index];
-  const onDownload = useCallback(() => {
+
+  /**
+   * Download the active image.
+   *
+   * The naïve `<a download>` trick only works when the file is served
+   * from the SAME origin. Our media lives on the backend host
+   * (188.253.2.86:18080) while the page runs on 188.253.2.86:3000 —
+   * different origins — so browsers ignore the `download` attribute and
+   * simply navigate to the image URL. To force a real save-as dialog we:
+   *
+   *   1. Fetch the image via CORS (the Django MEDIA endpoints already
+   *      send the permissive Access-Control-Allow-Origin headers used
+   *      elsewhere in the app).
+   *   2. Convert the response body into a same-origin `blob:` URL.
+   *   3. Pipe THAT into a temporary `<a>` with the desired filename.
+   *   4. Fall back to opening the picture in a new tab if the fetch is
+   *      blocked (older browsers or unusual CORS policies) — that way
+   *      the user can still right-click → Save Image As instead of
+   *      being left with a button that silently does nothing.
+   */
+  const onDownload = useCallback(async () => {
     if (!current?.url) return;
-    const a = document.createElement('a');
-    a.href = current.url;
-    const name = (current.alt?.trim() || `madadkar-${index + 1}`).slice(0, 60);
-    a.download = `${name}.jpg`; a.target = '_blank'; a.rel = 'noopener';
-    document.body.appendChild(a); a.click(); a.remove();
+    const rawName = (current.alt?.trim() || `madadkar-${index + 1}`).slice(0, 60);
+    // Derive a sensible extension from the URL path when possible; jpg is
+    // the safe default for a Django ImageField without a fingerprint.
+    const extMatch = current.url.split('?')[0].match(/\.(jpe?g|png|webp|gif)$/i);
+    const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
+    const filename = `${rawName.replace(/[\\/:*?"<>|]/g, '_')}.${ext}`;
+
+    const openInNewTab = () => {
+      const a = document.createElement('a');
+      a.href = current.url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+    };
+
+    try {
+      const res = await fetch(current.url, { mode: 'cors', credentials: 'omit' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      // Give the browser one tick to consume the blob before revoking
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+    } catch {
+      openInNewTab();
+    }
   }, [current, index]);
+
+  /**
+   * Copy the active image URL to the clipboard.
+   *
+   * `navigator.clipboard` is only available in secure contexts (HTTPS or
+   * localhost). Our staging deploy runs plain HTTP, so on many browsers
+   * `navigator.clipboard` is literally `undefined` and the old
+   * `try { await navigator.clipboard.writeText(...) }` block silently
+   * swallowed the failure — leaving the button looking dead.
+   *
+   * The fallback uses the legacy `document.execCommand('copy')` trick
+   * on a hidden textarea, which works from any HTTP page as long as the
+   * call is inside a user-initiated event handler (which onClick is).
+   */
   const onCopyUrl = useCallback(async () => {
     if (!current?.url) return;
+    const abs = new URL(current.url, window.location.origin).href;
+
+    let ok = false;
     try {
-      const abs = new URL(current.url, window.location.origin).href;
-      await navigator.clipboard.writeText(abs);
+      if (
+        typeof navigator !== 'undefined' &&
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === 'function' &&
+        window.isSecureContext
+      ) {
+        await navigator.clipboard.writeText(abs);
+        ok = true;
+      }
+    } catch {
+      /* fall through to legacy path */
+    }
+
+    if (!ok) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = abs;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '0';
+        ta.style.left = '0';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, abs.length);
+        ok = document.execCommand('copy');
+        ta.remove();
+      } catch {
+        ok = false;
+      }
+    }
+
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
-    } catch { /* clipboard blocked */ }
+    }
   }, [current]);
 
   // ── Filmstrip overflow detection (RTL-aware) ───────────────────────
