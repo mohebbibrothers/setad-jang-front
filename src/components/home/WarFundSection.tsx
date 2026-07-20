@@ -110,21 +110,29 @@ function MetaPill({
 }) {
   return (
     <div
+      /* Mobile-first sizing:
+         - fluid horizontal padding (px-2 on phones, px-3 from sm+)
+         - `min-w-0` on the row so children can shrink to fit inside
+           very narrow card columns without ever pushing the pill wider
+           than its cell (which used to cause a horizontal scroll on
+           the "باقی‌مانده / تعداد سهم" pair at ≤ 380px). */
       className="h-[40px] rounded-[10px] border border-ink-200 bg-white
-                 flex items-center gap-1.5 px-3"
+                 flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 min-w-0 overflow-hidden"
     >
-      {/* Label — RTL-start (right) */}
+      {/* Label — RTL-start (right). Slightly smaller on phones so the
+          value gets more room; the label truncates rather than pushing
+          the value out. */}
       <span
-        className="text-[12px] text-ink-500 font-medium leading-none
-                   whitespace-nowrap shrink-0"
+        className="text-[11px] sm:text-[12px] text-ink-500 font-medium leading-none
+                   whitespace-nowrap truncate max-w-[42%] shrink"
       >
         {label}
       </span>
 
-      {/* Value — fills the remaining space, truncates if too long */}
+      {/* Value — fills the remaining space, truncates if too long. */}
       <span
         className={`flex-1 min-w-0 text-center
-                    font-extrabold text-[13.5px] text-ink-900
+                    font-extrabold text-[12.5px] sm:text-[13.5px] text-ink-900
                     whitespace-nowrap overflow-hidden text-ellipsis
                     ${emphasis === 'num' ? 'tabular-nums' : ''}`}
         title={typeof value === 'string' ? value : undefined}
@@ -132,10 +140,13 @@ function MetaPill({
         {typeof value === 'number' ? formatPersianNumber(value) : value}
       </span>
 
-      {/* Unit — LTR-start (left), only when provided */}
+      {/* Unit — LTR-start (left), only when provided. Kept shrink-0 so
+          it's never truncated (values like "سهم" / "ریال" are the
+          entire semantic meaning of the pill — cutting them would be
+          worse than truncating the label). */}
       {unit && (
         <span
-          className="text-[11px] text-ink-400 font-medium leading-none
+          className="text-[10.5px] sm:text-[11px] text-ink-400 font-medium leading-none
                      whitespace-nowrap shrink-0"
         >
           {unit}
@@ -233,12 +244,15 @@ function Card({
                  hover:-translate-y-0.5 transition-all duration-300 overflow-hidden
                  w-full lg:w-[calc((100%-1.25rem)/2)] min-w-0"
     >
-      <div className="p-4 md:p-5">
+      <div className="p-3 sm:p-4 md:p-5">
         {/* ── Body: 2-column layout (cover on RTL-right, content on left) ── */}
-        <div className="flex items-stretch gap-4">
+        <div className="flex items-stretch gap-3 sm:gap-4">
 
-          {/* Right column: cover + percent + progress (DOM-first = RTL-right) */}
-          <div className="flex flex-col items-center shrink-0 w-[96px] sm:w-[110px] md:w-[130px]">
+          {/* Right column: cover + percent + progress (DOM-first = RTL-right).
+              On very narrow phones (< 380px) the cover is pinned to 84px
+              so the value column keeps enough breathing room for the
+              "باقی‌مانده" / "تعداد سهم" pair below. */}
+          <div className="flex flex-col items-center shrink-0 w-[84px] sm:w-[110px] md:w-[130px]">
             <button
               type="button"
               onClick={() => onOpenAlbum(c)}
@@ -325,7 +339,9 @@ function Card({
             <div className="space-y-2">
               <MetaPill label="مبلغ کل" value={totalRial} unit="ریال" />
 
-              <div className="grid grid-cols-2 gap-2">
+              {/* Tighter gap on phones so both pills fit even when the
+                  cover column steals ~84px of horizontal space. */}
+              <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                 <MetaPill label="باقی‌مانده" value={c.sharesRemaining} unit="سهم" />
                 <MetaPill label="تعداد سهم" value={c.sharesTotal} unit="سهم" />
               </div>

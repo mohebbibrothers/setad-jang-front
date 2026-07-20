@@ -37,6 +37,12 @@
     scroll-behavior: smooth;
     text-size-adjust: 100%;
     -webkit-text-size-adjust: 100%;
+    /* Belt-and-braces horizontal-scroll guard — even if a downstream
+       component accidentally overflows on a narrow viewport, the page
+       itself can never scroll sideways. Individual sections that WANT
+       a horizontal scroll (e.g. tab strips) opt in with their own
+       `overflow-x-auto`. */
+    overflow-x: hidden;
   }
 
   body {
@@ -44,6 +50,19 @@
     font-family: var(--font-vazir);
     font-feature-settings: 'ss01', 'ss02', 'kern';
     text-rendering: optimizeLegibility;
+    /* Same guard on <body> because iOS Safari sometimes lets a rogue
+       element still nudge the viewport horizontally past the html cap.
+       Also ensures rubber-band scroll only happens vertically. */
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  /* Never let images / videos / SVGs push their parent wider than the
+     viewport by their intrinsic size — critical on mobile where a stray
+     unconstrained media element is the #1 cause of a horizontal scroll. */
+  img, video, svg, iframe, canvas, embed, object {
+    max-width: 100%;
   }
 
   /* Persian numerals + Latin numerals harmony */
