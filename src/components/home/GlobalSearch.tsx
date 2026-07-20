@@ -16,7 +16,7 @@
  *     re-runs the search and narrows the results server-side.
  *   • Trending presets + recent-searches (localStorage, max 6).
  *   • Keyboard nav: ↑/↓ traverses hits, Enter opens the highlighted
- *     one, Esc closes, ⌘K / Ctrl+K focuses from anywhere on the page.
+ *     one, Esc closes.
  *   • Portal-mounted dropdown — teleported to <body> so no ancestor
  *     with overflow:hidden / transform / filter can ever clip it.
  *     z-index is carefully picked to sit ABOVE the surrounding page
@@ -133,16 +133,26 @@ const FACETS: Record<SearchSource, { key: string; label: string; chips: FacetChi
     {
       key: 'status', label: 'وضعیت',
       chips: [
-        { label: 'فعال',     value: 'PUBLISHED' },
-        { label: 'تکمیل شد', value: 'COMPLETED' },
-        { label: 'بسته شد',  value: 'CLOSED' },
+        // Backend CampaignStatus is stored lowercase; the ChoiceFilter
+        // was misconfigured in the previous revision (was sending the
+        // enum NAME "PUBLISHED"). The actual DB values are lowercase.
+        { label: 'در حال اجرا', value: 'published' },
+        { label: 'تکمیل شد',    value: 'completed' },
+        { label: 'بسته شد',     value: 'closed' },
       ],
     },
     {
       key: 'is_fully_funded', label: 'تأمین',
       chips: [
-        { label: 'تأمین شد',   value: 'true' },
+        { label: 'تأمین شده',        value: 'true' },
         { label: 'در حال جمع‌آوری', value: 'false' },
+      ],
+    },
+    {
+      key: 'has_deadline', label: 'مهلت',
+      chips: [
+        { label: 'دارای مهلت', value: 'true' },
+        { label: 'بدون مهلت',  value: 'false' },
       ],
     },
   ],
@@ -150,8 +160,9 @@ const FACETS: Record<SearchSource, { key: string; label: string; chips: FacetChi
     {
       key: 'gender', label: 'جنسیت',
       chips: [
-        { label: 'مرد', value: 'male' },
-        { label: 'زن',  value: 'female' },
+        { label: 'مرد',     value: 'male' },
+        { label: 'زن',      value: 'female' },
+        { label: 'نامشخص',  value: 'unknown' },
       ],
     },
   ],
@@ -210,15 +221,18 @@ function useDropdownPosition(
       const r = el.getBoundingClientRect();
       const vh = window.innerHeight;
       const gap = 16;
-      const safe = 16;
-      const desiredMax = Math.min(600, vh * 0.75);
-      const spaceBelow = vh - r.bottom - gap - safe;
-      const spaceAbove = r.top - gap - safe;
-      const placement: 'below' | 'above' =
-        spaceBelow < 260 && spaceAbove > spaceBelow ? 'above' : 'below';
-      const maxHeight = Math.max(260, Math.min(desiredMax, placement === 'below' ? spaceBelow : spaceAbove));
-      const top = placement === 'below' ? r.bottom + gap : Math.max(safe, r.top - gap - maxHeight);
-      setGeom({ top, left: r.left, width: r.width, maxHeight, placement });
+      // ── Placement policy ─────────────────────────────────────────
+      // The panel ALWAYS opens downward — never above the pill.
+      // If the viewport is too short, we cap `maxHeight` to whatever
+      // fits below (with a sensible floor) and let the panel's inner
+      // scroll area do the rest. If even that floor doesn't fit,
+      // we still open downward and the user can scroll the *page* to
+      // see the rest — but we NEVER flip above the pill.
+      const desiredMax = Math.min(640, vh * 0.78);
+      const spaceBelow = vh - r.bottom - gap - 12; // 12px safety at the bottom
+      const maxHeight = Math.max(320, Math.min(desiredMax, Math.max(spaceBelow, 320)));
+      const top = r.bottom + gap;
+      setGeom({ top, left: r.left, width: r.width, maxHeight, placement: 'below' });
     };
     measure();
     window.addEventListener('resize', measure);
@@ -337,20 +351,6 @@ export function GlobalSearch({
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [open]);
-
-  // ⌘K / Ctrl+K hotkey
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
-        e.preventDefault();
-        inputRef.current?.focus();
-        inputRef.current?.select();
-        setOpen(true);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
 
   const counts = useMemo(() => {
     const out: Record<SearchSource, number> = {
@@ -497,14 +497,6 @@ export function GlobalSearch({
             <Glyph glyph="spinner" className="w-4 h-4" />
           </span>
         )}
-
-        <span aria-hidden="true"
-              className="hidden md:inline-flex shrink-0 items-center gap-1 px-2 h-7 rounded-md
-                         bg-ink-50 text-ink-500 text-[11px] font-extrabold ring-1 ring-ink-100 tabular-nums">
-          <kbd className="font-sans">Ctrl</kbd>
-          <span className="text-ink-300">+</span>
-          <kbd className="font-sans">K</kbd>
-        </span>
 
         <button
           type="submit"

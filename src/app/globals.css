@@ -233,6 +233,17 @@
   width: 0;
   height: 0;
 }
+/* The base :focus-visible utility above paints a 2px brand ring around
+   every focused input — inside the GlobalSearch pill that reads as an
+   ugly nested border, because the pill ITSELF already carries a
+   focus-within ring. Kill the inner ring for this specific input. */
+.gs-search-input:focus,
+.gs-search-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
 
 /* ── Album — Ken-Burns drift is now progress-driven inline ─────────
    The centre image's drift transform is derived DIRECTLY from the

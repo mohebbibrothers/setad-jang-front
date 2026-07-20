@@ -75,11 +75,15 @@ export function Hero() {
             so we can animate it in, while keeping the GlobalSearch root
             free of transforms (which would create a new stacking context
             and let parent overflow clip the dropdown). */}
+        {/* z-30 keeps the pill above the hero photo/decorations but
+            strictly BELOW the sticky site header (z-50) — so when the
+            page is scrolled, the header covers the pill instead of the
+            pill floating on top of the primary navigation. */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="relative z-[60]"
+          className="relative z-30"
         >
           <GlobalSearch variant="hero" />
         </motion.div>
