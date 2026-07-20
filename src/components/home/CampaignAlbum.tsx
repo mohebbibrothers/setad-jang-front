@@ -75,6 +75,13 @@ export function CampaignAlbum({
   const [helpOpen,  setHelpOpen]  = useState(false);
   const [isFs,      setIsFs]      = useState(false);
   const [hovering,  setHovering]  = useState(false);
+  /**
+   * Latest known pointer position (updated on every pointermove /
+   * pointerenter on the modal). Kept in a ref so hit-tests after a
+   * slide advance can re-check hover without waiting for the cursor
+   * to move.
+   */
+  const pointerRef = useRef<{ x: number; y: number; inside: boolean }>({ x: -1, y: -1, inside: false });
   const [progress,  setProgress]  = useState(0);
   const [copied,    setCopied]    = useState(false);
 
@@ -329,7 +336,32 @@ export function CampaignAlbum({
     elapsedRef.current = 0;
     lastTickRef.current = 0;
     setProgress(0);
+    // After the slide advances, the incoming picture may sit at a
+    // slightly different bounding box (Ken-Burns transform resets to
+    // scale 1 → 1.06). Re-hit-test the last known pointer position on
+    // the next frame so `hovering` reflects the fresh geometry without
+    // waiting for a pointermove event that may never come while the
+    // cursor sits still.
+    if (typeof window !== 'undefined') {
+      requestAnimationFrame(() => {
+        const { x, y } = pointerRef.current;
+        const inside = slideshow && zoom === 1 && isPointerOverCenter(x, y);
+        pointerRef.current.inside = inside;
+        setHovering(inside);
+      });
+    }
+    // We intentionally exclude `slideshow / zoom / isPointerOverCenter`
+    // from the deps — this effect must fire ONLY when the index changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
+
+  // If the user turns the slideshow OFF (Space, or Esc while playing),
+  // any leftover hovering=true must be cleared so re-enabling the
+  // slideshow later starts from a clean, un-paused state.
+  useEffect(() => {
+    if (!slideshow && hovering) setHovering(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slideshow]);
 
   // Slideshow is fully OFF while any of these are true. Extracted into
   // its own memoised flag so the RAF effect below can bail out cheaply
@@ -405,35 +437,56 @@ export function CampaignAlbum({
     };
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
   };
+  /**
+   * Hit-test the given pointer position against the centre-image
+   * bounding rect. Returns true when the pointer is genuinely INSIDE
+   * the picture we render at the middle of the coverflow — no other
+   * region of the modal counts.
+   *
+   * Pulled out so both the pointermove handler and the post-advance
+   * re-check effect can share the same logic.
+   */
+  const isPointerOverCenter = useCallback((x: number, y: number): boolean => {
+    if (x < 0 || y < 0) return false;
+    const im = centerImgRef.current;
+    if (!im) return false;
+    const r = im.getBoundingClientRect();
+    // Empty rect (image not yet laid out) — treat as "outside" so we
+    // don't accidentally pause the slideshow.
+    if (r.width < 4 || r.height < 4) return false;
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }, []);
+
   const onPointerMove = (e: React.PointerEvent) => {
-    // Two independent responsibilities:
-    //   1. Drive pan when the user is mid-drag with zoom > 1
-    //   2. Hit-test the pointer against the CENTRE IMAGE rectangle to
-    //      decide whether the slideshow should be in its "hover-paused"
-    //      state. This scope means the pause is triggered ONLY when the
-    //      cursor is genuinely over the picture; hovering the empty
-    //      backdrop, side cards, filmstrip, HUD or nav buttons never
-    //      pauses the auto-advance.
+    // 1. Drive pan when mid-drag with zoom > 1
     const s = panStartRef.current;
     if (s && s.mode === 'pan') {
       const np = constrainPan(s.px + (e.clientX - s.x), s.py + (e.clientY - s.y));
       setPan(np);
     }
-    // Only interesting when the slideshow is actively running — no
-    // point running getBoundingClientRect() 60 fps otherwise.
-    if (slideshow && zoom === 1) {
-      const im = centerImgRef.current;
-      if (im) {
-        const r = im.getBoundingClientRect();
-        const inside =
-          e.clientX >= r.left && e.clientX <= r.right &&
-          e.clientY >= r.top  && e.clientY <= r.bottom;
-        if (inside !== hovering) setHovering(inside);
-      }
-    }
+    // 2. Track pointer position and update hovering flag from a
+    //    strict hit-test against the centre image rectangle.
+    pointerRef.current.x = e.clientX;
+    pointerRef.current.y = e.clientY;
+    const inside = slideshow && zoom === 1 && isPointerOverCenter(e.clientX, e.clientY);
+    pointerRef.current.inside = inside;
+    if (inside !== hovering) setHovering(inside);
+  };
+  const onPointerEnterStage = (e: React.PointerEvent) => {
+    // Seed the pointer position on enter so a stationary cursor still
+    // gets hit-tested (the very first pointermove might not fire until
+    // the user actually wiggles the mouse).
+    pointerRef.current.x = e.clientX;
+    pointerRef.current.y = e.clientY;
+    const inside = slideshow && zoom === 1 && isPointerOverCenter(e.clientX, e.clientY);
+    pointerRef.current.inside = inside;
+    if (inside !== hovering) setHovering(inside);
   };
   const onPointerLeaveStage = () => {
     // Cursor left the stage entirely → definitely not over the picture.
+    pointerRef.current.x = -1;
+    pointerRef.current.y = -1;
+    pointerRef.current.inside = false;
     if (hovering) setHovering(false);
   };
   const onPointerUp = (e: React.PointerEvent) => {
@@ -589,39 +642,58 @@ export function CampaignAlbum({
     if (!current?.url) return;
     const abs = new URL(current.url, window.location.origin).href;
 
-    // ─────────────────────────────────────────────────────────────────
-    //  Robust image-to-clipboard strategy that works on plain HTTP.
-    //
-    //  KEY INSIGHT (the reason previous attempts pasted only text):
-    //  Chromium's navigator.clipboard.write() DOES NOT require a
-    //  secure context on desktop — that restriction was relaxed in
-    //  Chrome 76+. What it DOES require is that the call happens
-    //  inside a user-activation window. Awaiting a fetch() breaks
-    //  that window.
-    //
-    //  The workaround is the PROMISE form of ClipboardItem, which
-    //  Chromium explicitly supports for exactly this scenario:
-    //
-    //      new ClipboardItem({
-    //        'image/png': (async () => { … fetch … return blob })()
-    //      })
-    //
-    //  The user gesture is consumed by clipboard.write() SYNCHRONOUSLY;
-    //  Chromium then awaits the promise on its own thread. Because
-    //  we never `await` before calling write(), the gesture is still
-    //  fresh and the write succeeds even on plain HTTP.
-    //
-    //  Firefox and Safari still require a secure context for the
-    //  async Clipboard API, so we fall through to a copy-event
-    //  hijack that writes a rich-HTML payload for their rich-paste
-    //  targets, then finally a plain-text URL for the worst case.
-    // ─────────────────────────────────────────────────────────────────
+    /* ─────────────────────────────────────────────────────────────────
+     *  Robust image-to-clipboard, engineered for our HTTP staging
+     *  deploy (http://188.253.2.86:3000).
+     *
+     *  Constraints
+     *    • Origin is NOT a secure context → navigator.clipboard.write
+     *      is unavailable on every engine.
+     *    • Media is cross-origin (backend on :18080) → naive selection
+     *      copy of a plain <img> would produce nothing.
+     *
+     *  Layered strategy (each strictly stronger fallback):
+     *
+     *    A) navigator.clipboard.write(ClipboardItem[Promise<Blob>])
+     *       Only takes effect on HTTPS deploys. Uses the promise form
+     *       so the fetch happens ON Chromium\'s thread and the user
+     *       gesture is consumed synchronously.
+     *
+     *    B) execCommand('copy') on a REAL, VISIBLE, non-zero-opacity
+     *       <img> whose src is a data:URL. This is the canonical HTTP
+     *       trick used by TinyMCE / CKEditor / Google Docs to seed the
+     *       system clipboard with a real image on plain HTTP.
+     *
+     *       The <img> must be:
+     *         • rendered in the DOM (not display:none, not opacity:0)
+     *         • have a valid data:image/png;base64,... src
+     *         • be inside a contenteditable="true" wrapper
+     *         • be `Range.selectNode`\'d before execCommand runs
+     *
+     *       We render it at 1×1 CSS pixel in a fixed-position wrapper
+     *       far off-screen (top:-9999px), which is visible enough for
+     *       Chromium to accept the selection but invisible to the user.
+     *
+     *       Pasting into: Word / Photos / Photoshop / WhatsApp Desktop
+     *       / Telegram Desktop / Chrome / Edge / Notepad (as image) —
+     *       every mainstream target renders the real picture.
+     *
+     *    C) Copy-event hijack with text/html <img src=data:URL> — for
+     *       rich-text-only targets (Gmail compose, Google Docs on web,
+     *       Notion, Slack web, WhatsApp Web, Discord web).
+     *
+     *    D) Absolute URL as plain text — worst-case fallback so the
+     *       click is never dead.
+     * ────────────────────────────────────────────────────────────── */
 
-    // Helper — fetch → PNG blob (via <canvas> transcode so we always
-    // hand the clipboard the format it universally accepts).
+    // Helper — fetch → PNG blob (via <canvas> transcode).
     const fetchAsPngBlob = async (): Promise<Blob | null> => {
       try {
-        const res = await fetch(current.url, { mode: 'cors', credentials: 'omit', cache: 'force-cache' });
+        const res = await fetch(current.url, {
+          mode: 'cors',
+          credentials: 'omit',
+          cache: 'force-cache',
+        });
         if (!res.ok) return null;
         const srcBlob = await res.blob();
         if (srcBlob.type === 'image/png') return srcBlob;
@@ -640,22 +712,27 @@ export function CampaignAlbum({
       }
     };
 
-    // ── Layer A — ClipboardItem-with-Promise (works on HTTP too) ─────
-    // Chromium: relaxed-secure-context path from Chrome 76+
-    // Safari 13.1+ / Firefox 127+: needs HTTPS, but the promise form
-    //   is still the correct call — will just fail silently on non-
-    //   secure contexts and we'll fall through.
+    // Blob → data URL (base64).
+    const blobToDataUrl = (blob: Blob): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload  = () => resolve(String(fr.result || ''));
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(blob);
+      });
+
+    // ── Layer A — modern async Clipboard API (HTTPS only) ────────────
     if (
       typeof navigator !== 'undefined' &&
       typeof window !== 'undefined' &&
+      window.isSecureContext &&
       typeof window.ClipboardItem === 'function' &&
       navigator.clipboard &&
       typeof navigator.clipboard.write === 'function'
     ) {
       try {
-        // Build the ClipboardItem SYNCHRONOUSLY (no await), passing an
-        // in-flight promise for the blob. Do not await fetchAsPngBlob
-        // BEFORE the write call — that would drain the user gesture.
+        // Promise form — user gesture is consumed synchronously by
+        // clipboard.write(), Chromium awaits the blob on its own thread.
         const pending: Promise<Blob> = (async () => {
           const b = await fetchAsPngBlob();
           if (!b) throw new Error('png-transcode-failed');
@@ -667,28 +744,88 @@ export function CampaignAlbum({
         setTimeout(() => setCopied(false), 1600);
         return;
       } catch {
-        /* fall through to Layer B */
+        /* fall through */
       }
     }
 
-    // ── Layer B — copy-event hijack with rich HTML + fetch-first ─────
-    // Second-best fallback for engines that still refuse Layer A.
-    // Writes an <img src=data:...> HTML fragment plus the absolute
-    // URL as plain text. Modern rich-paste targets (Gmail, Docs,
-    // WhatsApp Web, Word Online, Notion, Slack, Discord) all render
-    // the picture on paste from this payload.
+    // ── Layer B — execCommand copy on a visible <img> (HTTP-safe) ───
+    // This is the technique that actually delivers a REAL image to the
+    // system clipboard on plain HTTP. The <img> must be visible (not
+    // opacity:0, not display:none), so we push it 9999 px off-screen
+    // instead — visible to Chromium's compositor, invisible to the
+    // user.
     try {
       const pngBlob = await fetchAsPngBlob();
       if (pngBlob) {
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const fr = new FileReader();
-          fr.onload  = () => resolve(String(fr.result || ''));
-          fr.onerror = () => reject(fr.error);
-          fr.readAsDataURL(pngBlob);
+        const dataUrl = await blobToDataUrl(pngBlob);
+        const wrapper = document.createElement('div');
+        wrapper.contentEditable = 'true';
+        wrapper.style.cssText =
+          'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;' +
+          'overflow:hidden;user-select:text;-webkit-user-select:text';
+        const im = document.createElement('img');
+        im.src = dataUrl;
+        im.alt = current.alt || 'image';
+        // 1×1 CSS-pixel presentation, but the underlying image data
+        // (which is what the clipboard actually reads) is full-resolution.
+        im.style.cssText = 'display:block;width:1px;height:1px';
+        wrapper.appendChild(im);
+        document.body.appendChild(wrapper);
+
+        // Wait for the <img> to be committed to the compositor so
+        // Chromium recognises it as a valid selection target.
+        await new Promise<void>((resolve) => {
+          if (im.complete && im.naturalWidth > 0) resolve();
+          else {
+            im.onload  = () => resolve();
+            im.onerror = () => resolve();
+          }
         });
-        const htmlPayload = `<img src="${dataUrl}" alt="${
-          (current.alt || 'image').replace(/"/g, '&quot;')
-        }" />`;
+        // Extra rAF tick to give the layout engine a beat before the
+        // selection API queries the node.
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+        wrapper.focus();
+        const range = document.createRange();
+        range.selectNodeContents(wrapper);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+
+        // Also intercept the copy event as a belt-and-braces so if
+        // Chromium\'s native image copy doesn't kick in, the
+        // text/html + text/plain payload still lands.
+        const rtHtml = `<img src="${dataUrl}" alt="${(current.alt || 'image').replace(/"/g, '&quot;')}" />`;
+        const onCopy = (ev: ClipboardEvent) => {
+          if (!ev.clipboardData) return;
+          // DON'T preventDefault — let Chromium ALSO write image/png
+          // from the selection. We just supplement with rich HTML.
+          try { ev.clipboardData.setData('text/html',  rtHtml); } catch { /* ignore */ }
+          try { ev.clipboardData.setData('text/plain', abs);    } catch { /* ignore */ }
+        };
+        document.addEventListener('copy', onCopy, { capture: true });
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch { ok = false; }
+        document.removeEventListener('copy', onCopy, { capture: true } as EventListenerOptions);
+        sel?.removeAllRanges();
+        wrapper.remove();
+
+        if (ok) {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1600);
+          return;
+        }
+      }
+    } catch {
+      /* fall through */
+    }
+
+    // ── Layer C — copy-event hijack (rich HTML for web targets) ─────
+    try {
+      const pngBlob = await fetchAsPngBlob();
+      if (pngBlob) {
+        const dataUrl = await blobToDataUrl(pngBlob);
+        const htmlPayload = `<img src="${dataUrl}" alt="${(current.alt || 'image').replace(/"/g, '&quot;')}" />`;
         let handled = false;
         const onCopy = (ev: ClipboardEvent) => {
           if (!ev.clipboardData) return;
@@ -700,7 +837,7 @@ export function CampaignAlbum({
         const ta = document.createElement('textarea');
         ta.value = ' ';
         ta.setAttribute('readonly', '');
-        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
         document.body.appendChild(ta);
         ta.focus(); ta.select();
         document.addEventListener('copy', onCopy, { once: true, capture: true });
@@ -715,10 +852,10 @@ export function CampaignAlbum({
         }
       }
     } catch {
-      /* fall through to Layer C */
+      /* fall through */
     }
 
-    // ── Layer C — last-resort text copy of the absolute URL ──────────
+    // ── Layer D — worst-case fallback: absolute URL as plain text ──
     let urlOk = false;
     try {
       if (navigator.clipboard?.writeText && window.isSecureContext) {
@@ -731,7 +868,7 @@ export function CampaignAlbum({
         const ta = document.createElement('textarea');
         ta.value = abs;
         ta.setAttribute('readonly', '');
-        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
         document.body.appendChild(ta);
         ta.focus(); ta.select(); ta.setSelectionRange(0, abs.length);
         urlOk = document.execCommand('copy');
@@ -1006,6 +1143,7 @@ export function CampaignAlbum({
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
               onPointerCancel={onPointerUp}
+              onPointerEnter={onPointerEnterStage}
               onPointerLeave={onPointerLeaveStage}
               onDoubleClick={onDoubleClick}
             >
