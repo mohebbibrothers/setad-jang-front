@@ -6,6 +6,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SectionTitle } from './SectionTitle';
 import { apiFetch } from '@/lib/api';
+import { absoluteMediaUrl } from '@/lib/utils';
 import { CampaignAlbum, type AlbumImage } from './CampaignAlbum';
 import { EmptyState } from './EmptyState';
 
@@ -440,7 +441,8 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
           if (!!b.is_primary !== !!a.is_primary) return b.is_primary ? 1 : -1;
           return (a.order ?? 0) - (b.order ?? 0);
         })
-        .map((g) => ({ url: g.image, alt: g.caption || p.fullName }));
+        .map((g) => ({ url: absoluteMediaUrl(g.image) ?? '', alt: g.caption || p.fullName }))
+        .filter((g) => !!g.url);
       setPhotoCache((prev) => ({ ...prev, [p.slug]: fetched }));
       setAlbum((a) => a.open
         ? { ...a, images: buildImages(p, fetched), loading: false }

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SectionTitle } from './SectionTitle';
-import { formatPersianNumber } from '@/lib/utils';
+import { formatPersianNumber, absoluteMediaUrl } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { CampaignAlbum, type AlbumImage } from './CampaignAlbum';
 import { CampaignParticipateModal } from './CampaignParticipateModal';
@@ -462,7 +462,8 @@ export function WarFundSection({ campaigns }: { campaigns: CampaignCard[] }) {
       const fetched: AlbumImage[] = (detail.gallery_images ?? [])
         .slice()
         .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-        .map((g) => ({ url: g.image, alt: g.alt_text || c.title }));
+        .map((g) => ({ url: absoluteMediaUrl(g.image) ?? '', alt: g.alt_text || c.title }))
+        .filter((g) => !!g.url);
       setGalleryCache((prev) => ({ ...prev, [c.slug]: fetched }));
       setAlbum((a) => a.open
         ? { ...a, images: buildImages(c, fetched), loading: false }

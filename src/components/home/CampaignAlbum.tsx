@@ -106,13 +106,25 @@ export function CampaignAlbum({
   }, [index]);
 
   // ── Smart preloading of neighbours ─────────────────────────────────
+  // Note the explicit `window.Image()` — Next.js aliases the default
+  // `Image` global inside client components; using `new Image()` bare
+  // sometimes resolves to `next/image` (a React component, not an
+  // HTMLImageElement constructor) and throws in strict-mode dev.
   useEffect(() => {
-    if (!open || total === 0) return;
+    if (!open || total === 0 || typeof window === 'undefined') return;
     const urls = [
       images[(index + 1) % total]?.url,
       images[(index - 1 + total) % total]?.url,
+      images[(index + 2) % total]?.url,
+      images[(index - 2 + total) % total]?.url,
     ].filter(Boolean) as string[];
-    urls.forEach((src) => { const im = new Image(); im.src = src; });
+    urls.forEach((src) => {
+      try {
+        const im = new window.Image();
+        im.decoding = 'async';
+        im.src = src;
+      } catch { /* ignore — preloading is best-effort */ }
+    });
   }, [open, index, total, images]);
 
   // ── Navigation ─────────────────────────────────────────────────────
@@ -639,6 +651,7 @@ export function CampaignAlbum({
                               alt={img.alt || title}
                               draggable={false}
                               onLoad={() => setImgReady(true)}
+                              onError={() => setImgReady(true)}
                               initial={{ scale: 1.00, x: '0%', y: '0%', opacity: 0 }}
                               animate={{ scale: 1.06, x: '-1.2%', y: '-0.8%', opacity: imgReady ? 1 : 0 }}
                               transition={{
@@ -658,7 +671,13 @@ export function CampaignAlbum({
                               alt={img.alt || title}
                               draggable={false}
                               loading={isCenter ? 'eager' : 'lazy'}
+                              // On load or error, reveal the frame — a broken
+                              // image is still preferable to a black frame
+                              // waiting forever for onLoad that never fires
+                              // (some CDNs 4xx a race; we don't want the
+                              // whole album to look "stuck loading").
                               onLoad={isCenter ? () => setImgReady(true) : undefined}
+                              onError={isCenter ? () => setImgReady(true) : undefined}
                               className="max-w-[86%] sm:max-w-[94%] max-h-[82%] sm:max-h-[88%] object-contain pointer-events-none
                                          drop-shadow-[0_20px_50px_rgba(0,0,0,.55)] rounded-[14px]"
                               style={isCenter ? {

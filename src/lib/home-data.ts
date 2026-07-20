@@ -19,6 +19,7 @@
  */
 
 import { safeApiFetch } from '@/lib/api';
+import { absoluteMediaUrl } from '@/lib/utils';
 import type { CampaignCard } from '@/components/home/WarFundSection';
 import type { CriminalCard } from '@/components/home/JusticeSection';
 import type { CourseCard, EduCategory } from '@/components/home/EducationSection';
@@ -78,7 +79,7 @@ export async function loadCampaigns(): Promise<CampaignCard[]> {
     slug: c.slug,
     title: c.title,
     sponsor: c.sponsor?.name || 'گروه جهادی',
-    sponsorLogo: c.sponsor?.logo ?? undefined,
+    sponsorLogo: absoluteMediaUrl(c.sponsor?.logo),
     totalAmount: c.total_amount ?? 0,
     sharePrice: c.share_price ?? (c.total_amount && c.total_shares
       ? Math.floor(c.total_amount / c.total_shares) : 0),
@@ -87,7 +88,7 @@ export async function loadCampaigns(): Promise<CampaignCard[]> {
       0, (c.total_shares ?? 0) - (c.purchased_shares ?? 0),
     ),
     progressPercent: c.progress_percent ?? 0,
-    coverUrl: c.cover_image ?? undefined,
+    coverUrl: absoluteMediaUrl(c.cover_image),
     participantCount: c.participant_count,
     isFullyFunded: c.is_fully_funded,
     hasDeadline: c.has_deadline,
@@ -96,7 +97,8 @@ export async function loadCampaigns(): Promise<CampaignCard[]> {
     gallery: (c.gallery_images ?? [])
       .slice()
       .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-      .map((g) => ({ url: g.image, alt: g.alt_text || c.title })),
+      .map((g) => ({ url: absoluteMediaUrl(g.image) ?? '', alt: g.alt_text || c.title }))
+      .filter((g) => !!g.url),
   }));
 }
 
@@ -125,7 +127,7 @@ export async function loadCriminals(): Promise<CriminalCard[]> {
     return {
       slug: p.slug,
       fullName,
-      imageUrl: p.primary_photo?.image ?? undefined,
+      imageUrl: absoluteMediaUrl(p.primary_photo?.image),
       pillLabel: [p.city, p.province, p.country].filter(Boolean).join('، ') || undefined,
       totalBounty: p.total_bounty_toman,
       bountiesCount: p.bounties_count,
@@ -175,9 +177,9 @@ export async function loadCourses(): Promise<CourseCard[]> {
     title: c.title,
     subtitle: c.subtitle,
     instructor: c.instructor_name,
-    instructorAvatarUrl: c.instructor_avatar ?? undefined,
+    instructorAvatarUrl: absoluteMediaUrl(c.instructor_avatar),
     level: c.level,
-    coverUrl: c.cover_image ?? undefined,
+    coverUrl: absoluteMediaUrl(c.cover_image),
     lessonsCount: c.lessons_count,
     durationSeconds: c.estimated_duration_seconds,
     enrollmentsCount: c.enrollments_count,
@@ -227,8 +229,8 @@ export async function loadKindnessListings(): Promise<KindListing[]> {
     city: l.city,
     district: l.district,
     ownerName: l.owner_full_name_snapshot,
-    ownerAvatar: l.owner_avatar_snapshot ?? undefined,
-    coverImage: l.cover_image ?? undefined,
+    ownerAvatar: absoluteMediaUrl(l.owner_avatar_snapshot),
+    coverImage: absoluteMediaUrl(l.cover_image),
     publishedAt: l.published_at,
     expiresAt: l.expires_at ?? undefined,
     viewCount: l.view_count,
@@ -240,7 +242,8 @@ export async function loadKindnessListings(): Promise<KindListing[]> {
         if (!!b.is_cover !== !!a.is_cover) return b.is_cover ? 1 : -1;
         return (a.order ?? 0) - (b.order ?? 0);
       })
-      .map((g) => ({ url: g.image, alt: g.alt_text || g.caption || l.title })),
+      .map((g) => ({ url: absoluteMediaUrl(g.image) ?? '', alt: g.alt_text || g.caption || l.title }))
+      .filter((g) => !!g.url),
   }));
 }
 
@@ -320,14 +323,21 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
   return list.map((t) => {
     const attachments = t.attachments ?? [];
     const imageCover = attachments.find((a) => a.media_type === 'image' && a.url);
-    const video = attachments.find((a) => a.media_type === 'video' && a.url);
+    const video      = attachments.find((a) => a.media_type === 'video' && a.url);
     const videoOrAudio = attachments.find((a) => a.duration);
 
-    const videoThumbnailUrl = deriveTabyinVideoThumbnailUrl(video?.url);
-    const coverUrl = imageCover?.url || videoThumbnailUrl;
+    // Try (a) an image attachment, (b) a derivable poster from the video
+    // URL, then (c) any other attachment URL. Every candidate is passed
+    // through `absoluteMediaUrl` so relative /media/... paths are
+    // resolved against the backend origin.
+    const videoThumbnailUrl = absoluteMediaUrl(deriveTabyinVideoThumbnailUrl(video?.url));
+    const primaryCoverUrl   = absoluteMediaUrl(imageCover?.url) ?? videoThumbnailUrl;
 
+    // Some external sources (armansky) require auth and 4xx on hot-link,
+    // which would leave the tile with a broken frame. Only expose the
+    // cover when it's from a host we know can be embedded publicly.
     const coverIsKnownPublic = Boolean(
-      coverUrl && !coverUrl.includes('app-service.armansky.ir'),
+      primaryCoverUrl && !primaryCoverUrl.includes('app-service.armansky.ir'),
     );
 
     return {
@@ -335,8 +345,8 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
       slug: t.external_id,
       title: t.title,
       summary: t.description,
-      coverUrl: coverIsKnownPublic ? coverUrl : undefined,
-      videoUrl: video?.url,
+      coverUrl: coverIsKnownPublic ? primaryCoverUrl : undefined,
+      videoUrl: absoluteMediaUrl(video?.url),
       thumbnailUrl: videoThumbnailUrl,
       variant: coverIsKnownPublic ? 'cover' : 'quote',
       mediaType: t.primary_media_type ?? imageCover?.media_type ?? video?.media_type ?? 'image',
