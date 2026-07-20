@@ -60,6 +60,39 @@ type Props = {
 
 const SLIDESHOW_INTERVAL_MS = 5_000;
 
+/**
+ * Module-scope HUD button so its identity is STABLE across every
+ * render of the album (previously declared inside the component,
+ * which meant every render re-mounted every button in the toolbar —
+ * that was the root cause of the play/stop button ignoring clicks).
+ */
+type HudBtnProps = {
+  onClick: () => void;
+  children: React.ReactNode;
+  ariaLabel: string;
+  disabled?: boolean;
+  pressed?: boolean;
+};
+function HudBtn({
+  onClick, children, ariaLabel, disabled, pressed,
+}: HudBtnProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      aria-pressed={pressed}
+      className={`inline-flex items-center justify-center w-[30px] h-[30px] sm:w-8 sm:h-8 rounded-full text-white
+                 hover:bg-white/15 active:scale-95 transition-all duration-150 flex-shrink-0
+                 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed
+                 ${pressed ? 'bg-white/20' : ''}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function CampaignAlbum({
   open, onClose, title, sponsor, images, loading = false, startIndex = 0,
 }: Props) {
@@ -519,160 +552,55 @@ export function CampaignAlbum({
   }, [current, index]);
 
   /**
-   * Copy the ACTIVE IMAGE (pixels, not URL) to the OS clipboard.
+   * Copy the absolute URL of the active image to the clipboard.
    *
-   * Environment
-   *   The staging origin is plain HTTP, so navigator.clipboard.write
-   *   is UNAVAILABLE (Chromium requires a secure context for the
-   *   async Clipboard API). Media is cross-origin. We have to fall
-   *   back to the legacy document.execCommand("copy") path, driven
-   *   by a REAL <img> in a contenteditable wrapper.
-   *
-   * Sequence
-   *   1. Fetch the picture cross-origin, transcode to PNG via canvas
-   *      → gives us a Blob and a self-contained data:URL.
-   *   2. Mount a hidden but LAYOUT-VISIBLE <img data:URL> in a
-   *      contenteditable wrapper (top:0/left:0 with opacity:0 is
-   *      NOT enough — Chromium ignores zero-opacity images from copy
-   *      selections; we use opacity:0.01 which is treated as
-   *      "visible" for the selection API).
-   *   3. Wait for the <img>'s natural pixels to be decoded, then
-   *      Range.selectNodeContents the wrapper + wrapper.focus().
-   *   4. Install a "copy" listener that supplements the payload with
-   *      text/html (<img src=data:URL>) — this is what makes rich
-   *      web targets (Gmail / Docs / WhatsApp Web / Notion / Slack)
-   *      paste the picture. The native image/png entry that
-   *      execCommand("copy") writes covers desktop apps (Word /
-   *      Photos / Photoshop / Telegram Desktop).
-   *   5. execCommand("copy") — done.
-   *
-   *   If ANY step fails, we silently fall back to writing the
-   *   absolute image URL as plain text so the button is never dead.
+   * Note — copying the actual image bytes reliably requires a secure
+   * context (HTTPS) so navigator.clipboard.write() is available. Our
+   * staging deploy is plain HTTP, so we fall back to a plain-text
+   * URL copy that works on EVERY browser + protocol combination.
+   * Once the site moves to HTTPS this can be upgraded to write the
+   * image blob directly (that path is trivial: navigator.clipboard
+   * .write([new ClipboardItem({ 'image/png': blob })])).
    */
   const onCopyUrl = useCallback(async () => {
     if (!current?.url) return;
     const abs = new URL(current.url, window.location.origin).href;
 
-    const fallbackCopyText = () => {
-      try {
-        const ta = document.createElement('textarea');
-        ta.value = abs;
-        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0.01;width:1px;height:1px';
-        document.body.appendChild(ta);
-        ta.focus(); ta.select();
-        document.execCommand('copy');
-        ta.remove();
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
-      } catch { /* nothing else to try */ }
-    };
-
-    // ── Step 1: fetch + transcode to PNG (blob + data URL) ─────────
-    let blob: Blob | null = null;
-    let dataUrl: string | null = null;
-    try {
-      const res = await fetch(current.url, { mode: 'cors', credentials: 'omit', cache: 'force-cache' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const srcBlob = await res.blob();
-      const bitmap = await createImageBitmap(srcBlob);
-      const canvas = document.createElement('canvas');
-      canvas.width  = bitmap.width;
-      canvas.height = bitmap.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('no-canvas-ctx');
-      ctx.drawImage(bitmap, 0, 0);
-      blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), 'image/png', 0.95);
-      });
-      if (!blob) throw new Error('toBlob-failed');
-      dataUrl = canvas.toDataURL('image/png');
-    } catch {
-      fallbackCopyText();
-      return;
-    }
-
-    // ── Step A: modern async Clipboard API (HTTPS only) ────────────
+    // Primary path — modern secure-context API
     if (
       typeof navigator !== 'undefined' &&
       typeof window !== 'undefined' &&
       window.isSecureContext &&
-      typeof window.ClipboardItem === 'function' &&
       navigator.clipboard &&
-      typeof navigator.clipboard.write === 'function' &&
-      blob
+      typeof navigator.clipboard.writeText === 'function'
     ) {
       try {
-        await navigator.clipboard.write([
-          new window.ClipboardItem({ 'image/png': blob }),
-        ]);
+        await navigator.clipboard.writeText(abs);
         setCopied(true);
         setTimeout(() => setCopied(false), 1600);
         return;
-      } catch { /* fall through to legacy path */ }
+      } catch { /* fall through */ }
     }
 
-    // ── Step B: execCommand copy on a VISIBLE contenteditable <img> ─
-    if (!dataUrl) { fallbackCopyText(); return; }
-    const wrapper = document.createElement('div');
-    wrapper.contentEditable = 'true';
-    // Layout-visible but user-invisible. opacity:0.01 (not 0) is what
-    // convinces Chromium's copy path that this image is a legitimate
-    // selection target. z-index:-1 keeps it out of the visual stack.
-    wrapper.style.cssText = [
-      'position:fixed', 'top:0', 'left:0', 'z-index:-1',
-      'opacity:0.01', 'user-select:text', '-webkit-user-select:text',
-      'pointer-events:none',
-    ].join(';');
-    const im = document.createElement('img');
-    im.src = dataUrl;
-    im.alt = current.alt || 'image';
-    // 1×1 CSS pixel presentation; the underlying full-resolution
-    // pixels are what the clipboard reads.
-    im.style.cssText = 'display:block;width:1px;height:1px';
-    wrapper.appendChild(im);
-    document.body.appendChild(wrapper);
-
-    // Wait for decode.
-    await new Promise<void>((resolve) => {
-      if (im.complete && im.naturalWidth > 0) resolve();
-      else {
-        im.onload  = () => resolve();
-        im.onerror = () => resolve();
+    // Legacy path — execCommand('copy') on a hidden but layout-
+    // visible textarea. Works on EVERY browser under HTTP as long
+    // as the call is inside a user gesture (which onClick is).
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = abs;
+      // opacity 0.01 (not 0!) so Chromium accepts the selection.
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0.01;width:1px;height:1px;pointer-events:none';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, abs.length);
+      const ok = document.execCommand('copy');
+      ta.remove();
+      if (ok) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
       }
-    });
-    // One rAF tick so layout has definitely committed.
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-
-    // Selection + supplemented copy payload.
-    const rtHtml = `<img src="${dataUrl}" alt="${(current.alt || 'image').replace(/"/g, '&quot;')}" />`;
-    const onCopy = (ev: ClipboardEvent) => {
-      if (!ev.clipboardData) return;
-      // DON'T preventDefault — we WANT Chromium's native image/png
-      // write from the selection to also land in the clipboard.
-      try { ev.clipboardData.setData('text/html',  rtHtml); } catch { /* ignore */ }
-      try { ev.clipboardData.setData('text/plain', abs);    } catch { /* ignore */ }
-    };
-    document.addEventListener('copy', onCopy, { capture: true });
-
-    wrapper.focus();
-    const range = document.createRange();
-    range.selectNodeContents(wrapper);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    let ok = false;
-    try { ok = document.execCommand('copy'); } catch { ok = false; }
-    document.removeEventListener('copy', onCopy, { capture: true } as EventListenerOptions);
-    sel?.removeAllRanges();
-    wrapper.remove();
-
-    if (ok) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } else {
-      fallbackCopyText();
-    }
+    } catch { /* silently fail — the toast simply won't fire */ }
   }, [current]);
 
   // ── Filmstrip overflow detection (RTL-aware) ───────────────────────
@@ -732,29 +660,14 @@ export function CampaignAlbum({
   }, [index, total]);
 
   // ── Reusable HUD button components (lite renderers) ────────────────
-  const HudBtn = ({
-    onClick, children, ariaLabel, disabled, pressed,
-  }: {
-    onClick: () => void;
-    children: React.ReactNode;
-    ariaLabel: string;
-    disabled?: boolean;
-    pressed?: boolean;
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      aria-pressed={pressed}
-      className={`inline-flex items-center justify-center w-[30px] h-[30px] sm:w-8 sm:h-8 rounded-full text-white
-                 hover:bg-white/15 active:scale-95 transition-all duration-150 flex-shrink-0
-                 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed
-                 ${pressed ? 'bg-white/20' : ''}`}
-    >
-      {children}
-    </button>
-  );
+  // NOTE — HudBtn used to be declared INSIDE CampaignAlbum as a const.
+  // That meant every render created a fresh function reference, React
+  // treated it as a different component, and every HUD button was
+  // torn down + remounted on every state change. Rapid clicks
+  // (play/stop) landed on a button that had just been re-mounted with
+  // a stale closure — the click handler pointed at the previous
+  // render's setSlideshow, which no-op'd because the state had
+  // already flipped. Hoisting to a module-scope component fixes it. */}
 
   const hudControlsRender = (
     <>
@@ -1045,29 +958,6 @@ export function CampaignAlbum({
                           {isCenter && !imgReady && (
                             <div className="absolute inset-0 flex items-center justify-center text-white/70"><Spinner/></div>
                           )}
-                          {/* Hover-pause hotspot — a transparent overlay
-                              sized to match the picture that pauses the
-                              slideshow only while the cursor is over it.
-                              Rendered UNDER the HUD (z-[7]) and nav
-                              buttons (z-[6]) so it never eats their
-                              clicks; z-[1] just above the image itself.
-                              pointer-events:auto is what makes the
-                              onMouseEnter / onMouseLeave fire; the
-                              hotspot has no visual effect. */}
-                          {isCenter && slideshow && zoom === 1 && (
-                            <div
-                              aria-hidden="true"
-                              onMouseEnter={() => setHovering(true)}
-                              onMouseLeave={() => setHovering(false)}
-                              className="absolute z-[1] pointer-events-auto"
-                              style={{
-                                top:    '6%',
-                                bottom: '6%',
-                                left:   '3%',
-                                right:  '3%',
-                              }}
-                            />
-                          )}
                           {/* Center card gets pan/zoom + (optional) Ken-Burns
 
                               Every <img> lives at its own `key` derived from
@@ -1166,6 +1056,54 @@ export function CampaignAlbum({
                       );
                     })}
                   </div>
+
+                  {/* ─────────────────────────────────────────────────
+                      Hover-pause hotspot — a transparent overlay sized
+                      to cover the CENTRE image only. Sits at STAGE
+                      level (a sibling of the coverflow, NOT a child of
+                      the motion.div with pointer-events:none) so its
+                      onMouseEnter/onMouseLeave actually fire.
+
+                      z-[3] keeps it above the coverflow (max z:5 for
+                      the centre card, but pointer-events:none so it
+                      never blocks us) and BELOW the HUD (z-[7]), the
+                      prev/next arrows (z-[6]) and the dot indicators
+                      (z-[5]) so those stay clickable.
+
+                      Positioning matches the image's own
+                      max-w-[86%]/94% × max-h-[82%]/88% envelope so
+                      cursor movements over the letterboxed backdrop
+                      never trigger a pause.
+                     ────────────────────────────────────────────── */}
+                  {slideshow && zoom === 1 && (
+                    <div
+                      aria-hidden="true"
+                      onMouseEnter={() => setHovering(true)}
+                      onMouseLeave={() => setHovering(false)}
+                      // Forward gesture events to the stage's own
+                      // handlers so pan / swipe / double-click still
+                      // work when they land on this transparent
+                      // overlay. onClick isn't intercepted by the
+                      // stage (only pointerDown drives swipe), so
+                      // we don't need onClick delegation here.
+                      onPointerDown={onPointerDown}
+                      onPointerMove={onPointerMove}
+                      onPointerUp={onPointerUp}
+                      onPointerCancel={onPointerUp}
+                      onDoubleClick={onDoubleClick}
+                      onWheel={onWheel}
+                      className="album-hover-hotspot absolute z-[3]"
+                      style={{
+                        top:    '10%',
+                        bottom: '14%',
+                        left:   '7%',
+                        right:  '7%',
+                        pointerEvents: 'auto',
+                        cursor: zoom > 1 ? 'grab' : 'zoom-in',
+                        background: 'transparent',
+                      }}
+                    />
+                  )}
 
                   {/* Edge nav buttons */}
                   {total > 1 && (
