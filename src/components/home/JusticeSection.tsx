@@ -152,7 +152,7 @@ function ActionPill({ slug, label = 'مشارکت در مجازات' }: { slug: 
       ref={wrapRef}
       onMouseEnter={enter}
       onMouseLeave={leave}
-      className="absolute bottom-3.5 left-1/2 -translate-x-1/2 w-[88%] z-20"
+      className="absolute bottom-2.5 sm:bottom-3.5 left-1/2 -translate-x-1/2 w-[94%] sm:w-[88%] z-20"
     >
       <AnimatePresence>
         {open && (
@@ -238,9 +238,9 @@ function ActionPill({ slug, label = 'مشارکت در مجازات' }: { slug: 
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`relative w-full flex items-center justify-center gap-1.5 h-10 px-3.5
-                    rounded-full text-white text-[12.5px] font-extrabold overflow-hidden
-                    ring-1 ring-black/5 transition-all duration-200
+        className={`relative w-full flex items-center justify-center gap-1 sm:gap-1.5 h-9 sm:h-10 px-2 sm:px-3.5
+                    rounded-full text-white text-[11px] sm:text-[12.5px] font-extrabold overflow-hidden
+                    ring-1 ring-black/5 transition-all duration-200 min-w-0
                     ${open ? 'scale-[1.03] -translate-y-0.5' : 'hover:scale-[1.02]'}`}
         style={{
           backgroundImage: 'linear-gradient(180deg, #FF7B2E 0%, #FF6B1A 50%, #E55214 100%)',
@@ -255,10 +255,10 @@ function ActionPill({ slug, label = 'مشارکت در مجازات' }: { slug: 
           className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-full
                      bg-gradient-to-b from-white/25 to-transparent"
         />
-        <GavelIcon className="w-3.5 h-3.5 relative z-10 drop-shadow-[0_1px_0_rgba(0,0,0,.2)]" />
-        <span className="relative z-10 drop-shadow-[0_1px_0_rgba(0,0,0,.18)]">{label}</span>
+        <GavelIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 relative z-10 drop-shadow-[0_1px_0_rgba(0,0,0,.2)] shrink-0" />
+        <span className="relative z-10 drop-shadow-[0_1px_0_rgba(0,0,0,.18)] truncate">{label}</span>
         <ChevronDownIcon
-          className={`w-3 h-3 relative z-10 transition-transform duration-300
+          className={`w-3 h-3 relative z-10 transition-transform duration-300 shrink-0
                       ${open ? 'rotate-180' : ''}`}
         />
       </button>

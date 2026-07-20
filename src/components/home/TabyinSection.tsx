@@ -245,37 +245,60 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
           description="در روزگارِ هیاهوی روایت‌ها، هر تصویر، هر ویدئو و هر سطر، یک تلاش برای رساندنِ صدای حقیقت است. اینجا دست‌به‌دست هم می‌دهیم تا روایتِ مردم گم نشود."
         />
 
-        {/* Filter strip — media-type pills */}
-        <div className="flex justify-center mb-6">
-          <div className="inline-flex p-1 bg-ink-50 rounded-full ring-1 ring-ink-100 shadow-inner"
+        {/* Filter strip — media-type pills.
+            Responsive strategy:
+              - phones (< 480px): full-width 4-col grid so the strip
+                always fits the viewport and every chip stays
+                comfortably tappable (no horizontal overflow, ever).
+              - ≥ 480px            : inline pill row centered on the page.
+            The count badge is hidden below 480px and shown as a small
+            corner chip so the chip body itself never has to compete with
+            it for horizontal space. */}
+        <div className="flex justify-center mb-6 w-full">
+          <div className="inline-flex p-1 bg-ink-50 rounded-full ring-1 ring-ink-100 shadow-inner
+                          w-full max-w-full sm:w-auto"
                role="tablist" aria-label="نوع رسانه">
-            {FILTERS.map((f) => {
-              const isActive = filter === f.key;
-              const c = counts[f.key];
-              return (
-                <button
-                  key={f.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setFilter(f.key)}
-                  className={`inline-flex items-center justify-center gap-1.5 h-10 px-3.5 sm:px-4
-                              rounded-full text-[12.5px] font-extrabold whitespace-nowrap
-                              transition-all duration-200
-                              ${isActive
-                                ? 'bg-gradient-to-l from-brand-500 to-brand-700 text-white shadow-[0_8px_20px_-6px_rgba(13,128,116,.55)]'
-                                : 'text-ink-600 hover:text-ink-900 hover:bg-white/60'}`}
-                >
-                  <f.Glyph className="w-3.5 h-3.5" />
-                  <span>{f.label}</span>
-                  <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5
-                                    rounded-full text-[10.5px] font-extrabold tabular-nums
-                                    ${isActive ? 'bg-white/25 text-white' : 'bg-ink-100 text-ink-500'}`}>
-                    {c.toLocaleString('fa-IR')}
-                  </span>
-                </button>
-              );
-            })}
+            <div className="grid grid-cols-4 sm:flex w-full gap-0.5 sm:gap-0 min-w-0">
+              {FILTERS.map((f) => {
+                const isActive = filter === f.key;
+                const c = counts[f.key];
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setFilter(f.key)}
+                    className={`relative inline-flex items-center justify-center gap-1 sm:gap-1.5
+                                h-10 px-1.5 sm:px-4 min-w-0
+                                rounded-full text-[11.5px] sm:text-[12.5px] font-extrabold whitespace-nowrap
+                                transition-all duration-200 flex-1 sm:flex-none
+                                ${isActive
+                                  ? 'bg-gradient-to-l from-brand-500 to-brand-700 text-white shadow-[0_8px_20px_-6px_rgba(13,128,116,.55)]'
+                                  : 'text-ink-600 hover:text-ink-900 hover:bg-white/60'}`}
+                  >
+                    <f.Glyph className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{f.label}</span>
+                    {/* Inline count badge — hidden on phones to guarantee fit */}
+                    <span className={`hidden sm:inline-flex items-center justify-center min-w-[20px] h-5 px-1.5
+                                      rounded-full text-[10.5px] font-extrabold tabular-nums
+                                      ${isActive ? 'bg-white/25 text-white' : 'bg-ink-100 text-ink-500'}`}>
+                      {c.toLocaleString('fa-IR')}
+                    </span>
+                    {/* Compact corner badge on phones */}
+                    {c > 0 && (
+                      <span className={`sm:hidden absolute -top-1 -left-1 min-w-[16px] h-[16px]
+                                        inline-flex items-center justify-center rounded-full
+                                        text-[9.5px] font-extrabold tabular-nums px-1
+                                        ${isActive ? 'bg-white text-ink-900' : 'bg-ink-200 text-ink-600'}
+                                        ring-2 ring-ink-50`}>
+                        {c.toLocaleString('fa-IR')}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

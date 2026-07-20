@@ -851,7 +851,7 @@ function ListingCard({
       </button>
 
       {/* Body */}
-      <div className="flex flex-col flex-1 p-4 md:p-4.5">
+      <div className="flex flex-col flex-1 p-4 md:p-5">
         <Link href={`/kindness-wall/${l.slug}`}
               className="font-extrabold text-[14.5px] md:text-[15px] text-ink-900 leading-7 line-clamp-2 min-h-[3.5rem]
                          hover:text-brand-600 transition-colors">
