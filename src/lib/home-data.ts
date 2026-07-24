@@ -300,14 +300,18 @@ type ApiTabyin = {
   attachments?: ApiTabyinAttachment[];
 };
 
+/** The audio tab was retired from the homepage Tabyin filter strip
+ *  (no standalone audio content is published on the front site right
+ *  now), so we no longer need to preload the audio count either. The
+ *  backend `?media_type=audio` filter still works — this only trims
+ *  the always-empty roundtrip. */
 export type TabyinCounts = {
   all: number;
   image: number;
   video: number;
-  audio: number;
 };
 
-async function loadTabyinCount(mediaType?: 'image' | 'video' | 'audio'): Promise<number> {
+async function loadTabyinCount(mediaType?: 'image' | 'video'): Promise<number> {
   const suffix = mediaType ? '&media_type=' + mediaType : '';
   const data = await safeApiFetch<Paginated<ApiTabyin>>(
     '/tabyin/contents/?page_size=1&ordering=-source_created_at' + suffix,
@@ -319,14 +323,13 @@ async function loadTabyinCount(mediaType?: 'image' | 'video' | 'audio'): Promise
 }
 
 export async function loadTabyinCounts(): Promise<TabyinCounts> {
-  const [all, image, video, audio] = await Promise.all([
+  const [all, image, video] = await Promise.all([
     loadTabyinCount(),
     loadTabyinCount('image'),
     loadTabyinCount('video'),
-    loadTabyinCount('audio'),
   ]);
 
-  return { all, image, video, audio };
+  return { all, image, video };
 }
 
 export async function loadTabyinItems(): Promise<TabyinItem[]> {

@@ -161,11 +161,19 @@ function formatDuration(s?: number): string {
   return `${m.toLocaleString('fa-IR')}:${r.toString().padStart(2, '0')}`;
 }
 
+/**
+ * NOTE — the previous filter roster included an 'audio' tab. It was
+ * pulled at the client's request: the Tabyin corpus doesn't ship
+ * standalone audio content on the homepage, so the tab pointed at an
+ * always-empty view. The 'audio' bucket is also stripped from the
+ * global search facets and from the homepage TabyinCounts loader.
+ * The backend still accepts `?media_type=audio` — we're only removing
+ * the front-end surface, not the data contract.
+ */
 const FILTERS = [
   { key: 'all',   label: 'همه',     Glyph: GridIcon  },
   { key: 'image', label: 'تصویر',   Glyph: ImageIcon },
   { key: 'video', label: 'ویدئو',   Glyph: VideoIcon },
-  { key: 'audio', label: 'صوت',     Glyph: AudioIcon },
 ] as const;
 type FilterKey = (typeof FILTERS)[number]['key'];
 
@@ -173,7 +181,6 @@ export type TabyinCounts = {
   all: number;
   image: number;
   video: number;
-  audio: number;
 };
 
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -188,7 +195,6 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
     all:   backendCounts?.all ?? items.length,
     image: backendCounts?.image ?? items.filter((i) => (i.mediaType ?? 'image') === 'image').length,
     video: backendCounts?.video ?? items.filter((i) => i.mediaType === 'video').length,
-    audio: backendCounts?.audio ?? items.filter((i) => i.mediaType === 'audio').length,
   }), [items, backendCounts]);
 
   const filtered = useMemo(
@@ -303,61 +309,77 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
           </div>
         </div>
 
-        {/* ── Fixed-area masonry: 4 cols × 4 rows on desktop, dense packing ── */}
+        {/* ── Fixed-area masonry: 4 cols × 4 rows on desktop, dense packing ──
+             When the current filter yields ZERO items we render the
+             EmptyState OUTSIDE of the grid — otherwise it would be
+             clipped to a single 120px cell (the auto-rows height) and
+             its own py-12/py-16 padding would collapse. That produced
+             the visual bug the client reported: the pager arrows
+             sitting right underneath the empty-state text with almost
+             no breathing room. Now the empty state gets its full
+             padding envelope and the pager sits at the normal
+             cross-section rhythm. */}
         <AnimatePresence mode="wait">
-          <motion.div
-            key={`${filter}-${page}`}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.28 }}
-            className={
-              isSparse
-                ? 'flex flex-wrap justify-center items-start gap-3 md:gap-4'
-                : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ' +
-                  'auto-rows-[120px] sm:auto-rows-[140px] md:auto-rows-[160px] ' +
-                  'gap-3 md:gap-4'
-            }
-            style={isSparse ? undefined : { gridAutoFlow: 'dense' }}
-          >
-            {visible.map((it, i) => {
-              // ── PAGE-LOCAL tall pattern ─────────────────────────────
-              // We need EXACTLY 2 tall + 8 short on every page so:
-              //   tall(=2 slots) × 2 + short(=1 slot) × 8 = 12 slots
-              //   - 4-col: 3 rows × 4 = 12 ✓
-              //   - 3-col: 4 rows × 3 = 12 ✓
-              //   - 2-col: 6 rows × 2 = 12 ✓
-              // We place tall on slots 0 and 1 — the EARLIEST positions —
-              // so `grid-auto-flow: dense` never has to spill a tall into
-              // the bottom row, where it would push the grid past its
-              // declared row count and visually escape the panel.
-              const isLastPageAndShort =
-                visible.length < PAGE_SIZE; // last page may have fewer items
-              const tall = !isLastPageAndShort && (i === 0 || i === 1);
-              return (
-                <TabyinTile
-                  key={it.id}
-                  it={it}
-                  index={i}
-                  forceTall={tall}
-                  sparse={isSparse}
-                />
-              );
-            })}
-            {visible.length === 0 && (
-              <div className="col-span-full w-full">
-                <EmptyState
-                  title={items.length === 0
-                    ? 'هنوز محتوایی منتشر نشده'
-                    : 'محتوایی در این فیلتر یافت نشد'}
-                  description={items.length === 0
-                    ? 'به‌محض انتشار اولین روایت‌های جهاد تبیین، اینجا قابل مشاهده خواهد بود.'
-                    : 'فیلتر دیگری را امتحان کن یا «همه» را انتخاب کن.'}
-                  iconPath="m3 11 18-5v12L3 14v-3z M11.6 16.8a3 3 0 1 1-5.8-1.6"
-                />
-              </div>
-            )}
-          </motion.div>
+          {visible.length === 0 ? (
+            <motion.div
+              key={`empty-${filter}`}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.28 }}
+            >
+              <EmptyState
+                title={items.length === 0
+                  ? 'هنوز محتوایی منتشر نشده'
+                  : 'محتوایی در این فیلتر یافت نشد'}
+                description={items.length === 0
+                  ? 'به‌محض انتشار اولین روایت‌های جهاد تبیین، اینجا قابل مشاهده خواهد بود.'
+                  : 'فیلتر دیگری را امتحان کن یا «همه» را انتخاب کن.'}
+                iconPath="m3 11 18-5v12L3 14v-3z M11.6 16.8a3 3 0 1 1-5.8-1.6"
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key={`${filter}-${page}`}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.28 }}
+              className={
+                isSparse
+                  ? 'flex flex-wrap justify-center items-start gap-3 md:gap-4'
+                  : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ' +
+                    'auto-rows-[120px] sm:auto-rows-[140px] md:auto-rows-[160px] ' +
+                    'gap-3 md:gap-4'
+              }
+              style={isSparse ? undefined : { gridAutoFlow: 'dense' }}
+            >
+              {visible.map((it, i) => {
+                // ── PAGE-LOCAL tall pattern ─────────────────────────────
+                // We need EXACTLY 2 tall + 8 short on every page so:
+                //   tall(=2 slots) × 2 + short(=1 slot) × 8 = 12 slots
+                //   - 4-col: 3 rows × 4 = 12 ✓
+                //   - 3-col: 4 rows × 3 = 12 ✓
+                //   - 2-col: 6 rows × 2 = 12 ✓
+                // We place tall on slots 0 and 1 — the EARLIEST positions —
+                // so `grid-auto-flow: dense` never has to spill a tall into
+                // the bottom row, where it would push the grid past its
+                // declared row count and visually escape the panel.
+                const isLastPageAndShort =
+                  visible.length < PAGE_SIZE; // last page may have fewer items
+                const tall = !isLastPageAndShort && (i === 0 || i === 1);
+                return (
+                  <TabyinTile
+                    key={it.id}
+                    it={it}
+                    index={i}
+                    forceTall={tall}
+                    sparse={isSparse}
+                  />
+                );
+              })}
+            </motion.div>
+          )}
         </AnimatePresence>
 
         {/* Pager (brand PNG arrows — disabled when there's a single page) */}

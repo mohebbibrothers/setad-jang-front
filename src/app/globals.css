@@ -76,16 +76,38 @@
   /* Selection */
   ::selection { background: rgba(31, 138, 122, 0.20); color: var(--brand-900); }
 
-  /* Scrollbar (subtle, brand-tinted) */
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, var(--brand-500), var(--brand-700));
-    border-radius: 999px;
-    border: 2px solid transparent;
-    background-clip: padding-box;
+  /* ── Page scrollbar — invisible, but scroll still works ──────────────
+   *
+   *  The client asked to remove the right-hand brand-teal scrollbar
+   *  that was following the page as they scrolled. We keep vertical
+   *  scrolling FULLY functional (users can still flick, wheel, arrow-
+   *  key, Page-Down) — we just stop painting the track/thumb chrome
+   *  on the viewport-level scroller.
+   *
+   *  Individual overflow regions inside components (album filmstrip,
+   *  category chip rows, search suggestions panel, etc.) opt into their
+   *  own scrollbar treatment via the `.no-scrollbar` / `.custom-scroll`
+   *  utility classes further down in this file. Those are untouched.
+   *
+   *  Cross-browser strategy
+   *   • Firefox            :  scrollbar-width: none  on html
+   *   • Chromium / Safari  :  ::-webkit-scrollbar { display: none }
+   *   • Old Edge / IE      :  -ms-overflow-style: none
+   *
+   *  We DELIBERATELY scope this to the page-level scrollbar
+   *  (html + body) so nested `.custom-scroll` / `.no-scrollbar`
+   *  overrides inside components keep working exactly as before.
+   */
+  html {
+    scrollbar-width: none;              /* Firefox                */
+    -ms-overflow-style: none;           /* Legacy Edge / IE 10+   */
   }
-  ::-webkit-scrollbar-thumb:hover { background: var(--brand-600); background-clip: padding-box; }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;                      /* Chromium / Safari      */
+  }
 
   /* Headings */
   h1, h2, h3, h4, h5, h6 {
