@@ -188,11 +188,14 @@ const FACETS: Record<SearchSource, { key: string; label: string; chips: FacetChi
   ],
   tabyin: [
     {
+      // The 'صوت' chip was removed alongside the homepage Tabyin filter
+      // strip: the corpus doesn't surface standalone audio content on
+      // the front site, so exposing it here just funnels users into an
+      // empty results state. Backend still accepts `?media_type=audio`.
       key: 'media_type', label: 'رسانه',
       chips: [
         { label: 'تصویر', value: 'image' },
         { label: 'ویدئو', value: 'video' },
-        { label: 'صوت',   value: 'audio' },
       ],
     },
   ],
