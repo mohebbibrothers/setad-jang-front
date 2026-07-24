@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { Menu, X, LogIn } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { TopBar } from './TopBar';
-import { HeaderAuthButton } from './HeaderAuthButton';
 import { cn } from '@/lib/utils';
 
 type NavItem = { label: string; href: string };
@@ -94,10 +93,17 @@ export function Header() {
               ))}
             </nav>
 
-            {/* Auth slot (left in RTL) — swaps between login-pill and
-                signed-in avatar menu based on the JWT token store. */}
+            {/* Login CTA (left in RTL) */}
             <div className="mr-auto flex items-center gap-2">
-              <HeaderAuthButton />
+              <Link
+                href="/auth/login"
+                className="hidden sm:inline-flex items-center gap-2 h-10 lg:h-11 px-5 lg:px-6
+                           rounded-full bg-mint-500 hover:bg-mint-600 text-white font-semibold
+                           shadow-soft transition-all"
+              >
+                <LogIn className="w-4 h-4" />
+                ورود / ثبت‌نام
+              </Link>
 
               <button
                 type="button"
