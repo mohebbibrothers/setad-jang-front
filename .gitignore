@@ -7,3 +7,6 @@ out
 *.log
 next-env.d.ts
 .vercel
+
+# TypeScript incremental compilation cache
+*.tsbuildinfo
