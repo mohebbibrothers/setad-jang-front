@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SectionTitle } from './SectionTitle';
 import { Icon } from '@/components/icons/Icon';
 import { apiFetch } from '@/lib/api';
+import { absoluteMediaUrl } from '@/lib/utils';
 import { CampaignAlbum, type AlbumImage } from './CampaignAlbum';
 import { EmptyState } from './EmptyState';
 
@@ -68,8 +69,11 @@ export type KindListing = {
   publishedAt?: string;
   expiresAt?: string;
   viewCount?: number;
-  bookmarkCount?: number;
-  matchesCount?: number;
+  /** apps.kindness_wall.serializers.KindnessListingDetailSerializer.get_contact_available
+   *  → true when the owner has recorded a contact phone. Note: only
+   *  present on the DETAIL endpoint; the public LIST serializer does
+   *  not expose it. */
+  contactAvailable?: boolean;
   /** Optional pre-loaded gallery (sorted by image.order asc, cover first).
    *  When absent and the user taps the cover, the section fetches
    *  /kindness-wall/listings/<slug>/ on-demand. */
@@ -384,15 +388,20 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
   function setCategoryReset(c: string)  { setCategory(c); setPage(0); }
 
   // ── Album state ────────────────────────────────────────────────────
+  // Kindness album subtitle projects the listing TYPE (need/offer),
+  // optionally suffixed with the category title. Previously we
+  // mislabelled it as "مددکار: X" because the album only accepted a
+  // legacy `sponsor` prop.
   const [album, setAlbum] = useState<{
     open: boolean;
     title: string;
-    sponsor?: string;
+    subtitle?: { label: string; value: string };
     images: AlbumImage[];
     loading: boolean;
   }>({ open: false, title: '', images: [], loading: false });
   const [imgCache, setImgCache] = useState<Record<string, AlbumImage[]>>({});
   const closeAlbum = useCallback(() => setAlbum((a) => ({ ...a, open: false })), []);
+
   const buildImages = useCallback(
     (l: KindListing, extra?: AlbumImage[]): AlbumImage[] => {
       const out: AlbumImage[] = [];
@@ -406,39 +415,55 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
     },
     [],
   );
+
+  const buildKindSubtitle = useCallback(
+    (l: KindListing): { label: string; value: string } => {
+      const typeLabel = l.type === 'need' ? 'نیاز به کمک' : 'پیشنهاد کمک';
+      const value = l.categoryTitle ? `${typeLabel} · ${l.categoryTitle}` : typeLabel;
+      return { label: 'نوع', value };
+    },
+    [],
+  );
+
   const openAlbum = useCallback(async (l: KindListing) => {
-    const sponsor = l.ownerName || l.categoryTitle;
+    const subtitle = buildKindSubtitle(l);
     if (l.gallery && l.gallery.length) {
-      setAlbum({ open: true, title: l.title, sponsor, images: buildImages(l, l.gallery), loading: false });
+      setAlbum({ open: true, title: l.title, subtitle, images: buildImages(l, l.gallery), loading: false });
       return;
     }
     const cached = imgCache[l.slug];
     if (cached) {
-      setAlbum({ open: true, title: l.title, sponsor, images: buildImages(l, cached), loading: false });
+      setAlbum({ open: true, title: l.title, subtitle, images: buildImages(l, cached), loading: false });
       return;
     }
-    setAlbum({ open: true, title: l.title, sponsor, images: buildImages(l), loading: true });
+    setAlbum({ open: true, title: l.title, subtitle, images: buildImages(l), loading: true });
     try {
+      // Mirrors KindnessListingDetailSerializer + KindnessListingImageSerializer.
       const detail = await apiFetch<{
         images?: Array<{ id: number; image: string; alt_text?: string; caption?: string; is_cover?: boolean; order?: number }>;
+        contact_available?: boolean;
       }>(
         `/kindness-wall/listings/${encodeURIComponent(l.slug)}/`,
         { revalidate: 600, tags: [`kindness:${l.slug}`] },
       );
       const fetched: AlbumImage[] = (detail.images ?? [])
         .slice()
-        // cover first, then ordered ascending
+        // cover first, then ordered ascending (matches backend Meta.ordering).
         .sort((a, b) => {
           if (!!b.is_cover !== !!a.is_cover) return b.is_cover ? 1 : -1;
           return (a.order ?? 0) - (b.order ?? 0);
         })
-        .map((g) => ({ url: g.image, alt: g.alt_text || g.caption || l.title }));
+        .map((g) => ({
+          url: absoluteMediaUrl(g.image) ?? g.image,
+          alt: g.alt_text || g.caption || l.title,
+        }))
+        .filter((g) => !!g.url);
       setImgCache((prev) => ({ ...prev, [l.slug]: fetched }));
       setAlbum((a) => a.open ? { ...a, images: buildImages(l, fetched), loading: false } : a);
     } catch {
       setAlbum((a) => a.open ? { ...a, loading: false } : a);
     }
-  }, [imgCache, buildImages]);
+  }, [imgCache, buildImages, buildKindSubtitle]);
 
   /* ── Category strip overflow controls (same pattern as Education) ── */
   const catScrollRef = useRef<HTMLDivElement | null>(null);
@@ -715,7 +740,7 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
         open={album.open}
         onClose={closeAlbum}
         title={album.title}
-        sponsor={album.sponsor}
+        subtitle={album.subtitle}
         images={album.images}
         loading={album.loading}
       />
@@ -833,13 +858,21 @@ function ListingCard({
           </span>
         )}
 
-        {/* Smart matches badge */}
-        {typeof l.matchesCount === 'number' && l.matchesCount > 0 && (
+        {/* Contact-availability badge — mirrors
+            KindnessListingDetailSerializer.get_contact_available.
+            Replaces the previous "smart matches" badge, which relied on
+            fields (bookmark_count / matches_count) that the PUBLIC
+            listing serializers never expose — they live only inside the
+            owner + admin serializers. */}
+        {l.contactAvailable && (
           <span className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1
                            h-6 px-2.5 rounded-full bg-brand-500 text-white
                            text-[11px] font-extrabold shadow-[0_4px_14px_-4px_rgba(13,128,116,.55)]">
-            <Icon name="sparkles" className="w-3 h-3" />
-            {l.matchesCount.toLocaleString('fa-IR')} مرتبط
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            تماس در دسترس
           </span>
         )}
       </button>

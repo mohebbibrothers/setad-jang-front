@@ -375,10 +375,16 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
   const next = () => { if (totalPages <= 1) return; setPage((p) => (p + 1) % totalPages); };
 
   // ── Album state ────────────────────────────────────────────────────
+  // NOTE — we intentionally use the GENERIC `subtitle` shape here.
+  // The previous version stuffed the criminal's location into a
+  // `sponsor` string and let the album render "مددکار: تهران" — which
+  // is semantically wrong for R4J. R4J records have no sponsor; their
+  // secondary axis is their public location (country/province/city),
+  // controlled per-field by compute_visibility_map on the backend.
   const [album, setAlbum] = useState<{
     open: boolean;
     title: string;
-    sponsor?: string;
+    subtitle?: { label: string; value: string };
     images: AlbumImage[];
     loading: boolean;
   }>({ open: false, title: '', images: [], loading: false });
@@ -401,10 +407,23 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
     [],
   );
 
+  // Compose the R4J album's secondary line from whatever location
+  // fields the backend has surfaced (which may all be null when the
+  // per-field visibility map hides them from public consumers).
+  const buildR4JSubtitle = useCallback(
+    (loc: string | undefined | null): { label: string; value: string } | undefined => {
+      const v = (loc ?? '').trim();
+      return v ? { label: 'موقعیت', value: v } : undefined;
+    },
+    [],
+  );
+
   const openAlbum = useCallback(async (p: CriminalCard) => {
+    const seedSubtitle = buildR4JSubtitle(p.pillLabel);
+
     if (p.gallery && p.gallery.length) {
       setAlbum({
-        open: true, title: p.fullName, sponsor: p.pillLabel,
+        open: true, title: p.fullName, subtitle: seedSubtitle,
         images: buildImages(p, p.gallery), loading: false,
       });
       return;
@@ -412,40 +431,53 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
     const cached = photoCache[p.slug];
     if (cached) {
       setAlbum({
-        open: true, title: p.fullName, sponsor: p.pillLabel,
+        open: true, title: p.fullName, subtitle: seedSubtitle,
         images: buildImages(p, cached), loading: false,
       });
       return;
     }
     setAlbum({
-      open: true, title: p.fullName, sponsor: p.pillLabel,
+      open: true, title: p.fullName, subtitle: seedSubtitle,
       images: buildImages(p), loading: true,
     });
     try {
-      // Public R4J detail endpoint takes a slug *or* an int id.
+      // Detail endpoint mirrors R4JPublicCriminalDetailSerializer:
+      //   photos[]  (id, image, caption, is_primary, order)
+      //   country / province / city  (visibility-controlled → may be null)
+      // We refresh the subtitle from the detail payload so the album
+      // reflects the freshest public-visible location, then fall back
+      // to the seed pillLabel if visibility hides everything.
       const detail = await apiFetch<{
         photos?: Array<{ id: number; image: string; caption?: string; is_primary?: boolean; order?: number }>;
+        country?: string | null;
+        province?: string | null;
+        city?: string | null;
       }>(
         `/r4j/criminals/${encodeURIComponent(p.slug)}/`,
         { revalidate: 600, tags: [`criminal:${p.slug}`] },
       );
       const fetched: AlbumImage[] = (detail.photos ?? [])
         .slice()
-        // primary first, then ordered ascending
+        // primary first, then ordered ascending — matches Meta.ordering
+        // on R4JCriminalPhoto so the album mirrors the backend order.
         .sort((a, b) => {
           if (!!b.is_primary !== !!a.is_primary) return b.is_primary ? 1 : -1;
           return (a.order ?? 0) - (b.order ?? 0);
         })
         .map((g) => ({ url: absoluteMediaUrl(g.image) ?? '', alt: g.caption || p.fullName }))
         .filter((g) => !!g.url);
+      const detailLoc = [detail.city, detail.province, detail.country]
+        .filter((s): s is string => !!s && s.trim().length > 0)
+        .join('، ');
+      const freshSubtitle = buildR4JSubtitle(detailLoc) ?? seedSubtitle;
       setPhotoCache((prev) => ({ ...prev, [p.slug]: fetched }));
       setAlbum((a) => a.open
-        ? { ...a, images: buildImages(p, fetched), loading: false }
+        ? { ...a, subtitle: freshSubtitle, images: buildImages(p, fetched), loading: false }
         : a);
     } catch {
       setAlbum((a) => a.open ? { ...a, loading: false } : a);
     }
-  }, [photoCache, buildImages]);
+  }, [photoCache, buildImages, buildR4JSubtitle]);
 
   return (
     <section className="section-y section-alt" id="justice">
@@ -532,7 +564,7 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
         open={album.open}
         onClose={closeAlbum}
         title={album.title}
-        sponsor={album.sponsor}
+        subtitle={album.subtitle}
         images={album.images}
         loading={album.loading}
       />
