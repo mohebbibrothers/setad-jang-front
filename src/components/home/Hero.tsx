@@ -63,12 +63,23 @@ export function Hero() {
             sizes="(max-width: 768px) 90vw, 680px"
             className="relative z-10 w-full h-auto select-none"
           />
-          {/* White fade gradient at the bottom of the photo — matches mockup */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-x-0 bottom-0 h-[42%] z-20 pointer-events-none
-                       bg-[linear-gradient(to_top,#ffffff_0%,rgba(255,255,255,0.92)_28%,rgba(255,255,255,0)_100%)]"
-          />
+          {/*
+            NOTE — the previous white fade-overlay was intentionally removed.
+            The hero photo is already a transparent PNG (RGBA cut-out of the
+            three defenders on a fully-transparent background). The overlay
+            painted a semi-opaque white rectangle across the bottom 42 % of
+            the picture, which — because the underlying pixels were already
+            transparent — did NOT blend into the subjects; it just drew a
+            hard rectangular border of paler white against the page's
+            perfect white surface. On any display without a colour-management
+            profile the boundary was visible as a faint square outline
+            around the composition.
+
+            The section's own bg-white surface (see `<section>` above)
+            already provides the seamless canvas the designer wanted. The
+            subjects now appear to stand ON the page rather than IN a
+            floating rectangle.
+          */}
         </motion.div>
 
         {/* Production-grade omni-search. Mounted in its own motion wrapper
