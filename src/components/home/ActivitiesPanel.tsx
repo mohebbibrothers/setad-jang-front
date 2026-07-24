@@ -61,29 +61,101 @@ const ACTIVITIES: Activity[] = [
 export function ActivitiesPanel() {
   return (
     <section
-      className="relative mt-12 md:mt-16 lg:mt-20 pb-20 md:pb-24"
+      /* ── Vertical rhythm — overlaps the hero photo on purpose ────────
+       * The hero PNG is cropped at the defenders' knees, which reads as
+       * a hard cut against the white page below. To smooth that seam
+       * the section is now PULLED UP with a negative margin so the
+       * green wave panel + the ambient fade above it visually finish
+       * the composition — the eye reads the group as standing INTO the
+       * next chapter rather than being sliced off by it.
+       *
+       * Progressive by breakpoint so the overlap scales with the hero
+       * photo width (which is itself `max-w-[680px]` at all sizes):
+       *   phones          : −72px  (~ shins / boots)
+       *   tablets (md)    : −96px
+       *   desktops (lg)   : −128px (largest hero → biggest overlap)
+       *
+       * We also add a top-padding so the ambient soft-white glow above
+       * the panel has room to breathe without pressing on the panel
+       * itself. */
+      className="relative -mt-[72px] md:-mt-[96px] lg:-mt-[128px]
+                 pt-16 md:pt-20 lg:pt-24 pb-20 md:pb-24"
       aria-labelledby="activities-title"
     >
-      {/* Soft ambient shadow ABOVE the green panel — a wide, low-opacity
-          band that fades from brand-tinted bottom (where it touches the
-          panel) to fully transparent at the top. Pure CSS gradient,
-          no images. Clean, soft, designer-faithful.
-          z-0: kept BELOW the hero's overlapping search dropdown (which
-          floats at z-[80] within its own section). */}
+      {/* ── Ambient soft-white halo above the green panel ─────────────
+       * Replaces the previous brand-teal shadow, which — on top of the
+       * hero photo — read as a dark bruise across the defenders' legs
+       * rather than a graceful hand-off. The new halo is a two-layer
+       * additive white glow:
+       *
+       *   Layer 1  A wide radial ellipse centred on the panel's top
+       *            edge. Pure white at the centre (0.95 α) fading to
+       *            transparent at the outer edge, blurred to 24 px so
+       *            the transition is buttery-soft on any DPI. This is
+       *            what actually "erases" the hero cutout — it lays a
+       *            soft veil over the bottom of the photo so the
+       *            subjects appear to melt into the next chapter.
+       *
+       *   Layer 2  A shorter linear gradient (top→bottom, transparent
+       *            → white 0.75) that gently biases the halo downward
+       *            and re-establishes the pure-white page rhythm right
+       *            above the green panel — keeps the "chapter break"
+       *            legible without a hard rule line.
+       *
+       * z-0 keeps this beneath the search-bar pill (z-30) and its
+       * portal-mounted dropdown (z-40), so the overlay never darkens
+       * or obscures interactive UI. `pointer-events-none` so it never
+       * intercepts clicks / hover. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 z-0
-                   -top-[60px] h-[80px]
-                   md:-top-[80px] md:h-[110px]
-                   lg:-top-[100px] lg:h-[140px]"
+                   -top-[80px]  h-[220px]
+                   md:-top-[100px] md:h-[260px]
+                   lg:-top-[120px] lg:h-[300px]"
         style={{
           background:
-            'radial-gradient(ellipse 80% 100% at 50% 100%, rgba(11,53,48,0.20) 0%, rgba(11,53,48,0.12) 30%, rgba(11,53,48,0.05) 60%, rgba(11,53,48,0) 100%)',
-          filter: 'blur(14px)',
+            /* Layer 1 — luminous halo that dissolves the cutout edge */
+            'radial-gradient(ellipse 90% 70% at 50% 90%,' +
+              ' rgba(255,255,255,0.95) 0%,' +
+              ' rgba(255,255,255,0.75) 20%,' +
+              ' rgba(255,255,255,0.40) 45%,' +
+              ' rgba(255,255,255,0.14) 70%,' +
+              ' rgba(255,255,255,0)    100%),' +
+            /* Layer 2 — subtle downward wash toward the panel */
+            'linear-gradient(to bottom,' +
+              ' rgba(255,255,255,0)    0%,' +
+              ' rgba(255,255,255,0.20) 55%,' +
+              ' rgba(255,255,255,0.65) 100%)',
+          filter: 'blur(24px)',
         }}
       />
 
-      <div className="container-edge">
+      {/* ── Cool brand-tint under-glow — very faint, sits UNDER the halo
+       * and gives the composition a lifted, "atmospheric" feel instead
+       * of a flat wipe. Uses --brand-500 at 6 % α over a large blur
+       * radius so the eye reads it as depth, not colour. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 z-0
+                   -top-[40px]  h-[120px]
+                   md:-top-[50px] md:h-[150px]
+                   lg:-top-[60px] lg:h-[180px]"
+        style={{
+          background:
+            'radial-gradient(ellipse 65% 100% at 50% 100%,' +
+              ' rgba(13,128,116,0.10) 0%,' +
+              ' rgba(13,128,116,0.05) 45%,' +
+              ' rgba(13,128,116,0)    100%)',
+          filter: 'blur(30px)',
+        }}
+      />
+
+      {/* z-10 lifts the actual panel content (green wave + cards)
+       * above the hero photo (z-10 inside its own section, but the
+       * section is a sibling — so a positive z-index here wins). The
+       * search bar pill uses z-30 so it still floats above THIS panel
+       * even where they overlap vertically at the "-mt" seam. */}
+      <div className="container-edge relative z-10">
         <div className="relative">
           {/* Green wave panel (fluid sizing) */}
           <div
