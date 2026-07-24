@@ -5,6 +5,7 @@ import {
 } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { SmartImage } from '@/components/ui/SmartImage';
 import { formatPersianNumber } from '@/lib/utils';
 import { apiFetch, ApiError } from '@/lib/api';
 import type { CampaignCard } from './WarFundSection';
@@ -242,21 +243,15 @@ export function CampaignParticipateModal({ open, onClose, campaign }: Props) {
           >
             {/* ── Hero header (cover + title + sponsor + close) ───── */}
             <div className="relative h-[180px] sm:h-[200px] bg-ink-800 overflow-hidden shrink-0">
-              {(campaign.coverUrl || campaign.gallery?.[0]?.url) ? (
-                <Image
-                  src={(campaign.coverUrl ?? campaign.gallery?.[0]?.url) as string}
-                  alt={campaign.title}
-                  fill
-                  sizes="640px"
-                  className="object-cover"
-                  priority
-                />
-              ) : (
-                <div
-                  className="absolute inset-0"
-                  style={{ background: `linear-gradient(135deg, ${campaign.toneFrom ?? '#0D8074'}, ${campaign.toneTo ?? '#053832'})` }}
-                />
-              )}
+              <SmartImage
+                src={campaign.coverUrl ?? campaign.gallery?.[0]?.url ?? null}
+                alt={campaign.title}
+                variant="campaign"
+                fill
+                sizes="640px"
+                className="object-cover"
+                priority
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-ink-900/95 via-ink-900/30 to-ink-900/10" />
 
               <button

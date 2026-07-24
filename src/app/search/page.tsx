@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Suspense } from 'react';
+import { SmartImage, type SmartImageVariant } from '@/components/ui/SmartImage';
 import {
   searchAll,
   SEARCH_SOURCES,
@@ -17,6 +17,17 @@ import { GlobalSearch } from '@/components/home/GlobalSearch';
  * every matching hit grouped by source.
  */
 export const dynamic = 'force-dynamic';
+
+/** Map every omni-search source key to the matching SmartImage variant
+ *  so a missing thumbnail always falls back to a branded placeholder
+ *  in the correct palette (r4j → criminal, lms → course, etc.). */
+const SOURCE_TO_VARIANT: Record<SearchSource, SmartImageVariant> = {
+  madadkar: 'campaign',
+  r4j:      'criminal',
+  lms:      'course',
+  kindness: 'kindness',
+  tabyin:   'tabyin',
+};
 
 type SP = { q?: string; source?: string };
 
@@ -107,17 +118,14 @@ export default async function SearchPage({
                                      transition-all duration-200"
                         >
                           <span className="relative shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-ink-100">
-                            {h.thumb ? (
-                              <Image
-                                src={h.thumb}
-                                alt=""
-                                fill
-                                sizes="56px"
-                                className="object-cover"
-                              />
-                            ) : (
-                              <span className="absolute inset-0 bg-gradient-to-br from-brand-50 to-brand-100" />
-                            )}
+                            <SmartImage
+                              src={h.thumb}
+                              alt={h.title}
+                              variant={SOURCE_TO_VARIANT[g.source] ?? 'image'}
+                              fill
+                              sizes="56px"
+                              className="object-cover"
+                            />
                           </span>
                           <span className="flex-1 min-w-0">
                             <span className="block text-[13.5px] font-extrabold text-ink-900 truncate">

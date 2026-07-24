@@ -3,6 +3,7 @@
 import {
   useState, useEffect, useCallback, useRef, useMemo,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatPersianNumber } from '@/lib/utils';
 
@@ -97,6 +98,22 @@ export function CampaignAlbum({
   open, onClose, title, sponsor, images, loading = false, startIndex = 0,
 }: Props) {
   const total = images.length;
+
+  // ── Portal mount guard ─────────────────────────────────────────────
+  // The album is rendered via createPortal to document.body so that:
+  //  1. It can't inherit a parent stacking context (e.g. from
+  //     `.section-alt > * { z-index: 1 }`) that would trap the modal
+  //     inside a section's layer and let neighbouring content sit on
+  //     top of it. Before this change the R4J album opened *underneath*
+  //     the following section on the page — a classic z-index-in-a-
+  //     -sub-stacking-context bug.
+  //  2. It's guaranteed to overlay every other pinned element on the
+  //     page (headers, floating buttons, other modals) without any
+  //     z-index arms race.
+  //  3. Scroll locking + backdrop cover always land at the viewport
+  //     root regardless of where in the tree the component is mounted.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   // ── State ──────────────────────────────────────────────────────────
   const [index, setIndexState] = useState(startIndex);
@@ -734,7 +751,17 @@ export function CampaignAlbum({
     </>
   );
 
-  return (
+  // ── Portal renderer ────────────────────────────────────────────────
+  // We DELIBERATELY render nothing until the client-side effect has
+  // run so that:
+  //   • SSR doesn't try to touch `document`.
+  //   • Hydration matches (no server/client HTML mismatch warning).
+  //   • The portal always attaches to the live document.body, never a
+  //     stale target that might have been swapped out by a page
+  //     navigation.
+  if (!mounted) return null;
+
+  const overlay = (
     <AnimatePresence>
       {open && (
         <motion.div
@@ -1387,6 +1414,8 @@ export function CampaignAlbum({
       )}
     </AnimatePresence>
   );
+
+  return createPortal(overlay, document.body);
 }
 
 /* ───────────────────────────────────────────────────────────────────────── */
