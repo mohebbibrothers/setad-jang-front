@@ -168,6 +168,63 @@
   /* Section padding */
   .section-y { @apply py-16 md:py-20 lg:py-24; }
 
+  /* ─────────────────────────────────────────────────────────────
+   *  Alternating section surface
+   *  ─────────────────────────────
+   *  Applied to every OTHER content section on the home page so
+   *  the eye can tell them apart at a glance. Base surface is
+   *  bg-white; sections that opt in get a soft, brand-tinted
+   *  greige surface with a barely-visible dot-grid texture and
+   *  hairline top/bottom rules that read as premium "chapter"
+   *  separators — the same technique Linear / Stripe / Vercel
+   *  use to keep long marketing pages from feeling monolithic.
+   *
+   *  Colour is derived from --ink-50 (#F7F8FA) but nudged one
+   *  step warmer / more saturated on the brand axis, then
+   *  overlaid with a 3% dotted noise so it never reads as flat
+   *  grey — feels *considered* even on 4K displays. */
+  .section-alt {
+    background-color: #F4F6F9;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(15, 20, 32, 0.045) 1px, transparent 1px),
+      linear-gradient(180deg, #F2F5F8 0%, #F5F7FA 50%, #F2F5F8 100%);
+    background-size: 22px 22px, 100% 100%;
+    background-repeat: repeat, no-repeat;
+    /* Two hairline separators (top + bottom) draw the "chapter"
+       transition without a hard edge — each rule fades to
+       transparent at the sides so it never looks like a hard
+       stroke crossing the viewport. */
+    box-shadow:
+      inset 0  1px 0 rgba(15, 20, 32, 0.04),
+      inset 0 -1px 0 rgba(15, 20, 32, 0.04);
+    position: relative;
+  }
+  /* Extra soft top-fade so the transition from bg-white → section-alt
+     is molten, not stepped. Uses a pseudo-element so it doesn't
+     interfere with any absolute-positioned children the section may
+     define (badges, glows, etc.). */
+  .section-alt::before,
+  .section-alt::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .section-alt::before {
+    top: 0;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 100%);
+  }
+  .section-alt::after {
+    bottom: 0;
+    background: linear-gradient(to top,    rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 100%);
+  }
+  /* Keep every direct child of a .section-alt above the top/bottom
+     fade pseudo-elements so real content is never dimmed by them. */
+  .section-alt > * { position: relative; z-index: 1; }
+
   /* In-page anchor scroll offset.
    * The header (.sticky-wrap) is ~64-72 px tall, so when an in-page
    * anchor like #warfund / #justice scrolls a section into view, we

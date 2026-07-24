@@ -470,7 +470,7 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
   }
 
   return (
-    <section className="section-y bg-white" id="kindness">
+    <section className="section-y section-alt" id="kindness">
       <div className="container-edge">
         <SectionTitle
           title="دیوار مهربانی"
@@ -485,7 +485,10 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
             The pill width is constrained by min-w-0 so flex children can
             shrink and the gradient tab stays inside the segmented box. */}
         <div className="flex justify-center mb-5">
-          <div className="inline-flex p-1 bg-ink-50 rounded-full shadow-inner
+          {/* Pill trough: white on the alt-surface so the segmented
+              control reads as a lifted control, not blending into the
+              section's soft-greige backdrop. */}
+          <div className="inline-flex p-1 bg-white rounded-full shadow-inner
                           ring-1 ring-ink-100 w-full sm:w-auto max-w-full"
                role="tablist" aria-label="نوع آگهی">
             <div className="grid grid-cols-3 sm:flex w-full gap-1 min-w-0">
