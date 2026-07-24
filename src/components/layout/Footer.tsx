@@ -63,10 +63,17 @@ const SOCIALS = [
 
 export function Footer() {
   return (
-    <footer className="relative bg-white pt-12 md:pt-16">
+    // ── Full-bleed presentation ────────────────────────────────────
+    // Previous layout centred the footer card at `max-w-[1280px]`
+    // with rounded top corners. The redesign requires the footer to
+    // stretch the FULL viewport width — no side gutters, no rounded
+    // corners on the outer surface. We keep an inner `container-edge`
+    // so the type still respects the site's page rhythm and never
+    // hits the very edge of the screen on wide displays.
+    <footer className="relative bg-ink-50">
       <div
-        className="relative max-w-[1280px] mx-auto px-5 md:px-8 pt-12 md:pt-16 pb-7 md:pb-9
-                   bg-ink-50 rounded-t-[2rem] md:rounded-t-[2.5rem] overflow-hidden"
+        className="relative w-full pt-12 md:pt-16 pb-7 md:pb-9
+                   overflow-hidden"
       >
         {/* Soft brand glow — adds depth without distracting from the type */}
         <div
@@ -87,6 +94,12 @@ export function Footer() {
             backgroundSize: '22px 22px',
           }}
         />
+
+      {/* All footer content lives inside the site's standard content
+          container so type/columns keep the same page rhythm as the
+          rest of the site, while the surrounding surface still bleeds
+          edge-to-edge behind them. */}
+      <div className="container-edge relative">
 
         {/* Footer columns — fully centred */}
         <div className="relative grid grid-cols-2 md:grid-cols-4 gap-10 md:gap-8 text-center">
@@ -182,6 +195,7 @@ export function Footer() {
             with smooth behaviour always fires, even if the URL hash is
             already #main or the browser doesn't honour the hash jump.   */}
         <BackToTop />
+        </div>{/* /container-edge */}
       </div>
     </footer>
   );

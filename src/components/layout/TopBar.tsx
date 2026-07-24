@@ -2,20 +2,49 @@ import { Instagram, Twitter, Linkedin } from 'lucide-react';
 import Link from 'next/link';
 
 /**
- * Top thin teal bar — partner links on the right (RTL), social on the left.
- * No dot separators (matches designer mockup); links use generous gap instead.
+ * ─────────────────────────────────────────────────────────────────
+ *  TopBar — thin brand-teal utility bar above the primary header.
+ *
+ *  Right side (RTL start): partner-organisation links. These are
+ *  the officially-endorsed external destinations agreed with the
+ *  content team, so they open in a new tab with the standard
+ *  security-hardening rel attributes.
+ *
+ *  Left side (RTL end): social presences (currently placeholders
+ *  until the client publishes the final handles — the anchors are
+ *  scoped to `#` so they don't ship as accidental redirects).
+ * ─────────────────────────────────────────────────────────────────
  */
+
+type Partner = { label: string; href: string };
+
+const PARTNERS: Partner[] = [
+  { label: 'رسانه‌ی رهبر انقلاب', href: 'https://rahbar.ir/' },
+  { label: 'رسانه‌ی رهبر شهید',   href: 'https://khamenei.ir/' },
+  { label: 'جانفدا',                href: 'https://janfadaa.ir/' },
+];
+
 export function TopBar() {
   return (
     <div className="hidden md:block bg-brand-600 text-white text-[12.5px]">
       <div className="container-edge h-9 flex items-center gap-4">
-        {/* Partner links — visually RIGHT in RTL */}
-        <div className="flex items-center gap-8">
-          <Link href="#" className="opacity-90 hover:opacity-100 transition-opacity">رسانه‌ی رهبر انقلاب</Link>
-          <Link href="#" className="opacity-90 hover:opacity-100 transition-opacity">رسانه‌ی رهبر شهید</Link>
-          <Link href="#" className="opacity-90 hover:opacity-100 transition-opacity">جانفدا</Link>
-          <Link href="#" className="opacity-90 hover:opacity-100 transition-opacity">جهادآرا</Link>
-        </div>
+        {/* Partner links — visually RIGHT in RTL, open in a new tab. */}
+        <nav
+          aria-label="پیوندهای شریکان"
+          className="flex items-center gap-8"
+        >
+          {PARTNERS.map((p) => (
+            <Link
+              key={p.href}
+              href={p.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="opacity-90 hover:opacity-100 transition-opacity"
+            >
+              {p.label}
+            </Link>
+          ))}
+        </nav>
 
         {/* Social icons — visually LEFT */}
         <div className="mr-auto flex items-center gap-3">
