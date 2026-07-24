@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { SmartImage } from '@/components/ui/SmartImage';
 import Link from 'next/link';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -399,24 +400,14 @@ function CourseTile({ c, delay = 0 }: { c: CourseCard; delay?: number }) {
       >
         {/* ── Cover (4:3) ── */}
         <div className="relative aspect-[4/3] bg-ink-200 overflow-hidden">
-          {c.coverUrl ? (
-            <Image
-              src={c.coverUrl}
-              alt={c.title}
-              fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              className="object-cover transition-transform duration-500 group-hover:scale-[1.06]"
-            />
-          ) : (
-            <div
-              className="absolute inset-0 flex items-center justify-center"
-              style={{
-                background: `linear-gradient(135deg, ${c.toneFrom || '#0D8074'}, ${c.toneTo || '#053832'})`,
-              }}
-            >
-              <Icon name="play" className="w-20 h-20 text-white/60" />
-            </div>
-          )}
+          <SmartImage
+            src={c.coverUrl}
+            alt={c.title}
+            variant="course"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+          />
 
           {/* Bottom scrim — keeps the cover-overlaid title legible on any image */}
           <div aria-hidden="true"
@@ -457,22 +448,17 @@ function CourseTile({ c, delay = 0 }: { c: CourseCard; delay?: number }) {
           {/* Instructor row */}
           {c.instructor && (
             <div className="flex items-center gap-2 min-w-0">
-              {c.instructorAvatarUrl ? (
-                <span className="relative w-7 h-7 rounded-full overflow-hidden ring-2 ring-ink-100 shrink-0">
-                  <Image
-                    src={c.instructorAvatarUrl}
-                    alt={c.instructor}
-                    fill
-                    sizes="28px"
-                    className="object-cover"
-                  />
-                </span>
-              ) : (
-                <span className="w-7 h-7 rounded-full bg-brand-50 text-brand-600
-                                 flex items-center justify-center shrink-0">
-                  <Icon name="user" className="w-3.5 h-3.5" />
-                </span>
-              )}
+              <span className="relative w-7 h-7 rounded-full overflow-hidden ring-2 ring-ink-100 shrink-0">
+                <SmartImage
+                  src={c.instructorAvatarUrl}
+                  alt={c.instructor}
+                  variant="avatar"
+                  quietSkeleton
+                  fill
+                  sizes="28px"
+                  className="object-cover"
+                />
+              </span>
               <span className="text-[12px] text-ink-600 font-bold truncate min-w-0">
                 <span className="text-ink-400 font-medium">مدرس: </span>
                 {c.instructor}

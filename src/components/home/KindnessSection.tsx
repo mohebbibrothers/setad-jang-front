@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { SmartImage } from '@/components/ui/SmartImage';
 import Link from 'next/link';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -768,24 +769,14 @@ function ListingCard({
                    cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
         aria-label={`نمایش آلبوم تصاویر ${l.title}`}
       >
-        {thumbUrl ? (
-          <Image
-            src={thumbUrl}
-            alt={l.title}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.06]"
-          />
-        ) : (
-          <div className={`w-full h-full flex items-center justify-center
-                           ${isNeed
-                             ? 'bg-gradient-to-br from-rose-100 via-rose-50 to-white'
-                             : 'bg-gradient-to-br from-mint-500/[0.18] via-brand-50 to-white'}`}>
-            {isNeed
-              ? <NeedIcon className={'w-16 h-16 text-rose-400 opacity-80'} />
-              : <GiveIcon className={'w-16 h-16 text-brand-500 opacity-80'} />}
-          </div>
-        )}
+        <SmartImage
+          src={thumbUrl}
+          alt={l.title}
+          variant="kindness"
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+        />
 
         {/* Gallery-count chip */}
         {galleryHint > 1 && (
@@ -876,14 +867,17 @@ function ListingCard({
 
         <div className="mt-3.5 pt-3.5 border-t border-ink-100 flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0
-                             ring-2 ring-white shadow-[0_2px_6px_-2px_rgba(0,0,0,.12)]
-                             ${isNeed ? 'bg-rose-100 text-rose-500' : 'bg-brand-50 text-brand-600'}`}>
-              {l.ownerAvatar ? (
-                <Image src={l.ownerAvatar} alt="" width={32} height={32} className="w-full h-full object-cover" />
-              ) : (
-                <Icon name="user" className="w-4 h-4" />
-              )}
+            <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0
+                            ring-2 ring-white shadow-[0_2px_6px_-2px_rgba(0,0,0,.12)]">
+              <SmartImage
+                src={l.ownerAvatar}
+                alt={l.ownerName || 'کاربر دیوار مهربانی'}
+                variant="avatar"
+                quietSkeleton
+                fill
+                sizes="32px"
+                className="object-cover"
+              />
             </div>
             <span className="text-[12.5px] text-ink-700 truncate font-extrabold">
               {l.ownerName || 'کاربر دیوار مهربانی'}

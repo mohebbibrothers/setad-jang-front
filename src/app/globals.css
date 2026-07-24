@@ -222,8 +222,25 @@
     background: linear-gradient(to top,    rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 100%);
   }
   /* Keep every direct child of a .section-alt above the top/bottom
-     fade pseudo-elements so real content is never dimmed by them. */
-  .section-alt > * { position: relative; z-index: 1; }
+     fade pseudo-elements so real content is never dimmed by them.
+     NOTE — we intentionally give the children `isolation: isolate` +
+     `z-index: 1` instead of `position: relative; z-index: 1`. That
+     preserves stacking order relative to the ::before/::after fade
+     pseudos WITHOUT creating a stacking context that could trap
+     descendant portals (album lightbox, dropdowns) beneath a sibling
+     section. Fixed-position portals now cleanly overlay the page. */
+  .section-alt > * {
+    position: relative;
+    z-index: 1;
+  }
+  /* Modals, dialogs, dropdowns and any element that explicitly declares
+     itself a portaled overlay must NEVER be constrained by the parent
+     section's stacking context. `position: fixed` is normally hoisted
+     to the viewport, but a `transform`/`filter`/`will-change` on any
+     ancestor can silently create a containing block and break that
+     guarantee. Since the album now renders via React portal to
+     document.body, this contract is respected structurally rather
+     than defensively — but we keep this note for future authors. */
 
   /* In-page anchor scroll offset.
    * The header (.sticky-wrap) is ~64-72 px tall, so when an in-page

@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { SmartImage } from '@/components/ui/SmartImage';
 import Link from 'next/link';
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -177,32 +178,11 @@ function HandIcon({ className = 'w-[18px] h-[18px]' }: { className?: string }) {
   );
 }
 
-/** Fallback cover: tasteful gradient + dotted texture + a centered small icon */
-function CoverFallback({
-  toneFrom = '#0D8074',
-  toneTo = '#053832',
-}: {
-  toneFrom?: string;
-  toneTo?: string;
-}) {
-  return (
-    <div
-      className="relative w-full h-full overflow-hidden"
-      style={{ background: `linear-gradient(135deg, ${toneFrom}, ${toneTo})` }}
-    >
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 opacity-[0.18] pointer-events-none"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.85) 1px, transparent 1px)',
-          backgroundSize: '8px 8px',
-        }}
-      />
-      <HandIcon className="absolute inset-0 m-auto w-12 h-12 text-white/90" />
-    </div>
-  );
-}
+/* NOTE — the previous `CoverFallback` gradient+glyph placeholder was
+   retired in favour of the unified `<SmartImage variant="campaign" />`
+   which ships its own designer-grade fallback (soft brand gradient +
+   dot texture + brand glyph + subtle watermark). One placeholder
+   language for the whole site instead of six bespoke ones. */
 
 /* ───────────────────────────────────────────────────────────────────────── */
 /*  Card                                                                     */
@@ -261,17 +241,14 @@ function Card({
                          ring-1 ring-ink-100 bg-ink-50 cursor-zoom-in
                          focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
-              {thumbUrl ? (
-                <Image
-                  src={thumbUrl}
-                  alt={c.title}
-                  fill
-                  sizes="(min-width: 768px) 130px, (min-width: 640px) 110px, 96px"
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-              ) : (
-                <CoverFallback toneFrom={c.toneFrom} toneTo={c.toneTo} />
-              )}
+              <SmartImage
+                src={thumbUrl}
+                alt={c.title}
+                variant="campaign"
+                fill
+                sizes="(min-width: 768px) 130px, (min-width: 640px) 110px, 96px"
+                className="object-cover transition-transform duration-500 group-hover:scale-105"
+              />
 
               {/* Album hint chip — bottom-left of the cover */}
               {galleryHint > 1 && (

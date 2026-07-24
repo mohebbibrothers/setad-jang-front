@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { SmartImage } from '@/components/ui/SmartImage';
 import Link from 'next/link';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -309,20 +310,14 @@ function CriminalCardView({
           className="absolute inset-0 block cursor-zoom-in focus:outline-none
                      focus-visible:ring-2 focus-visible:ring-brand-500"
         >
-          {thumbUrl ? (
-            <Image
-              src={thumbUrl}
-              alt={p.fullName}
-              fill
-              sizes="(max-width: 768px) 50vw, 25vw"
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-ink-300 to-ink-500
-                            flex items-center justify-center text-white/40 text-6xl font-extrabold">
-              ?
-            </div>
-          )}
+          <SmartImage
+            src={thumbUrl}
+            alt={p.fullName}
+            variant="criminal"
+            fill
+            sizes="(max-width: 768px) 50vw, 25vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+          />
 
           {/* Gallery-count chip when there's more than one image */}
           {galleryHint > 1 && (
@@ -460,18 +455,13 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
           description="عدالت با صدای مردم بلندتر است. هر اطلاعات شما یک سند، هر جایزه‌ی شما یک گام رو به‌جلو در پرونده‌ی متهمان جنایت‌های جنگی."
         />
 
-        {/* Inner panel — pure white so the criminal cards read as a
-            *lifted* group against the section's soft-greige backdrop
-            (was `bg-ink-50/60` when the section itself was white; now
-            that the section is `section-alt` the polarity flips and
-            white becomes the highlight). Corners still follow the
-            Apple HIG concentric-corners rule:
-              outer_radius ≈ inner_card_radius (28px) + panel_padding.
-            So panel goes 32 → 48 → 56px as the inner padding grows.  */}
-        <div className="bg-white
-                        rounded-[32px] md:rounded-[48px] lg:rounded-[56px]
-                        p-4 md:p-8 lg:p-10 border border-ink-100
-                        shadow-[0_24px_60px_-30px_rgba(11,53,48,.12)]">
+        {/* Inner wrapper — transparent (was `bg-white` + rounded panel).
+            The client asked to drop the white panel inside the greige
+            section so the cards sit DIRECTLY on the `section-alt`
+            surface. We keep the wrapper as a `<div>` so the padding
+            below still gives the cards breathing room and the pager
+            layout stays untouched — only the visible chrome is gone. */}
+        <div className="pt-2 pb-2 md:pt-4 md:pb-4">
           {/* flex+wrap+justify-center so orphan cards in the last row
               centre instead of clinging to the RTL-right edge. */}
           {criminals.length === 0 ? (

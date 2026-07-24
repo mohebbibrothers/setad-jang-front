@@ -911,12 +911,23 @@ function ResultsBody({
                                   transition-colors ${isActive ? 'bg-brand-50' : 'hover:bg-ink-50'}`}
                     >
                       <span className="relative shrink-0 w-11 h-11 rounded-xl overflow-hidden bg-ink-100">
-                        {h.thumb ? (
-                          <Image src={h.thumb} alt="" fill sizes="44px" className="object-cover" unoptimized />
-                        ) : (
-                          <span className={`absolute inset-0 flex items-center justify-center ${a.disc}`}>
-                            <Glyph glyph={meta.glyph} className="w-5 h-5" />
-                          </span>
+                        {/* When the thumb fails to load we fall back to
+                            the source glyph on a brand-tinted disc —
+                            same language the empty-thumb branch uses,
+                            so a broken image never leaves a raw grey
+                            square in the results list. */}
+                        <span className={`absolute inset-0 flex items-center justify-center ${a.disc}`}>
+                          <Glyph glyph={meta.glyph} className="w-5 h-5" />
+                        </span>
+                        {h.thumb && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={h.thumb}
+                            alt=""
+                            loading="lazy"
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
                         )}
                       </span>
                       <span className="flex-1 min-w-0">

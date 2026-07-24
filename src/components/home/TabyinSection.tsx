@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { SmartImage } from '@/components/ui/SmartImage';
 import Link from 'next/link';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -500,9 +501,10 @@ function TabyinTile({
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
-            <Image
+            <SmartImage
               src={it.coverUrl}
               alt={it.title || 'محتوای تبیینی'}
+              variant="tabyin"
               fill
               sizes="(max-width: 768px) 45vw, 22vw"
               className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -539,12 +541,21 @@ function TabyinTile({
           )}
         </Link>
       ) : (
-        /* ── Fallback gradient tile ─────────────────────────────────── */
+        /* ── Fallback tile — brand-tinted placeholder, keeps the wall
+             visually coherent when a piece of content has no cover. */
         <Link
           href={tileHref} target={tileTarget} rel={tileRel}
-          className="block w-full h-full"
-          style={{ background: `linear-gradient(135deg, ${it.toneFrom || '#0D8074'}, ${it.toneTo || '#053832'})` }}
-        />
+          className="relative block w-full h-full"
+          aria-label={it.title || 'محتوای تبیینی'}
+        >
+          <SmartImage
+            src={null}
+            alt={it.title || 'محتوای تبیینی'}
+            variant="tabyin"
+            fill
+            sizes="(max-width: 768px) 45vw, 22vw"
+          />
+        </Link>
       )}
 
       {/* Media-type badge — top-left (only for non-image, non-quote) */}
