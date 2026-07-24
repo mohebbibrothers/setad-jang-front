@@ -103,26 +103,36 @@ function MetaPill({
   value,
   unit,
   emphasis = 'num',
+  avatarUrl,
 }: {
   label: string;
   value: string | number;
   unit?: string;
   emphasis?: 'num' | 'text';
+  /** Optional avatar for text pills (e.g. sponsor logo from
+   *  SponsorPublicSerializer.logo). Rendered on the RTL-start edge, so
+   *  the label + value flow to its right and shrink cleanly. */
+  avatarUrl?: string;
 }) {
   return (
     <div
-      /* Mobile-first sizing:
-         - fluid horizontal padding (px-2 on phones, px-3 from sm+)
-         - `min-w-0` on the row so children can shrink to fit inside
-           very narrow card columns without ever pushing the pill wider
-           than its cell (which used to cause a horizontal scroll on
-           the "باقی‌مانده / تعداد سهم" pair at ≤ 380px). */
       className="h-[40px] rounded-[10px] border border-ink-200 bg-white
                  flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 min-w-0 overflow-hidden"
     >
-      {/* Label — RTL-start (right). Slightly smaller on phones so the
-          value gets more room; the label truncates rather than pushing
-          the value out. */}
+      {/* Sponsor avatar (optional) — square 22px, ring for definition */}
+      {avatarUrl && (
+        <span className="relative w-[22px] h-[22px] rounded-md overflow-hidden bg-ink-50 ring-1 ring-ink-100 shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={avatarUrl}
+            alt=""
+            loading="lazy"
+            className="w-full h-full object-cover"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+          />
+        </span>
+      )}
+
       <span
         className="text-[11px] sm:text-[12px] text-ink-500 font-medium leading-none
                    whitespace-nowrap truncate max-w-[42%] shrink"
@@ -130,7 +140,6 @@ function MetaPill({
         {label}
       </span>
 
-      {/* Value — fills the remaining space, truncates if too long. */}
       <span
         className={`flex-1 min-w-0 text-center
                     font-extrabold text-[12.5px] sm:text-[13.5px] text-ink-900
@@ -141,10 +150,6 @@ function MetaPill({
         {typeof value === 'number' ? formatPersianNumber(value) : value}
       </span>
 
-      {/* Unit — LTR-start (left), only when provided. Kept shrink-0 so
-          it's never truncated (values like "سهم" / "ریال" are the
-          entire semantic meaning of the pill — cutting them would be
-          worse than truncating the label). */}
       {unit && (
         <span
           className="text-[10.5px] sm:text-[11px] text-ink-400 font-medium leading-none
@@ -206,6 +211,31 @@ function Card({
   //   3. the gradient + glyph fallback as a last resort
   const thumbUrl = c.coverUrl ?? c.gallery?.[0]?.url;
   const galleryHint = (c.gallery?.length ?? (c.coverUrl ? 1 : 0));
+
+  // ─── Backend-driven lifecycle signals ───────────────────────────────
+  // Mirrors CampaignPublicListSerializer + CampaignStatus enum:
+  //   is_fully_funded → all shares reserved/paid, CTA must disable
+  //   status='completed'/'closed' → immutable end states
+  //   status='published' + remaining > 0 → active
+  const isFullyFunded = !!c.isFullyFunded || c.sharesRemaining === 0;
+  const statusDisplay = c.statusDisplay ?? '';
+  const isCompleted   = statusDisplay === 'تکمیل‌شده' || isFullyFunded;
+  const isClosed      = statusDisplay === 'بسته‌شده';
+  const ctaDisabled   = isFullyFunded || isClosed || isCompleted;
+  const ctaLabel      = isFullyFunded
+    ? 'تأمین شد'
+    : isClosed
+      ? 'بسته شد'
+      : isCompleted
+        ? 'تکمیل شد'
+        : 'مدد به حرکت';
+
+  // has_deadline + deadline countdown (only when the backend says the
+  // campaign actually HAS a deadline — otherwise we don't guess).
+  const deadlineMs = c.hasDeadline && c.deadline ? Date.parse(c.deadline) : NaN;
+  const daysLeft = Number.isFinite(deadlineMs)
+    ? Math.max(0, Math.ceil((deadlineMs - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
 
   return (
     <motion.article
@@ -323,27 +353,96 @@ function Card({
                 <MetaPill label="تعداد سهم" value={c.sharesTotal} unit="سهم" />
               </div>
 
-              <MetaPill label="مددکار" value={c.sponsor} emphasis="text" />
+              <MetaPill label="مددکار" value={c.sponsor} emphasis="text" avatarUrl={c.sponsorLogo} />
             </div>
           </div>
         </div>
 
+        {/* ── Backend-driven signal row ─────────────────────────────
+              Surfaces lifecycle + engagement fields that were dropped
+              in earlier revisions:
+                • status  → status_display / is_fully_funded badge
+                • participant_count  → مشارکت‌کنندگان chip
+                • has_deadline + deadline → countdown chip (warm-tone
+                  when ≤ 3 days remain) */}
+        {(isFullyFunded || isCompleted || isClosed
+          || (c.participantCount ?? 0) > 0
+          || daysLeft !== null) && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-3">
+            {isFullyFunded ? (
+              <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-mint-500 text-white
+                               text-[10.5px] font-extrabold ring-1 ring-mint-600/40">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"
+                     strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                تأمین‌شده
+              </span>
+            ) : isCompleted ? (
+              <span className="inline-flex items-center h-6 px-2 rounded-full bg-mint-500/15 text-mint-700
+                               text-[10.5px] font-extrabold ring-1 ring-mint-500/30">
+                {statusDisplay || 'تکمیل‌شده'}
+              </span>
+            ) : isClosed ? (
+              <span className="inline-flex items-center h-6 px-2 rounded-full bg-ink-100 text-ink-600
+                               text-[10.5px] font-extrabold ring-1 ring-ink-200">
+                {statusDisplay || 'بسته‌شده'}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-brand-50 text-brand-700
+                               text-[10.5px] font-extrabold ring-1 ring-brand-100">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
+                در حال جمع‌آوری
+              </span>
+            )}
+
+            {(c.participantCount ?? 0) > 0 && (
+              <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-ink-50 text-ink-700
+                               text-[10.5px] font-extrabold ring-1 ring-ink-100 tabular-nums">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+                     strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                {formatPersianNumber(c.participantCount!)} مشارکت‌کننده
+              </span>
+            )}
+
+            {daysLeft !== null && !ctaDisabled && (
+              <span className={`inline-flex items-center gap-1 h-6 px-2 rounded-full text-[10.5px]
+                               font-extrabold ring-1 tabular-nums ${
+                daysLeft <= 3
+                  ? 'bg-amber-50 text-amber-700 ring-amber-100'
+                  : 'bg-ink-50 text-ink-700 ring-ink-100'
+              }`}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+                     strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {daysLeft === 0 ? 'آخرین روز' : `${formatPersianNumber(daysLeft)} روز مانده`}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* ── CTA: opens the Participate modal in-page (preserves session
               cookies + lets the user pick share count with the slider
-              before redirecting to the gateway). Falls through to
-              /madadkar/<slug>/participate only via right-click / new-tab
-              for users who prefer the full-page flow. */}
+              before redirecting to the gateway). Disabled when the
+              backend says the campaign is fully funded / closed /
+              completed — no more orphan buttons that call a rejected
+              /participate/ endpoint. */}
         <button
           type="button"
-          onClick={() => onOpenParticipate(c)}
-          className="relative inline-flex items-center justify-center gap-2 w-full h-[46px] mt-4
-                     rounded-[12px] bg-brand-500 hover:bg-brand-600 active:bg-brand-700
-                     text-white text-[14.5px] font-extrabold
-                     shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)]
-                     transition-colors overflow-hidden cursor-pointer"
+          onClick={() => !ctaDisabled && onOpenParticipate(c)}
+          disabled={ctaDisabled}
+          aria-disabled={ctaDisabled}
+          className={`relative inline-flex items-center justify-center gap-2 w-full h-[46px] mt-3
+                     rounded-[12px] text-white text-[14.5px] font-extrabold overflow-hidden
+                     transition-colors ${
+                       ctaDisabled
+                         ? 'bg-ink-300 cursor-not-allowed shadow-none'
+                         : 'bg-brand-500 hover:bg-brand-600 active:bg-brand-700 shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)] cursor-pointer'
+                     }`}
         >
-          <span>مدد به حرکت</span>
-          <HandIcon />
+          <span>{ctaLabel}</span>
+          {!ctaDisabled && <HandIcon />}
         </button>
       </div>
     </motion.article>
@@ -384,10 +483,12 @@ export function WarFundSection({ campaigns }: { campaigns: CampaignCard[] }) {
   const next = () => { if (totalPages <= 1) return; setPage((p) => (p + 1) % totalPages); };
 
   // ─── Album state ──────────────────────────────────────────────────────
+  // Madadkar is the ONLY section where "مددکار: X" is semantically
+  // correct — the record literally IS sponsored by a Sponsor object.
   const [album, setAlbum] = useState<{
     open: boolean;
     title: string;
-    sponsor?: string;
+    subtitle?: { label: string; value: string };
     images: AlbumImage[];
     loading: boolean;
   }>({ open: false, title: '', images: [], loading: false });
@@ -425,10 +526,15 @@ export function WarFundSection({ campaigns }: { campaigns: CampaignCard[] }) {
   );
 
   const openAlbum = useCallback(async (c: CampaignCard) => {
+    // Madadkar album subtitle = sponsoring group name.
+    const subtitle = c.sponsor
+      ? { label: 'مددکار', value: c.sponsor }
+      : undefined;
+
     // 1. seed-supplied gallery → open immediately
     if (c.gallery && c.gallery.length) {
       setAlbum({
-        open: true, title: c.title, sponsor: c.sponsor,
+        open: true, title: c.title, subtitle,
         images: buildImages(c, c.gallery), loading: false,
       });
       return;
@@ -437,14 +543,14 @@ export function WarFundSection({ campaigns }: { campaigns: CampaignCard[] }) {
     const cached = galleryCache[c.slug];
     if (cached) {
       setAlbum({
-        open: true, title: c.title, sponsor: c.sponsor,
+        open: true, title: c.title, subtitle,
         images: buildImages(c, cached), loading: false,
       });
       return;
     }
     // 3. fetch from detail endpoint
     setAlbum({
-      open: true, title: c.title, sponsor: c.sponsor,
+      open: true, title: c.title, subtitle,
       images: buildImages(c), loading: true,
     });
     try {
@@ -556,7 +662,7 @@ export function WarFundSection({ campaigns }: { campaigns: CampaignCard[] }) {
         open={album.open}
         onClose={closeAlbum}
         title={album.title}
-        sponsor={album.sponsor}
+        subtitle={album.subtitle}
         images={album.images}
         loading={album.loading}
       />

@@ -137,6 +137,11 @@ export async function loadCriminals(): Promise<CriminalCard[]> {
 
 /* ─── LMS ────────────────────────────────────────────────────────────── */
 type ApiLmsCategory = { slug: string; title: string; courses_count?: number };
+/** Mirrors apps.lms.serializers.CourseSummarySerializer (LIST endpoint).
+ *  IMPORTANT: `instructor_avatar` / `description` / `instructor_bio` /
+ *  `intro_video_url` / `lessons` live ONLY on the DETAIL serializer.
+ *  Requesting them from the list endpoint used to yield `undefined`
+ *  every time — we no longer pretend they're available here. */
 type ApiCourse = {
   id?: number;
   slug: string;
@@ -144,7 +149,6 @@ type ApiCourse = {
   subtitle?: string;
   short_description?: string;
   instructor_name?: string;
-  instructor_avatar?: string | null;
   level?: 'beginner' | 'intermediate' | 'advanced' | 'professional' | string;
   status?: string;
   is_featured?: boolean;
@@ -176,22 +180,36 @@ export async function loadCourses(): Promise<CourseCard[]> {
     slug: c.slug,
     title: c.title,
     subtitle: c.subtitle,
+    shortDescription: c.short_description,
     instructor: c.instructor_name,
-    instructorAvatarUrl: absoluteMediaUrl(c.instructor_avatar),
+    // instructorAvatarUrl is DELIBERATELY not set here — the backend
+    // only exposes instructor_avatar on the CourseDetail serializer.
+    // The card falls back to its own initial-avatar glyph.
     level: c.level,
     coverUrl: absoluteMediaUrl(c.cover_image),
     lessonsCount: c.lessons_count,
     durationSeconds: c.estimated_duration_seconds,
     enrollmentsCount: c.enrollments_count,
+    graduatesCount: c.graduates_count,
     isFeatured: c.is_featured,
     isNew: c.published_at
       ? Date.now() - new Date(c.published_at).getTime() < 1000 * 60 * 60 * 24 * 30
       : false,
     categorySlug: c.category?.slug,
+    categoryTitle: c.category?.title,
   }));
 }
 
 /* ─── Kindness Wall ──────────────────────────────────────────────────── */
+/**
+ * Mirrors apps.kindness_wall.serializers.KindnessListingListSerializer
+ * (public LIST endpoint). NOTE: `description`, `address_hint`,
+ * `images[]`, `contact_available` live ONLY on the DETAIL serializer.
+ * Owner-only fields (`bookmark_count`, `report_count`,
+ * `contact_reveal_count`, `matches_*`) are exposed by the owner+admin
+ * serializers exclusively — the public homepage MUST NOT depend on
+ * them or the response envelope will silently mismatch.
+ */
 type ApiKindness = {
   id?: number;
   slug: string;
@@ -207,11 +225,10 @@ type ApiKindness = {
   expires_at?: string | null;
   view_count?: number;
   cover_image?: string | null;
+  /** Present ONLY when the caller was the DETAIL endpoint. Optional. */
   description?: string;
-  /** Detail endpoint embeds full images + matches count when available. */
   images?: Array<{ id: number; image: string; alt_text?: string; caption?: string; is_cover?: boolean; order?: number }>;
-  matches_count?: number;
-  bookmark_count?: number;
+  contact_available?: boolean;
 };
 export async function loadKindnessListings(): Promise<KindListing[]> {
   const data = await safeApiFetch<Paginated<ApiKindness>>(
@@ -234,8 +251,7 @@ export async function loadKindnessListings(): Promise<KindListing[]> {
     publishedAt: l.published_at,
     expiresAt: l.expires_at ?? undefined,
     viewCount: l.view_count,
-    bookmarkCount: l.bookmark_count,
-    matchesCount: l.matches_count,
+    contactAvailable: l.contact_available,
     gallery: (l.images ?? [])
       .slice()
       .sort((a, b) => {

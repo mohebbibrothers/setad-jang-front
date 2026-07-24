@@ -580,28 +580,29 @@ function TabyinTile({
         </span>
       )}
 
-      {/* Bottom-left action chips: link (copy) + heart (bookmark) */}
+      {/* Bottom-left action chips.
+          The "source" chip is BACKEND-DRIVEN: it opens the original
+          publisher URL (source_url from PublicTabyinContentListSerializer)
+          in a new tab. When the tabyin content isn't linked back to an
+          external source we hide the chip entirely — never render a
+          button that does nothing. */}
       <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 z-10">
-        <button
-          type="button"
-          aria-label="کپی لینک"
-          className="w-7 h-7 rounded-full bg-white/90 hover:bg-white text-ink-700
-                     flex items-center justify-center backdrop-blur-md
-                     shadow-[0_2px_6px_-2px_rgba(0,0,0,.25)]
-                     hover:scale-110 transition-all duration-150"
-        >
-          <Icon name="link" className="w-3.5 h-3.5" />
-        </button>
-        <button
-          type="button"
-          aria-label="افزودن به علاقه‌مندی‌ها"
-          className="w-7 h-7 rounded-full bg-white/90 hover:bg-white text-ink-700
-                     hover:text-rose-500 flex items-center justify-center backdrop-blur-md
-                     shadow-[0_2px_6px_-2px_rgba(0,0,0,.25)]
-                     hover:scale-110 transition-all duration-150"
-        >
-          <Icon name="heart" className="w-3.5 h-3.5" />
-        </button>
+        {it.sourceUrl ? (
+          <a
+            href={it.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="مشاهده‌ی منبع اصلی"
+            title="منبع اصلی"
+            onClick={(e) => e.stopPropagation()}
+            className="w-7 h-7 rounded-full bg-white/90 hover:bg-white text-ink-700
+                       flex items-center justify-center backdrop-blur-md
+                       shadow-[0_2px_6px_-2px_rgba(0,0,0,.25)]
+                       hover:scale-110 transition-all duration-150"
+          >
+            <Icon name="link" className="w-3.5 h-3.5" />
+          </a>
+        ) : null}
       </div>
     </motion.article>
   );

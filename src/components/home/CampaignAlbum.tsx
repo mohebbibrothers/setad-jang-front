@@ -53,6 +53,23 @@ type Props = {
   open: boolean;
   onClose: () => void;
   title: string;
+  /**
+   * Optional secondary line displayed under the title. The `label` is
+   * whatever backend-derived category the caller wants to project:
+   *   { label: 'مددکار', value: sponsor.name }        (madadkar)
+   *   { label: 'موقعیت', value: 'تهران، ایران' }      (r4j)
+   *   { label: 'نوع',    value: 'نیاز به کمک · کالا' } (kindness)
+   * The label is passed EXPLICITLY so we never mislabel a subtitle
+   * (previously the album always rendered "مددکار: X" regardless of
+   * which section owned the record — including R4J criminal locations,
+   * which was semantically wrong).
+   */
+  subtitle?: { label: string; value: string };
+  /**
+   * @deprecated — legacy prop kept only for backwards compatibility
+   * with callers that haven't migrated to `subtitle` yet. When set (and
+   * `subtitle` is absent) we render it as { label: 'مددکار', value: sponsor }.
+   */
   sponsor?: string;
   images: AlbumImage[];
   loading?: boolean;
@@ -95,8 +112,13 @@ function HudBtn({
 }
 
 export function CampaignAlbum({
-  open, onClose, title, sponsor, images, loading = false, startIndex = 0,
+  open, onClose, title, subtitle, sponsor, images, loading = false, startIndex = 0,
 }: Props) {
+  // Migrate the legacy `sponsor` prop into the new generic shape so
+  // existing call sites keep rendering identically until they switch
+  // over to explicit `subtitle`. Once every caller passes `subtitle`
+  // this shim can be removed.
+  const resolvedSubtitle = subtitle ?? (sponsor ? { label: 'مددکار', value: sponsor } : undefined);
   const total = images.length;
 
   // ── Portal mount guard ─────────────────────────────────────────────
@@ -823,9 +845,9 @@ export function CampaignAlbum({
                   <h3 className="text-[13px] sm:text-[14.5px] md:text-[15.5px] font-extrabold leading-[1.4] truncate">
                     {title}
                   </h3>
-                  {sponsor && (
+                  {resolvedSubtitle?.value && (
                     <p className="hidden sm:block text-[12px] text-white/60 font-medium leading-5 truncate">
-                      مددکار: {sponsor}
+                      {resolvedSubtitle.label}: {resolvedSubtitle.value}
                     </p>
                   )}
                 </div>

@@ -54,16 +54,25 @@ export type CourseCard = {
   slug: string;
   title: string;
   subtitle?: string;
+  /** apps.lms.serializers.CourseSummarySerializer.short_description */
+  shortDescription?: string;
   instructor?: string;
+  /** ONLY present when the source was CourseDetailSerializer. Homepage
+   *  cards read from CourseSummarySerializer and will always leave this
+   *  undefined — the card gracefully falls back to an initial glyph. */
   instructorAvatarUrl?: string;
   level?: 'beginner' | 'intermediate' | 'advanced' | 'professional' | string;
   coverUrl?: string;
   lessonsCount?: number;
   durationSeconds?: number;
   enrollmentsCount?: number;
+  /** apps.lms.serializers.CourseSummarySerializer.graduates_count */
+  graduatesCount?: number;
   isNew?: boolean;
   isFeatured?: boolean;
   categorySlug?: string;
+  /** Denormalised for anchor labels / breadcrumbs; comes from `category.title`. */
+  categoryTitle?: string;
   toneFrom?: string;
   toneTo?: string;
 };
@@ -494,18 +503,28 @@ function CourseTile({ c, delay = 0 }: { c: CourseCard; delay?: number }) {
             ) : null}
           </div>
 
-          {/* Footer row — enrollments + start arrow */}
-          <div className="mt-1 pt-3 border-t border-ink-100 flex items-center justify-between">
-            {typeof c.enrollmentsCount === 'number' && c.enrollmentsCount > 0 ? (
-              <span className="inline-flex items-center gap-1 text-[11.5px] text-ink-500 font-bold tabular-nums">
-                <Icon name="user" className="w-3.5 h-3.5 text-ink-400" />
-                {c.enrollmentsCount.toLocaleString('fa-IR')} یادگیرنده
-              </span>
-            ) : (
-              <span />
-            )}
+          {/* Footer row — backend counters + start arrow.
+              Surfaces BOTH enrollments_count AND graduates_count from
+              CourseSummarySerializer so the card tells the full
+              engagement→outcome story instead of just "how many
+              signed up". */}
+          <div className="mt-1 pt-3 border-t border-ink-100 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0">
+              {typeof c.enrollmentsCount === 'number' && c.enrollmentsCount > 0 && (
+                <span className="inline-flex items-center gap-1 text-[11.5px] text-ink-500 font-bold tabular-nums">
+                  <Icon name="user" className="w-3.5 h-3.5 text-ink-400" />
+                  {c.enrollmentsCount.toLocaleString('fa-IR')} یادگیرنده
+                </span>
+              )}
+              {typeof c.graduatesCount === 'number' && c.graduatesCount > 0 && (
+                <span className="inline-flex items-center gap-1 text-[11.5px] text-mint-700 font-extrabold tabular-nums">
+                  <Icon name="sparkles" className="w-3.5 h-3.5 text-mint-500" />
+                  {c.graduatesCount.toLocaleString('fa-IR')} فارغ‌التحصیل
+                </span>
+              )}
+            </div>
             <span className="inline-flex items-center gap-1 text-[12px] text-brand-600 font-extrabold
-                             group-hover:gap-2 transition-all duration-200">
+                             group-hover:gap-2 transition-all duration-200 shrink-0">
               <span>مشاهده دوره</span>
               <Icon name="arrow-left" className="w-3.5 h-3.5" />
             </span>
