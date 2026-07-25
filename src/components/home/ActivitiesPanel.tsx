@@ -62,22 +62,21 @@ export function ActivitiesPanel() {
   return (
     <section
       /* ── Vertical rhythm — kisses the hero photo, doesn't devour it ──
-       * The panel still sits close enough to the hero cutout that the
-       * ambient soft-white halo above it can dissolve the seam, but
-       * we've eased the negative margin so the wave-panel doesn't
-       * eat into the defenders' feet more than absolutely needed.
+       * Fine-tuned again after client review on staging:
+       *   • MOBILE   : nudge UP by ~1.5 rem (24 px). Previous value was
+       *     mt-0 — the panel sat too far below the hero cutout on a
+       *     phone; a light overlap re-tightens the composition without
+       *     colliding with the defenders' boots.
+       *   • DESKTOP  : drop DOWN by ~1 rem (16 px). Previous −56 px
+       *     overlap was reaching a touch too high on wide viewports.
+       *   • TABLET   : re-scaled proportionally so the transition
+       *     between the two breakpoints stays smooth.
        *
-       * Client fine-tune this pass:
-       *   • mobile   : dropped ~32 px  (removed the overlap entirely —
-       *                the halo alone does the job on a small screen)
-       *   • desktop  : dropped ~16 px  (≈ 1rem lower than before)
-       *
-       *   phones          :   0 px    (no overlap; halo blends the seam)
-       *   tablets (md)    : −48 px
-       *   desktops (lg)   : −56 px    (was −72; the client asked for
-       *                                 ~1rem more air on wide viewports)
+       *   phones          : −24 px
+       *   tablets (md)    : −36 px
+       *   desktops (lg)   : −40 px
        */
-      className="relative mt-0 md:-mt-[48px] lg:-mt-[56px]
+      className="relative -mt-[24px] md:-mt-[36px] lg:-mt-[40px]
                  pt-16 md:pt-20 lg:pt-24 pb-20 md:pb-24"
       aria-labelledby="activities-title"
     >
