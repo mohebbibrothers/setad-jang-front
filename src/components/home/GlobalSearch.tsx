@@ -436,23 +436,16 @@ export function GlobalSearch({
 
   const pillClasses = variant === 'hero'
     /* ── Hero-variant vertical offset ─────────────────────────────
-     * The pill pulls itself UP over the bottom of the hero photo
-     * and now targets the CHEST-JUST-BELOW-SHOULDER line of the
-     * centre defender — high enough to open a comfortable gap
-     * above the Activities panel below (which itself has been
-     * softened to overlap the hero photo LESS in the paired edit
-     * to ActivitiesPanel.tsx), yet still clearly beneath the
-     * defenders' shoulders and heads.
+     * Targets the CHEST-JUST-BELOW-SHOULDER line of the centre
+     * defender. Mobile value was previously too aggressive and rode
+     * up to the man's chin, so we've eased it back by ~35 px on
+     * phones (tablet + desktop unchanged — they were correct).
      *
-     * Values are progressive across breakpoints so the pill lands
-     * on the same anatomical line regardless of viewport width
-     * (the hero photo scales up with the container).
-     *
-     *   phone (< md):  −175 px
+     *   phone (< md):  −140 px   (was −175, landed on the chin)
      *   tablet (md):   −210 px
      *   desktop (lg):  −245 px
      */
-    ? 'relative z-30 mx-auto -mt-[175px] md:-mt-[210px] lg:-mt-[245px] max-w-3xl'
+    ? 'relative z-30 mx-auto -mt-[140px] md:-mt-[210px] lg:-mt-[245px] max-w-3xl'
     : 'relative z-30 mx-auto max-w-3xl';
 
   return (
