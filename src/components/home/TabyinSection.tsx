@@ -261,11 +261,23 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
             The count badge is hidden below 480px and shown as a small
             corner chip so the chip body itself never has to compete with
             it for horizontal space. */}
+        {/* Filter pill — content-hugging on every viewport.
+         *
+         * The previous revision used `grid-cols-4 + w-full` on phones,
+         * a layout that had been sized for FOUR tabs (همه / تصویر /
+         * ویدئو / صوت). When the 'صوت' tab was retired the grid still
+         * reserved four columns, so a phantom fourth column stretched
+         * the pill to full-width and left a visibly-empty gap on the
+         * left. Switching to an intrinsically-sized `inline-flex` at
+         * ALL widths lets the outer `justify-center` centre the pill
+         * naturally and keeps every tab equidistant. No more phantom
+         * column, no more sideways drift when the filter roster
+         * changes size in the future. */}
         <div className="flex justify-center mb-6 w-full">
           <div className="inline-flex p-1 bg-ink-50 rounded-full ring-1 ring-ink-100 shadow-inner
-                          w-full max-w-full sm:w-auto"
+                          max-w-full"
                role="tablist" aria-label="نوع رسانه">
-            <div className="grid grid-cols-4 sm:flex w-full gap-0.5 sm:gap-0 min-w-0">
+            <div className="flex gap-0.5 sm:gap-0 min-w-0">
               {FILTERS.map((f) => {
                 const isActive = filter === f.key;
                 const c = counts[f.key];
@@ -276,10 +288,17 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => setFilter(f.key)}
-                    className={`relative inline-flex items-center justify-center gap-1 sm:gap-1.5
-                                h-10 px-1.5 sm:px-4 min-w-0
+                    /* Each tab is content-hugging with intentional
+                     * horizontal padding — no more `flex-1` stretching
+                     * (which was compensating for the phantom-column
+                     * bug the parent grid used to introduce). Padding
+                     * is comfortable at every size so all three tabs
+                     * feel equal-weight without the pill looking
+                     * cramped on phones. */
+                    className={`relative inline-flex items-center justify-center gap-1.5
+                                h-10 px-3 sm:px-4 min-w-0
                                 rounded-full text-[11.5px] sm:text-[12.5px] font-extrabold whitespace-nowrap
-                                transition-all duration-200 flex-1 sm:flex-none
+                                transition-all duration-200
                                 ${isActive
                                   ? 'bg-gradient-to-l from-brand-500 to-brand-700 text-white shadow-[0_8px_20px_-6px_rgba(13,128,116,.55)]'
                                   : 'text-ink-600 hover:text-ink-900 hover:bg-white/60'}`}

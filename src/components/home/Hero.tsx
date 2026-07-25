@@ -32,12 +32,23 @@ export function Hero() {
         aria-hidden="true"
         className="hero-deco-clip absolute inset-0 overflow-hidden pointer-events-none z-0"
       >
+        {/* Top-right dotted wave.
+         *
+         * Vertical position is breakpoint-scoped so the decoration
+         * lands at the right anatomical zone regardless of viewport:
+         *   • phones — `top-24` (96 px) drops it well below the header
+         *     so it doesn't hover awkwardly above the defenders' heads
+         *     on a short mobile hero (client feedback: previous
+         *     `top-10` was too high on phones only)
+         *   • tablet+ — `md:top-10` (40 px) keeps the desktop
+         *     composition exactly as the designer approved earlier */}
         <Image
           src="/brand/wave-dotted-1.png"
           alt=""
           width={470} height={254}
           priority
-          className="absolute top-10 -right-4 md:right-[2%] w-[280px] md:w-[420px] opacity-95 select-none"
+          className="absolute top-24 md:top-10 -right-4 md:right-[2%]
+                     w-[280px] md:w-[420px] opacity-95 select-none"
         />
         {/* Bottom-left dotted wave.
          *
