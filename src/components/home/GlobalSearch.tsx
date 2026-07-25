@@ -435,21 +435,7 @@ export function GlobalSearch({
   /* ── Layout ─────────────────────────────────────────────────────── */
 
   const pillClasses = variant === 'hero'
-    /* ── Hero-variant vertical offset ─────────────────────────────
-     * The pill pulls itself UP over the bottom of the hero photo so
-     * it visually anchors the composition. Values chosen to sit at
-     * roughly the defenders' waist line, NEVER their faces / shoulders.
-     *
-     * These numbers were re-tuned after ActivitiesPanel gained its
-     * own `-mt` overlap (see ActivitiesPanel.tsx). Previously the
-     * pill used −100/−120/−140 which, combined with the panel now
-     * riding 72/96/128 px higher, produced almost zero gap between
-     * pill and panel — the two ate each other's breathing room.
-     * The current triple restores the pre-overlap standard spacing
-     * BELOW the pill while keeping the pill firmly inside the hero
-     * cutout above.
-     */
-    ? 'relative z-30 mx-auto -mt-[40px] md:-mt-[48px] lg:-mt-[56px] max-w-3xl'
+    ? 'relative z-30 mx-auto -mt-[100px] md:-mt-[120px] lg:-mt-[140px] max-w-3xl'
     : 'relative z-30 mx-auto max-w-3xl';
 
   return (
