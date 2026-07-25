@@ -39,11 +39,27 @@ export function Hero() {
           priority
           className="absolute top-10 -right-4 md:right-[2%] w-[280px] md:w-[420px] opacity-95 select-none"
         />
+        {/* Bottom-left dotted wave.
+         *
+         * Positioning rules learned from client feedback:
+         *   • MUST stay UNDER (never in front of / behind the head of)
+         *     the hero defenders photo — on phones the previous
+         *     `bottom-28` value collided with the group's faces because
+         *     the whole hero section is shorter at that viewport width.
+         *   • On phones we drop it all the way to `bottom-2` so it
+         *     hugs the search-pill area — always below the cutout.
+         *   • On desktop we still want it to slide UNDER the group,
+         *     just lower than before: `md:bottom-4` puts it below the
+         *     boot line of the defenders.
+         *   • Narrower on phones (200 px wide instead of 260) so it
+         *     doesn't sweep across the man on the right at all. */}
         <Image
           src="/brand/wave-dotted-2.png"
           alt=""
           width={487} height={107}
-          className="absolute bottom-28 -left-4 md:left-[2%] w-[260px] md:w-[420px] opacity-85 select-none scale-x-[-1]"
+          className="absolute bottom-2 md:bottom-4 -left-2 md:left-[2%]
+                     w-[200px] md:w-[420px]
+                     opacity-85 select-none scale-x-[-1]"
         />
       </div>
 

@@ -61,28 +61,23 @@ const ACTIVITIES: Activity[] = [
 export function ActivitiesPanel() {
   return (
     <section
-      /* ── Vertical rhythm — overlaps the hero photo on purpose ────────
-       * The hero PNG is cropped at the defenders' knees, which reads as
-       * a hard cut against the white page below. To smooth that seam
-       * the section is PULLED UP with a negative margin so the green
-       * wave panel + the ambient fade above it visually finish the
-       * composition — the eye reads the group as standing INTO the
-       * next chapter rather than being sliced off by it.
+      /* ── Vertical rhythm — kisses the hero photo, doesn't devour it ──
+       * The panel still sits close enough to the hero cutout that the
+       * ambient soft-white halo above it can dissolve the seam, but
+       * we've eased the negative margin so the wave-panel doesn't
+       * eat into the defenders' feet more than absolutely needed.
        *
-       * Tuning note — this pass DIALS BACK the overlap by ~40 px per
-       * breakpoint. The previous −72/−96/−128 values covered too much
-       * of the hero photo (the wave panel reached almost to the
-       * defenders' hips). The client asked for a LIGHTER overlap that
-       * just kisses the very bottom of the photo, so we're now on:
+       * Client fine-tune this pass:
+       *   • mobile   : dropped ~32 px  (removed the overlap entirely —
+       *                the halo alone does the job on a small screen)
+       *   • desktop  : dropped ~16 px  (≈ 1rem lower than before)
        *
-       *   phones          : −32 px   (just the boots)
+       *   phones          :   0 px    (no overlap; halo blends the seam)
        *   tablets (md)    : −48 px
-       *   desktops (lg)   : −72 px   (largest hero → biggest overlap)
-       *
-       * Combined with the paired search-pill lift (GlobalSearch.tsx)
-       * that adds ~30-40 px more clearance above the panel, this
-       * restores the visual breathing room the composition needs. */
-      className="relative -mt-[32px] md:-mt-[48px] lg:-mt-[72px]
+       *   desktops (lg)   : −56 px    (was −72; the client asked for
+       *                                 ~1rem more air on wide viewports)
+       */
+      className="relative mt-0 md:-mt-[48px] lg:-mt-[56px]
                  pt-16 md:pt-20 lg:pt-24 pb-20 md:pb-24"
       aria-labelledby="activities-title"
     >
