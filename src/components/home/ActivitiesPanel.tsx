@@ -64,21 +64,25 @@ export function ActivitiesPanel() {
       /* ── Vertical rhythm — overlaps the hero photo on purpose ────────
        * The hero PNG is cropped at the defenders' knees, which reads as
        * a hard cut against the white page below. To smooth that seam
-       * the section is now PULLED UP with a negative margin so the
-       * green wave panel + the ambient fade above it visually finish
-       * the composition — the eye reads the group as standing INTO the
+       * the section is PULLED UP with a negative margin so the green
+       * wave panel + the ambient fade above it visually finish the
+       * composition — the eye reads the group as standing INTO the
        * next chapter rather than being sliced off by it.
        *
-       * Progressive by breakpoint so the overlap scales with the hero
-       * photo width (which is itself `max-w-[680px]` at all sizes):
-       *   phones          : −72px  (~ shins / boots)
-       *   tablets (md)    : −96px
-       *   desktops (lg)   : −128px (largest hero → biggest overlap)
+       * Tuning note — this pass DIALS BACK the overlap by ~40 px per
+       * breakpoint. The previous −72/−96/−128 values covered too much
+       * of the hero photo (the wave panel reached almost to the
+       * defenders' hips). The client asked for a LIGHTER overlap that
+       * just kisses the very bottom of the photo, so we're now on:
        *
-       * We also add a top-padding so the ambient soft-white glow above
-       * the panel has room to breathe without pressing on the panel
-       * itself. */
-      className="relative -mt-[72px] md:-mt-[96px] lg:-mt-[128px]
+       *   phones          : −32 px   (just the boots)
+       *   tablets (md)    : −48 px
+       *   desktops (lg)   : −72 px   (largest hero → biggest overlap)
+       *
+       * Combined with the paired search-pill lift (GlobalSearch.tsx)
+       * that adds ~30-40 px more clearance above the panel, this
+       * restores the visual breathing room the composition needs. */
+      className="relative -mt-[32px] md:-mt-[48px] lg:-mt-[72px]
                  pt-16 md:pt-20 lg:pt-24 pb-20 md:pb-24"
       aria-labelledby="activities-title"
     >
