@@ -273,11 +273,24 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
          * naturally and keeps every tab equidistant. No more phantom
          * column, no more sideways drift when the filter roster
          * changes size in the future. */}
+        {/* Phone-only breathing tweaks (client fine-tune):
+         *   • Outer pill padding  : p-1.5 → 6 px  (was p-1 → 4 px).
+         *                           Adds ~2 px of trough around the
+         *                           active-tab shadow so the tabs feel
+         *                           lifted, not cramped against the
+         *                           ring border.
+         *   • Inter-tab gap      : gap-1  → 4 px  (was gap-0.5 → 2 px).
+         *                           Small but perceptible separation so
+         *                           the three tabs read as distinct
+         *                           targets instead of a single strip.
+         * Both values collapse back to the desktop defaults from `sm:`
+         * upward (p-1 / gap-0) — the wider chip padding on desktop
+         * already carries all the breathing room needed there. */}
         <div className="flex justify-center mb-6 w-full">
-          <div className="inline-flex p-1 bg-ink-50 rounded-full ring-1 ring-ink-100 shadow-inner
+          <div className="inline-flex p-1.5 sm:p-1 bg-ink-50 rounded-full ring-1 ring-ink-100 shadow-inner
                           max-w-full"
                role="tablist" aria-label="نوع رسانه">
-            <div className="flex gap-0.5 sm:gap-0 min-w-0">
+            <div className="flex gap-1 sm:gap-0 min-w-0">
               {FILTERS.map((f) => {
                 const isActive = filter === f.key;
                 const c = counts[f.key];
