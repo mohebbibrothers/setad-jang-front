@@ -435,7 +435,25 @@ export function GlobalSearch({
   /* ── Layout ─────────────────────────────────────────────────────── */
 
   const pillClasses = variant === 'hero'
-    ? 'relative z-30 mx-auto -mt-[100px] md:-mt-[120px] lg:-mt-[140px] max-w-3xl'
+    /* ── Hero-variant vertical offset ─────────────────────────────
+     * The pill pulls itself UP over the bottom of the hero photo so
+     * it visually anchors the composition. Targets the DEFENDERS'
+     * CHEST line — that's the sweet spot the designer signed off on:
+     * high enough to open a comfortable gap between pill and the
+     * Activities panel below (which itself now overlaps the hero
+     * from the other direction via its own −mt), yet still low
+     * enough that the pill never intrudes on faces / shoulders.
+     *
+     * Progressive by breakpoint because the hero photo is scaled by
+     * `max-w-[680px] + w-full`, so at wider viewports the picture
+     * is physically taller and the chest line lives further down
+     * in absolute pixels.
+     *
+     *   phone (< md):  −140 px  → sits mid-chest on ~360-container
+     *   tablet (md):   −170 px  → sits mid-chest on ~720-container
+     *   desktop (lg):  −200 px  → sits mid-chest on ~1024-container
+     */
+    ? 'relative z-30 mx-auto -mt-[140px] md:-mt-[170px] lg:-mt-[200px] max-w-3xl'
     : 'relative z-30 mx-auto max-w-3xl';
 
   return (
