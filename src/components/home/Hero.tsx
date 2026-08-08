@@ -25,85 +25,102 @@ import { GlobalSearch } from './GlobalSearch';
 export function Hero() {
   return (
     <section className="relative bg-white pt-6 md:pt-8 pb-0">
-      {/* Decorative dotted curves clipped to the section width, OUTSIDE the
-          search bar's z-stack — so the dropdown can extend downward into
-          the next section unimpeded. */}
+      {/* Decorative dotted streamers — implemented as inline SVGs so they
+          can stretch to whatever viewport width without distorting the
+          endpoints. Each streamer is anchored to one viewport edge (the
+          "tail" of the dash) and extends inward past the hero silhouette
+          by a fixed amount (the "tip" tucked BEHIND the defender).
+          `preserveAspectRatio="none"` lets us decouple width from height
+          so a single path adapts fluidly from 360 px phones to 2560 px
+          ultrawides.
+          Rendered inside `.hero-deco-clip` at z-0 so the hero photo
+          (z-10) covers the tip while the tail streams freely toward
+          the viewport corner. `text-[#d1d5e3]` sets `currentColor` for
+          both strokes so the palette is tweakable in one place. */}
       <div
         aria-hidden="true"
-        className="hero-deco-clip absolute inset-0 overflow-hidden pointer-events-none z-0"
+        className="hero-deco-clip absolute inset-0 overflow-hidden pointer-events-none z-0 text-[#d1d5e3]"
       >
-        {/* Top-right dotted wave.
+        {/* Top-right dotted streamer.
          *
-         * DESKTOP GEOMETRY (the whole point of this decoration):
-         *   The hero cutout is centred with `max-w-[680px]`, so its
-         *   RIGHT edge sits at `50vw + 340px`. We want the wave to
-         *   live mostly OUTSIDE the photo (out toward the viewport
-         *   edge) with only its trailing tip sneaking BEHIND the
-         *   right defender — the classic "dashed streamer emerging
-         *   from behind the subject" motif.
+         *  GEOMETRY
+         *  ────────
+         *   OUTER edge → viewport right edge (right: 0) at every size.
+         *   INNER edge → tucks 130 px BEHIND the right defender on
+         *                desktop (left: calc(50% + 210px), given the
+         *                hero is `max-w-[680px]` so its right edge is
+         *                at 50vw + 340px → 340 − 210 = 130 px underlap).
+         *                On phones/tablets we underlap by ~45 % of
+         *                viewport, which similarly hides the tip
+         *                behind the right defender (mobile hero is
+         *                effectively full-width).
          *
-         *   To achieve that, anchor by LEFT (not right):
-         *     `left: calc(50% + 300px)`
-         *   That puts the wave's LEFT edge 300 px right of centre =
-         *   just 40 px inside the hero's right edge (340 − 300). So
-         *   only ~40 px of the wave bounding-box overlaps the photo
-         *   — exactly the "tip peeking out from behind him" look —
-         *   while the rest of the 420 px wave streams off toward
-         *   the viewport's right edge (and beyond, safely clipped
-         *   by `.hero-deco-clip`).
+         *  VERTICAL
+         *  ────────
+         *   Placed HIGH (top-2 on desktop) — sits above its bottom-left
+         *   partner to produce the requested right-high / left-low
+         *   diagonal balance.
          *
-         *   Vertically we push it HIGH (`md:top-4`) so the streamer
-         *   reads as clearly ABOVE its bottom-left partner — the
-         *   user asked for the right wave to sit a touch higher
-         *   than the left one, and the diagonal contrast sells it.
+         *  SVG PATH
+         *  ────────
+         *   A shallow S-curve from bottom-left (the tip) up to top-right
+         *   (the tail). preserveAspectRatio="none" lets it flatten
+         *   gracefully on wide viewports without pinching the ends.
+         */}
+        <svg
+          viewBox="0 0 500 160"
+          preserveAspectRatio="none"
+          className="absolute top-14 md:top-2
+                     right-0 left-[45%] md:left-[calc(50%+210px)]
+                     h-[80px] md:h-[150px] opacity-95"
+        >
+          <path
+            d="M 6 148
+               C 90 138 150 122 210 98
+               C 280 68 340 46 400 28
+               C 440 18 468 13 494 10"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeDasharray="5 8"
+            strokeLinecap="round"
+            fill="none"
+          />
+        </svg>
+
+        {/* Bottom-left dotted streamer.
          *
-         *   PHONES: unchanged — parked in the top-right corner
-         *   (`top-24 -right-4`, 280 px wide). The `md:right-auto`
-         *   is essential so Tailwind cancels the mobile `right`
-         *   value once we switch to positioning by `left`. */}
-        <Image
-          src="/brand/wave-dotted-1.png"
-          alt=""
-          width={470} height={254}
-          priority
-          className="absolute top-24 md:top-4
-                     -right-4 md:right-auto md:left-[calc(50%+300px)]
-                     w-[280px] md:w-[420px]
-                     opacity-95 select-none"
-        />
-        {/* Bottom-left dotted wave.
+         *  Mirror of the top-right streamer in every axis:
+         *    OUTER edge → viewport LEFT edge (left: 0).
+         *    INNER edge → 130 px BEHIND the left defender on desktop
+         *                 (right: calc(50% + 210px)); ~45 % of vw on
+         *                 phones.
+         *    VERTICAL   → low (bottom-4/bottom-6) to sit BELOW its
+         *                 top-right partner, closing the diagonal.
          *
-         * DESKTOP GEOMETRY (mirror of wave-1):
-         *   Same "tip peeks out from behind the subject" motif, but
-         *   for the left defender. The hero's LEFT edge sits at
-         *   `50vw − 340px`; we anchor by RIGHT:
-         *     `right: calc(50% + 300px)`
-         *   which places the wave's RIGHT edge 300 px left of centre
-         *   = 40 px inside the hero's left edge. Only that 40 px
-         *   sliver disappears behind the left defender; the rest of
-         *   the wave streams off toward the viewport's left edge
-         *   (and beyond, clipped).
-         *
-         *   Vertically anchored LOW (`md:bottom-6`) so the streamer
-         *   sits below its top-right partner — enforcing the
-         *   requested diagonal (right-high, left-low) balance.
-         *
-         *   `scale-x-[-1]` mirrors the artwork so the S-curve sweeps
-         *   INTO the composition. The bounding-box right edge is
-         *   what visually contains the "tip" of the wave post-mirror,
-         *   which is exactly the sliver we tuck behind the defender.
-         *
-         *   PHONES: unchanged — `bottom-2 -left-2`, 200 px wide.
-         *   `md:left-auto` cancels the mobile `left` value. */}
-        <Image
-          src="/brand/wave-dotted-2.png"
-          alt=""
-          width={487} height={107}
-          className="absolute bottom-2 md:bottom-6
-                     -left-2 md:left-auto md:right-[calc(50%+300px)]
-                     w-[200px] md:w-[420px]
-                     opacity-85 select-none scale-x-[-1]"
-        />
+         *  The SVG path itself is designed as an already-mirrored
+         *  companion (starts at TOP-LEFT tail, ends at BOTTOM-RIGHT
+         *  tip) — no scale-x needed, which keeps stroke crispness
+         *  identical to the right streamer.
+         */}
+        <svg
+          viewBox="0 0 500 110"
+          preserveAspectRatio="none"
+          className="absolute bottom-3 md:bottom-6
+                     left-0 right-[45%] md:right-[calc(50%+210px)]
+                     h-[55px] md:h-[105px] opacity-90"
+        >
+          <path
+            d="M 6 14
+               C 70 20 130 30 190 44
+               C 250 60 310 74 370 84
+               C 420 92 460 96 494 100"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeDasharray="5 8"
+            strokeLinecap="round"
+            fill="none"
+          />
+        </svg>
       </div>
 
       <div className="container-edge relative">
