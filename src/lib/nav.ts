@@ -1,11 +1,29 @@
 /**
- * Site-wide navigation: primary nav, footer nav, megamenu groups.
- * Designed to mirror the backend apps under /api/v1/* (kept in sync with config/urls.py).
+ * Site-wide navigation catalogue.
+ *
+ * ⚠️ Source-of-truth policy
+ * ---------------------------
+ * As of the "homepage-only" milestone, the only rendered routes are:
+ *     /                (single-page hub — every section lives here)
+ *     /search          (SSR search results)
+ *     /tabyin/*        (Tabyin index + detail + submission)
+ *
+ * Everything else is intentionally NOT built yet. To keep the header,
+ * footer and any megamenu component pointing at links that actually
+ * resolve, we route all "domain area" nav items to in-page anchors on
+ * the homepage (`/#warfund`, `/#justice`, …) rather than dead
+ * top-level paths. When the standalone pages are eventually shipped,
+ * flip the `href` fields here to the real routes and every consumer
+ * updates for free.
  */
 
 export type NavItem = {
   label: string;
   href: string;
+  /** True when the destination is an in-page anchor. Consumers use
+   *  this to short-circuit into `scrollIntoView({ behavior: 'smooth' })`
+   *  instead of a full page-load navigation. */
+  anchor?: boolean;
   description?: string;
   badge?: string;
 };
@@ -16,45 +34,31 @@ export type NavGroup = {
 };
 
 export const primaryNav: NavItem[] = [
-  { label: 'صفحه اصلی', href: '/' },
-  { label: 'جهاد تبیین', href: '/tabyin' },
-  { label: 'دیوار مهربانی', href: '/kindness-wall' },
-  { label: 'مددکاری', href: '/madadkar' },
-  { label: 'آموزش', href: '/lms' },
-  { label: 'جایزه عدالت', href: '/r4j' },
-  { label: 'گزارش مردمی', href: '/public-reports' },
-  { label: 'درباره ما', href: '/about' },
-  { label: 'تماس با ما', href: '/contact' },
+  { label: 'صفحه اصلی',      href: '/' },
+  { label: 'پشتیبانی مالی جنگ', href: '/#warfund',   anchor: true },
+  { label: 'جایزه‌ای برای عدالت', href: '/#justice',   anchor: true },
+  { label: 'قرارگاه آموزشی',    href: '/#education', anchor: true },
+  { label: 'دیوار مهربانی',     href: '/#kindness',  anchor: true },
+  { label: 'جهاد تبیین',        href: '/#tabyin',    anchor: true },
+  { label: 'گزارش مردمی',       href: '/#reports',   anchor: true },
 ];
 
 export const footerNav: NavGroup[] = [
   {
     label: 'فعالیت‌ها',
     items: [
-      { label: 'جهاد تبیین', href: '/tabyin' },
-      { label: 'دیوار مهربانی', href: '/kindness-wall' },
-      { label: 'مددکاری', href: '/madadkar' },
-      { label: 'مدرسه آموزشی', href: '/lms' },
-      { label: 'جایزه عدالت', href: '/r4j' },
+      { label: 'پشتیبانی مالی جنگ', href: '/#warfund',   anchor: true },
+      { label: 'جایزه‌ای برای عدالت', href: '/#justice',   anchor: true },
+      { label: 'قرارگاه آموزشی',   href: '/#education', anchor: true },
+      { label: 'دیوار مهربانی',    href: '/#kindness',  anchor: true },
+      { label: 'جهاد تبیین',       href: '/#tabyin',    anchor: true },
     ],
   },
   {
-    label: 'حساب کاربری',
+    label: 'مشارکت',
     items: [
-      { label: 'ورود / ثبت‌نام', href: '/auth/login' },
-      { label: 'داشبورد من', href: '/dashboard' },
-      { label: 'پشتیبانی', href: '/support' },
-      { label: 'اعلان‌ها', href: '/notifications' },
-    ],
-  },
-  {
-    label: 'سازمان',
-    items: [
-      { label: 'درباره ما', href: '/about' },
-      { label: 'حریم خصوصی', href: '/privacy' },
-      { label: 'قوانین و مقررات', href: '/terms' },
-      { label: 'سؤالات متداول', href: '/faq' },
-      { label: 'تماس با ما', href: '/contact' },
+      { label: 'گزارش مردمی', href: '/#reports', anchor: true },
+      { label: 'جست‌وجو',     href: '/search' },
     ],
   },
 ];

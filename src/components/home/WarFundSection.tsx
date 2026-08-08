@@ -642,7 +642,7 @@ export function WarFundSection({ campaigns }: { campaigns: CampaignCard[] }) {
 
         <div className="flex justify-center mt-6">
           <Link
-            href="/madadkar"
+            href="/#warfund"
             className="inline-flex items-center gap-2 h-12 px-7 rounded-full
                        bg-white border-2 border-brand-500 text-brand-700 font-extrabold text-[14px]
                        hover:bg-brand-50 transition-colors"

@@ -205,128 +205,41 @@ function daysUntilExpiry(dateStr?: string): number | null {
 /*  Split-action 'post listing' control                                      */
 /* ───────────────────────────────────────────────────────────────────────── */
 
+/**
+ * NOTE — "ثبت آگهی جدید" is a WIP control.
+ *
+ * The old implementation was a two-option dropdown (می‌خواهم کمک کنم /
+ * نیازمند کمک هستم) that navigated to `/kindness-wall/new?type=...`.
+ * Those routes are not built in the homepage-only milestone, so every
+ * click ended in a 404 that showed up on the client's network tab.
+ *
+ * Rather than ship dead links, we render a self-explanatory
+ * "به‌زودی" (coming-soon) chip attached to the same mint pill. It:
+ *   • preserves the visual footprint of the original CTA so the row
+ *     layout doesn't collapse,
+ *   • signals that the flow is planned but not live,
+ *   • does NOT navigate anywhere, so there is nothing left to 404.
+ *
+ * Once the /kindness-wall/new route ships, restore the dropdown from
+ * git history and remove the ComingSoonPostListing shim below.
+ */
 function PostListingSplit() {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent | TouchEvent) {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('touchstart', onDown, { passive: true });
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('touchstart', onDown);
-    };
-  }, [open]);
-
-  const enter = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    setOpen(true);
-  };
-  const leave = () => {
-    closeTimer.current = setTimeout(() => setOpen(false), 180);
-  };
-
   return (
     <div
-      ref={wrapRef}
-      onMouseEnter={enter}
-      onMouseLeave={leave}
-      className="relative inline-block"
+      className="relative inline-flex items-center gap-2 h-12 px-7 rounded-full
+                 bg-mint-500/60 text-white/95 font-extrabold text-[14px]
+                 shadow-[0_8px_24px_-8px_rgba(37,197,186,.35)]
+                 cursor-not-allowed select-none"
+      title="این بخش به‌زودی فعال می‌شود"
+      role="button"
+      aria-disabled="true"
     >
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.94 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.96 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 26, mass: 0.6 }}
-            role="menu"
-            aria-label="ثبت آگهی جدید — انتخاب نوع"
-            className="absolute inset-x-0 bottom-[calc(100%+10px)]
-                       bg-white rounded-2xl overflow-hidden
-                       shadow-[0_24px_60px_-12px_rgba(0,0,0,.35),0_0_0_1px_rgba(217,222,229,.7)]
-                       z-30 min-w-[240px]"
-          >
-            {/* Option 1 — می‌خواهم کمک کنم (mint / offer) */}
-            <Link
-              href="/kindness-wall/new?type=offer_help"
-              role="menuitem"
-              className="group/item relative flex items-center gap-2.5 px-3.5 h-12
-                         hover:bg-mint-500/[0.08] transition-colors duration-150"
-            >
-              <span className="flex items-center justify-center w-8 h-8 rounded-xl shrink-0
-                               bg-mint-500/[0.12] text-mint-600
-                               group-hover/item:bg-mint-500 group-hover/item:text-white
-                               group-hover/item:shadow-[0_6px_16px_-4px_rgba(37,197,186,.55)]
-                               transition-all duration-200">
-                <GiveIcon className="w-3.5 h-3.5" />
-              </span>
-              <span className="flex-1 text-right text-[12.5px] font-extrabold text-ink-800
-                               group-hover/item:text-brand-700 transition-colors">
-                می‌خواهم کمک کنم
-              </span>
-              <ChevronLeftIcon className="w-3.5 h-3.5 text-ink-400
-                                          group-hover/item:text-brand-600
-                                          group-hover/item:-translate-x-0.5
-                                          transition-all duration-200" />
-            </Link>
-
-            <div className="mx-2 h-px bg-gradient-to-l from-transparent via-ink-100 to-transparent" />
-
-            {/* Option 2 — نیازمند کمک هستم (rose / need) */}
-            <Link
-              href="/kindness-wall/new?type=need_help"
-              role="menuitem"
-              className="group/item relative flex items-center gap-2.5 px-3.5 h-12
-                         hover:bg-rose-500/[0.07] transition-colors duration-150"
-            >
-              <span className="flex items-center justify-center w-8 h-8 rounded-xl shrink-0
-                               bg-rose-500/[0.12] text-rose-600
-                               group-hover/item:bg-rose-500 group-hover/item:text-white
-                               group-hover/item:shadow-[0_6px_16px_-4px_rgba(225,29,72,.55)]
-                               transition-all duration-200">
-                <NeedIcon className="w-3.5 h-3.5" />
-              </span>
-              <span className="flex-1 text-right text-[12.5px] font-extrabold text-ink-800
-                               group-hover/item:text-rose-700 transition-colors">
-                نیازمند کمک هستم
-              </span>
-              <ChevronLeftIcon className="w-3.5 h-3.5 text-ink-400
-                                          group-hover/item:text-rose-600
-                                          group-hover/item:-translate-x-0.5
-                                          transition-all duration-200" />
-            </Link>
-
-            {/* downward tail */}
-            <div aria-hidden="true"
-                 className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 rotate-45 bg-white"
-                 style={{ boxShadow: '1px 1px 0 rgba(217,222,229,.7)' }} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className={`inline-flex items-center gap-2 h-12 px-7 rounded-full
-                    bg-mint-500 hover:bg-mint-600 text-white font-extrabold text-[14px]
-                    shadow-[0_8px_24px_-8px_rgba(37,197,186,.5)]
-                    transition-all duration-200
-                    ${open ? 'scale-[1.03] -translate-y-0.5' : 'hover:scale-[1.02]'}`}
-      >
-        <PlusIcon className="w-4 h-4" />
-        <span>ثبت آگهی جدید</span>
-        <ChevronDownIcon
-          className={`w-3 h-3 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
+      <PlusIcon className="w-4 h-4" />
+      <span>ثبت آگهی جدید</span>
+      <span className="ml-1 inline-flex items-center px-2 h-6 rounded-full
+                       bg-white/25 text-[10.5px] font-extrabold tracking-wide">
+        به‌زودی
+      </span>
     </div>
   );
 }
@@ -723,7 +636,7 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
         {/* Footer actions */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8 md:mt-10">
           <Link
-            href="/kindness-wall"
+            href="/#kindness"
             className="inline-flex items-center gap-2 h-12 px-7 rounded-full
                        bg-white border-2 border-brand-500 text-brand-700 font-extrabold text-[14px]
                        hover:bg-brand-50 transition-colors"

@@ -366,7 +366,7 @@ export function EducationSection({
         {/* Footer CTA — see full library */}
         <div className="flex justify-center mt-6 md:mt-8">
           <Link
-            href="/lms"
+            href="/#education"
             className="inline-flex items-center gap-2 h-12 px-8 rounded-full
                        bg-mint-500 hover:bg-mint-600 text-white font-extrabold text-[14px]
                        shadow-[0_8px_24px_-8px_rgba(37,197,186,.5)] transition-colors"

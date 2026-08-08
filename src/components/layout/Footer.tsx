@@ -19,37 +19,38 @@ import { BackToTop } from './BackToTop';
  *   • A tiny "back to top" pill anchors the very bottom for ergonomics.
  */
 
+/**
+ * Footer navigation.
+ *
+ * ⚠️  In the homepage-only milestone the standalone routes for the
+ * domain areas (/madadkar, /r4j, /lms, /kindness-wall, /public-reports,
+ * /about, /contact, /faq, /privacy, /terms, /support) are NOT built.
+ * Every hover on those links used to trigger a Next.js RSC prefetch
+ * that resolved to 404, filling the browser network tab with red
+ * rows (client-reported issue).
+ *
+ * To keep the footer useful without shipping dead links, we route
+ * every domain item to its in-page anchor on the homepage (`/#warfund`,
+ * `/#justice`, …). The two "corporate" columns that had nothing to
+ * point at (about / contact / faq / privacy / terms / support) were
+ * temporarily retired — the columns will come back the moment those
+ * pages exist.
+ */
 const COLS = [
   {
     title: 'نحوه ثبت‌نام در پویش',
     links: [
-      { label: 'پشتیبانی مالی جنگ', href: '/madadkar' },
-      { label: 'دیوار مهربانی',     href: '/kindness-wall' },
-      { label: 'قرارگاه آموزشی',    href: '/lms' },
+      { label: 'پشتیبانی مالی جنگ',  href: '/#warfund' },
+      { label: 'دیوار مهربانی',      href: '/#kindness' },
+      { label: 'قرارگاه آموزشی',     href: '/#education' },
     ],
   },
   {
     title: 'دسترسی سریع',
     links: [
-      { label: 'جهاد تبیین',        href: '/tabyin' },
-      { label: 'جایزه عدالت',       href: '/r4j' },
-      { label: 'گزارش‌های مردمی',   href: '/public-reports' },
-    ],
-  },
-  {
-    title: 'درباره ما',
-    links: [
-      { label: 'معرفی بعثت مردم',   href: '/about' },
-      { label: 'تماس با ما',        href: '/contact' },
-      { label: 'سؤالات متداول',     href: '/faq' },
-    ],
-  },
-  {
-    title: 'قوانین و حمایت',
-    links: [
-      { label: 'حریم خصوصی',        href: '/privacy' },
-      { label: 'قوانین و مقررات',   href: '/terms' },
-      { label: 'پشتیبانی',          href: '/support' },
+      { label: 'جهاد تبیین',         href: '/#tabyin' },
+      { label: 'جایزه‌ای برای عدالت', href: '/#justice' },
+      { label: 'گزارش‌های مردمی',    href: '/#reports' },
     ],
   },
 ];
@@ -101,8 +102,14 @@ export function Footer() {
           edge-to-edge behind them. */}
       <div className="container-edge relative">
 
-        {/* Footer columns — fully centred */}
-        <div className="relative grid grid-cols-2 md:grid-cols-4 gap-10 md:gap-8 text-center">
+        {/* Footer columns — fully centred.
+         * Grid intentionally caps at md:grid-cols-2 for now because the
+         * corporate columns (about/faq/privacy/terms/support) were
+         * retired until their pages exist. A 4-col grid with only 2
+         * items would leave two empty columns on desktop; 2-col with
+         * a max content width keeps the block visually balanced. */}
+        <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-10 md:gap-16
+                        max-w-2xl mx-auto text-center">
           {COLS.map((c) => (
             <nav key={c.title} aria-label={c.title} className="flex flex-col items-center">
               <h4 className="font-extrabold text-ink-900 text-[14.5px] mb-1">{c.title}</h4>

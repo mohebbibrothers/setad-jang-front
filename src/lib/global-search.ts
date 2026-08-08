@@ -156,7 +156,10 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
     shortLabel: 'حرکت‌ها',
     glyph: 'campaign',
     accent: 'brand',
-    seeAllHref: (q, f) => seeAllUrl('/madadkar', q, f),
+    // Homepage-only milestone: dedicated /madadkar list route is
+    // not built yet, so 'مشاهده همه' returns the user to the
+    // corresponding homepage anchor instead of shipping a dead link.
+    seeAllHref: (q, f) => seeAllUrl('/#warfund', q, f),
   },
   r4j: {
     key: 'r4j',
@@ -164,7 +167,7 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
     shortLabel: 'پرونده‌ها',
     glyph: 'gavel',
     accent: 'rose',
-    seeAllHref: (q, f) => seeAllUrl('/r4j', q, f),
+    seeAllHref: (q, f) => seeAllUrl('/#justice', q, f),
   },
   lms: {
     key: 'lms',
@@ -172,7 +175,7 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
     shortLabel: 'دوره‌ها',
     glyph: 'graduation',
     accent: 'amber',
-    seeAllHref: (q, f) => seeAllUrl('/lms', q, f),
+    seeAllHref: (q, f) => seeAllUrl('/#education', q, f),
   },
   kindness: {
     key: 'kindness',
@@ -180,7 +183,7 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
     shortLabel: 'آگهی‌ها',
     glyph: 'heart',
     accent: 'mint',
-    seeAllHref: (q, f) => seeAllUrl('/kindness-wall', q, f),
+    seeAllHref: (q, f) => seeAllUrl('/#kindness', q, f),
   },
   tabyin: {
     key: 'tabyin',
@@ -324,7 +327,10 @@ async function fetchMadadkar(
       title:    clean(c.title) || 'حرکت بدون عنوان',
       subtitle,
       thumb:    absoluteMediaUrl(c.cover_image),
-      href:     `/madadkar/${c.slug}`,
+      // /madadkar/[slug] detail route is not built yet. Route hits
+      // back to the homepage warfund anchor so clicks always land on
+      // a valid page.
+      href:     `/#warfund`,
       badge,
       pill:     statusPill,
     };
@@ -367,7 +373,8 @@ async function fetchR4J(
       title:    fullName,
       subtitle: loc || undefined,
       thumb:    absoluteMediaUrl(p.primary_photo?.image ?? null),
-      href:     `/r4j/${p.slug}`,
+      // See note above — R4J detail route TBD, fall back to anchor.
+      href:     `/#justice`,
       badge:    p.total_bounty_toman ? formatToman(p.total_bounty_toman) : undefined,
       pill:     p.bounties_count ? `${fa(p.bounties_count)} جایزه` : undefined,
     };
@@ -412,7 +419,8 @@ async function fetchLms(
       title:    clean(c.title),
       subtitle: parts.length ? parts.join(' · ') : clean(c.short_description),
       thumb:    absoluteMediaUrl(c.cover_image),
-      href:     `/lms/courses/${c.slug}`,
+      // See note above — LMS course detail route TBD.
+      href:     `/#education`,
       badge:    c.enrollments_count ? `${fa(c.enrollments_count)} یادگیرنده` : undefined,
       pill:     c.level ? LEVEL_LABEL[c.level] ?? c.level : undefined,
     };
@@ -452,7 +460,8 @@ async function fetchKindness(
       title:    clean(l.title),
       subtitle: [catTitle, loc].filter(Boolean).join(' · ') || undefined,
       thumb:    absoluteMediaUrl(l.cover_image),
-      href:     `/kindness-wall/${l.slug}`,
+      // See note above — Kindness listing detail route TBD.
+      href:     `/#kindness`,
       badge:    l.view_count ? `${fa(l.view_count)} بازدید` : undefined,
       pill:
         l.listing_type === 'need_help'  ? 'نیازمند کمک'
