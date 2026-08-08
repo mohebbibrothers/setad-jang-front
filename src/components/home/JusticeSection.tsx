@@ -498,19 +498,53 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
       onFocus={enter}
       onBlur={leave}
     >
-      {/* ── Trigger — the hammer button ────────────────────────────── */}
+      {/* ── Trigger — the hammer button ──────────────────────────────
+       *
+       *  DESKTOP (hover-capable pointers)
+       *  ───────────────────────────────
+       *  The animation + popover are driven ENTIRELY by the wrapper's
+       *  `onMouseEnter` / `onMouseLeave` handlers above. The click
+       *  handler is therefore a no-op on desktop — hover opens, un-
+       *  hover closes, and there's no way to leave the icon in a
+       *  half-open state where the choreography keeps running after
+       *  the menu is gone.
+       *
+       *  TOUCH (no hover)
+       *  ────────────────
+       *  A tap fires `pointerdown` first — we sniff its `pointerType`
+       *  and only then toggle open/close. Immediately after we release
+       *  focus with .blur() so the browser can't latch a phantom
+       *  :hover state to the button after the tap. Any subsequent
+       *  outside-tap / ESC / menu-item pick also closes and blurs
+       *  (handled in the effects above).
+       *
+       *  KEYBOARD
+       *  ────────
+       *  Enter / Space activation lands here as a `click` event with
+       *  pointerType === '' (empty). We treat that the same as touch
+       *  — toggle open/close so a keyboard user can dismiss the menu
+       *  with the same key that opened it.
+       */}
       <button
         ref={btnRef}
         type="button"
-        onClick={(e) => {
-          setOpen((o) => {
-            const next = !o;
-            // Toggle-close should immediately release focus so touch
-            // devices don't keep :hover latched to the button (which
-            // would leave the hammer swinging forever).
-            if (!next) e.currentTarget.blur();
-            return next;
-          });
+        onPointerDown={(e) => {
+          // Only touch / pen / keyboard should toggle. Mouse clicks
+          // are ignored — hover already handles the whole lifecycle.
+          if (e.pointerType === 'mouse') return;
+          setOpen((o) => !o);
+          // Release focus so touch browsers don't keep any pseudo-
+          // hover latched to us after the tap.
+          requestAnimationFrame(() => btnRef.current?.blur());
+        }}
+        onKeyDown={(e) => {
+          // Enter / Space toggle for pure keyboard users. Handled here
+          // rather than relying on the native click synth so it never
+          // races with the pointerdown path above.
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setOpen((o) => !o);
+          }
         }}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -553,44 +587,31 @@ const HAMMER_STYLES = `
 [data-hammer-anvil] { transform-box: fill-box; transform-origin: 16px 28px; transition: transform 180ms ease-out; }
 
 /*
- * ── ACTIVE DRIVER (canonical source of truth) ────────────────────
- * The wrapper flips \`data-active="true"\` whenever the menu is open.
- * When active, the choreography plays. Works IDENTICALLY on desktop
- * and mobile — the animation lifetime is bound to the menu's
- * lifetime, so it stops the INSTANT the menu closes (touching
- * outside the card, ESC, choosing an option, etc.).
+ * ── SINGLE DRIVER: [data-active] ─────────────────────────────────
  *
- * This is the ONLY driver on touch devices. Historically we also
- * chained hover / focus-within here, which meant a tap left the
- * button focused → \`:focus-within\` stayed true → the hammer kept
- * swinging even after the menu closed. Fixed by scoping :hover to
- * true hover-capable pointers only, and REMOVING :focus-within
- * from the animation chain entirely (see below).
+ * There is exactly ONE source of truth for whether the hammer is
+ * swinging: the \`data-active\` attribute on the .justice-hammer
+ * wrapper. React sets it from the \`open\` state — which is itself
+ * driven by:
+ *   • Desktop hover  → onMouseEnter / onMouseLeave on the wrapper
+ *   • Touch tap      → onPointerDown on the button
+ *   • Keyboard       → onKeyDown Enter/Space
+ *   • ESC / outside  → the effects registered inside <HammerMenu>
+ *
+ * We DELIBERATELY do NOT use CSS :hover to drive the animation.
+ * Previous versions did — with a \`@media (hover: hover)\` guard —
+ * but that created a subtle race: on a desktop tap the popover
+ * would close (React state open=false, data-active removed) yet
+ * the browser still reported :hover=true because the cursor hadn't
+ * moved. The CSS branch then kept animating until the user moved
+ * the mouse or clicked somewhere else. Removing the CSS :hover
+ * rule entirely and delegating hover to the React state (via the
+ * wrapper's onMouseEnter/Leave) means the animation lifetime is
+ * ALWAYS exactly the popover's lifetime — no drift possible.
  */
 .justice-hammer[data-active='true'] [data-hammer-head]  { animation: hammerSwing 900ms cubic-bezier(.65,.05,.2,1) infinite; }
 .justice-hammer[data-active='true'] [data-hammer-anvil] { animation: anvilPulse  900ms cubic-bezier(.65,.05,.2,1) infinite; }
 .justice-hammer[data-active='true'] .justice-hammer-halo { animation: hammerHalo 900ms ease-out infinite; }
-
-/*
- * ── HOVER DRIVER (desktop pointer only, no touch) ─────────────────
- * On real hover-capable pointers (mice, trackpads) we ALSO run the
- * animation on hover so the icon feels alive as the user scans the
- * grid. TRIPLE-gated so touch never triggers this branch:
- *   1. (hover: hover)        → device supports true hover
- *   2. (pointer: fine)       → precise pointer (mouse, stylus)
- *   3. NOT (pointer: coarse) → belt-and-braces guard against tablets
- *                              in "hybrid" mode that misreport (hover: hover)
- * We deliberately do NOT include :focus / :focus-within here — click-
- * focused buttons keep focus after the menu closes, which was the
- * root cause of "hammer keeps swinging after I tap elsewhere". The
- * [data-active] driver above already handles the open-menu case for
- * both mouse and keyboard.
- */
-@media (hover: hover) and (pointer: fine) and (not (pointer: coarse)) {
-  .justice-hammer:hover [data-hammer-head]   { animation: hammerSwing 900ms cubic-bezier(.65,.05,.2,1) infinite; }
-  .justice-hammer:hover [data-hammer-anvil]  { animation: anvilPulse  900ms cubic-bezier(.65,.05,.2,1) infinite; }
-  .justice-hammer:hover .justice-hammer-halo { animation: hammerHalo  900ms ease-out infinite; }
-}
 
 @keyframes hammerSwing {
   0%   { transform: rotate(0deg); }
