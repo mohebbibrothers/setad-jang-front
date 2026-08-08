@@ -147,7 +147,17 @@ export function CampaignAlbum({
   const [isFs,      setIsFs]      = useState(false);
   const [hovering,  setHovering]  = useState(false);
   const [progress,  setProgress]  = useState(0);
-  const [copied,    setCopied]    = useState(false);
+  /**
+   * `copiedKind` tracks the outcome of the copy button:
+   *   'image' → pixel bytes landed on the clipboard (paste into Eitaa,
+   *             Telegram, Word, Photoshop, …).
+   *   'url'   → we could only manage a text-URL copy (typically an
+   *             http:// deploy without secure-context, or a CORS
+   *             failure). Still useful, but the button announces the
+   *             degraded outcome so the user knows what they'll paste.
+   *   null    → idle (default HUD state).
+   */
+  const [copiedKind, setCopiedKind] = useState<null | 'image' | 'url'>(null);
 
   // ── Refs ───────────────────────────────────────────────────────────
   const stageRef      = useRef<HTMLDivElement>(null);
@@ -169,7 +179,7 @@ export function CampaignAlbum({
       setIndexState(Math.min(startIndex, Math.max(0, total - 1)));
       setZoom(1); setPan({ x: 0, y: 0 });
       setSlideshow(false); setHelpOpen(false); setProgress(0);
-      setImgReady(false); setCopied(false);
+      setImgReady(false); setCopiedKind(null);
     }
   }, [open, startIndex, total]);
 
@@ -591,55 +601,183 @@ export function CampaignAlbum({
   }, [current, index]);
 
   /**
-   * Copy the absolute URL of the active image to the clipboard.
+   * Copy the ACTIVE IMAGE (pixel bytes, not the URL) to the clipboard.
    *
-   * Note — copying the actual image bytes reliably requires a secure
-   * context (HTTPS) so navigator.clipboard.write() is available. Our
-   * staging deploy is plain HTTP, so we fall back to a plain-text
-   * URL copy that works on EVERY browser + protocol combination.
-   * Once the site moves to HTTPS this can be upgraded to write the
-   * image blob directly (that path is trivial: navigator.clipboard
-   * .write([new ClipboardItem({ 'image/png': blob })])).
+   *  ────────────────────────────────────────────────────────────────
+   *  WHY IT'S COMPLICATED
+   *  ────────────────────────────────────────────────────────────────
+   *  Users expect to paste the picture into Eitaa / Telegram / Word /
+   *  Photoshop — none of which accept a text URL. That means we need
+   *  the raw pixel Blob on the clipboard, not a string. But the
+   *  browser clipboard-image API is a minefield:
+   *
+   *    1. `navigator.clipboard.write()` only exists in a SECURE context
+   *       (https:// or http://localhost) → we short-circuit to the URL
+   *       fallback on plain http:// deploys.
+   *
+   *    2. Every browser supports 'image/png' — a lot of browsers do
+   *       NOT accept 'image/jpeg' or 'image/webp' as a clipboard
+   *       mime-type even though the source blob is that format. So
+   *       we round-trip through a <canvas> to guarantee PNG output.
+   *       (SVG is also transcoded to PNG.)
+   *
+   *    3. Safari refuses the write() call unless it's fired inside the
+   *       SAME microtask as the user gesture. It fixes this by
+   *       accepting `Promise<Blob>` inside `new ClipboardItem({...})`
+   *       — Safari resolves the promise ITSELF, on the gesture. We
+   *       take advantage of that: on Safari we hand it a promise that
+   *       does the fetch + canvas conversion inside; on other browsers
+   *       we resolve the blob first then call write() straight.
+   *
+   *    4. CORS: the fetch might be blocked by an image server that
+   *       doesn't send Access-Control-Allow-Origin. Django MEDIA does
+   *       (we already rely on that for the download button) but a
+   *       future CDN change could break this. Every failure at every
+   *       step falls back to text-URL copy so the button NEVER
+   *       silently does nothing.
+   *
+   *  ────────────────────────────────────────────────────────────────
+   *  UX SIGNAL
+   *  ────────────────────────────────────────────────────────────────
+   *  `copiedKind` state is 'image' when the pixel bytes landed on the
+   *  clipboard and 'url' when we could only manage the fallback text
+   *  copy. The HUD button reads the state to render a differentiated
+   *  tooltip so the user knows what they actually got.
    */
   const onCopyUrl = useCallback(async () => {
     if (!current?.url) return;
     const abs = new URL(current.url, window.location.origin).href;
 
-    // Primary path — modern secure-context API
-    if (
-      typeof navigator !== 'undefined' &&
-      typeof window !== 'undefined' &&
-      window.isSecureContext &&
-      navigator.clipboard &&
-      typeof navigator.clipboard.writeText === 'function'
-    ) {
+    /** Text-URL fallback — the previous behaviour, kept as a safety net. */
+    const copyPlainUrl = async () => {
+      if (
+        typeof navigator !== 'undefined' &&
+        typeof window !== 'undefined' &&
+        window.isSecureContext &&
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === 'function'
+      ) {
+        try {
+          await navigator.clipboard.writeText(abs);
+          setCopiedKind('url');
+          setTimeout(() => setCopiedKind(null), 1800);
+          return true;
+        } catch { /* fall through */ }
+      }
+      // execCommand path — works on legacy + http:// contexts.
       try {
-        await navigator.clipboard.writeText(abs);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
-        return;
-      } catch { /* fall through */ }
+        const ta = document.createElement('textarea');
+        ta.value = abs;
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0.01;width:1px;height:1px;pointer-events:none';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select(); ta.setSelectionRange(0, abs.length);
+        const ok = document.execCommand('copy');
+        ta.remove();
+        if (ok) {
+          setCopiedKind('url');
+          setTimeout(() => setCopiedKind(null), 1800);
+          return true;
+        }
+      } catch { /* silent */ }
+      return false;
+    };
+
+    /**
+     * Convert an arbitrary image Blob to a PNG Blob via <canvas>.
+     * PNG is the ONLY format universally accepted by the browser
+     * clipboard-image API today.
+     */
+    const toPngBlob = async (src: Blob): Promise<Blob> => {
+      // Fast path — already PNG.
+      if (src.type === 'image/png') return src;
+
+      const url = URL.createObjectURL(src);
+      try {
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const el = new Image();
+          el.crossOrigin = 'anonymous';
+          el.onload = () => resolve(el);
+          el.onerror = () => reject(new Error('image load'));
+          el.src = url;
+        });
+        const canvas = document.createElement('canvas');
+        canvas.width  = img.naturalWidth  || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('no 2d ctx');
+        ctx.drawImage(img, 0, 0);
+        return await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob(
+            (b) => (b ? resolve(b) : reject(new Error('canvas.toBlob empty'))),
+            'image/png',
+          );
+        });
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+
+    // If we cannot use the async clipboard API at all, jump to fallback.
+    const secure = typeof window !== 'undefined' && window.isSecureContext;
+    const canWriteImage =
+      secure &&
+      typeof navigator !== 'undefined' &&
+      typeof navigator.clipboard !== 'undefined' &&
+      typeof (navigator.clipboard as Clipboard).write === 'function' &&
+      typeof window.ClipboardItem !== 'undefined';
+
+    if (!canWriteImage) {
+      await copyPlainUrl();
+      return;
     }
 
-    // Legacy path — execCommand('copy') on a hidden but layout-
-    // visible textarea. Works on EVERY browser under HTTP as long
-    // as the call is inside a user gesture (which onClick is).
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = abs;
-      // opacity 0.01 (not 0!) so Chromium accepts the selection.
-      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0.01;width:1px;height:1px;pointer-events:none';
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      ta.setSelectionRange(0, abs.length);
-      const ok = document.execCommand('copy');
-      ta.remove();
-      if (ok) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
+    /** Async pipeline that produces the PNG blob for the clipboard. */
+    const buildPngBlob = async (): Promise<Blob> => {
+      const res = await fetch(current.url, { mode: 'cors', credentials: 'omit' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const raw = await res.blob();
+      // Guard: some servers respond with the wrong Content-Type. Sniff
+      // by extension when the blob claims "application/octet-stream".
+      if (!raw.type.startsWith('image/')) {
+        // Rewrap with our best guess so <img> can decode it.
+        const ext = (current.url.split('?')[0].match(/\.(png|jpe?g|webp|gif|bmp)$/i) || [])[1]?.toLowerCase();
+        const guessed = ext === 'jpg' ? 'jpeg' : ext;
+        const mime = guessed ? `image/${guessed}` : 'image/png';
+        return toPngBlob(new Blob([raw], { type: mime }));
       }
-    } catch { /* silently fail — the toast simply won't fire */ }
+      return toPngBlob(raw);
+    };
+
+    try {
+      // Detect Safari — it needs the Promise<Blob> form so the write
+      // stays associated with the click gesture.
+      const ua = navigator.userAgent;
+      const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(ua);
+
+      if (isSafari) {
+        // Hand Safari an unresolved promise; it will unwrap it inside
+        // the same gesture microtask.
+        const item = new ClipboardItem({
+          'image/png': buildPngBlob().catch((err) => {
+            // If the pipeline fails, resolve to an empty PNG so Safari's
+            // write() rejects, then we fall through to URL copy below.
+            throw err;
+          }),
+        });
+        await navigator.clipboard.write([item]);
+      } else {
+        // All other browsers — resolve first, then write.
+        const png = await buildPngBlob();
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+      }
+
+      setCopiedKind('image');
+      setTimeout(() => setCopiedKind(null), 1800);
+    } catch {
+      // Any error → gracefully degrade to URL copy. User still gets a
+      // usable clipboard entry (paste the URL into a browser to share).
+      await copyPlainUrl();
+    }
   }, [current]);
 
   // ── Filmstrip overflow detection (RTL-aware) ───────────────────────
@@ -726,8 +864,15 @@ export function CampaignAlbum({
           ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
           : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>}
       </HudBtn>
-      <HudBtn onClick={onCopyUrl} ariaLabel="کپی نشانی تصویر">
-        {copied
+      <HudBtn
+        onClick={onCopyUrl}
+        ariaLabel={
+          copiedKind === 'image' ? 'تصویر در حافظه کپی شد'
+          : copiedKind === 'url' ? 'نشانی تصویر کپی شد (پشتیبانی کپی مستقیم تصویر در این مرورگر فراهم نیست)'
+          : 'کپی تصویر'
+        }
+      >
+        {copiedKind
           ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>}
       </HudBtn>
