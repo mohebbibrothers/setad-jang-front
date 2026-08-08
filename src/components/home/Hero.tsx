@@ -34,41 +34,45 @@ export function Hero() {
       >
         {/* Top-right dotted wave.
          *
-         * Vertical position is breakpoint-scoped so the decoration
-         * lands at the right anatomical zone regardless of viewport:
-         *   • phones — `top-24` (96 px) drops it well below the header
-         *     so it doesn't hover awkwardly above the defenders' heads
-         *     on a short mobile hero (client feedback: previous
-         *     `top-10` was too high on phones only)
-         *   • tablet+ — `md:top-10` (40 px) keeps the desktop
-         *     composition exactly as the designer approved earlier */}
+         * Horizontal + vertical rules:
+         *   • phones — parked in the top-right corner well below the
+         *     header (`top-24`, `-right-4`, 280 px wide).
+         *   • desktop — the client explicitly wants the wave to slide
+         *     UNDER the hero photo so only the tip pokes out. The
+         *     hero cutout is centred with `max-w-[680px]`, so its
+         *     right edge lives at `50vw − 340px`. We push the wave
+         *     ~60 px further inward so its trailing dots visibly slip
+         *     behind the defender on the right (`z-0` here vs. hero's
+         *     `z-10` guarantees the underlap). Vertical stays low
+         *     (`md:top-10`) to match the approved composition. */}
         <Image
           src="/brand/wave-dotted-1.png"
           alt=""
           width={470} height={254}
           priority
-          className="absolute top-24 md:top-10 -right-4 md:right-[2%]
-                     w-[280px] md:w-[420px] opacity-95 select-none"
+          className="absolute top-24 md:top-10
+                     -right-4 md:right-[calc(50%-280px)]
+                     w-[280px] md:w-[420px]
+                     opacity-95 select-none"
         />
         {/* Bottom-left dotted wave.
          *
-         * Positioning rules learned from client feedback:
-         *   • MUST stay UNDER (never in front of / behind the head of)
-         *     the hero defenders photo — on phones the previous
-         *     `bottom-28` value collided with the group's faces because
-         *     the whole hero section is shorter at that viewport width.
-         *   • On phones we drop it all the way to `bottom-2` so it
-         *     hugs the search-pill area — always below the cutout.
-         *   • On desktop we still want it to slide UNDER the group,
-         *     just lower than before: `md:bottom-4` puts it below the
-         *     boot line of the defenders.
-         *   • Narrower on phones (200 px wide instead of 260) so it
-         *     doesn't sweep across the man on the right at all. */}
+         * Horizontal + vertical rules:
+         *   • phones — hugs the search-pill area (`bottom-2`,
+         *     `-left-2`, 200 px wide) always UNDER the cutout.
+         *   • desktop — same "tip pokes out from under the hero"
+         *     treatment as its sibling. Positioned relative to
+         *     centre (`left: 50vw − 280px`) so the trailing dots
+         *     slide behind the defender on the left. `md:bottom-4`
+         *     keeps the wave riding along the boot line rather than
+         *     the mid-torso. Mirrored horizontally with `scale-x-[-1]`
+         *     so the wave sweeps INTO the composition. */}
         <Image
           src="/brand/wave-dotted-2.png"
           alt=""
           width={487} height={107}
-          className="absolute bottom-2 md:bottom-4 -left-2 md:left-[2%]
+          className="absolute bottom-2 md:bottom-4
+                     -left-2 md:left-[calc(50%-280px)]
                      w-[200px] md:w-[420px]
                      opacity-85 select-none scale-x-[-1]"
         />
