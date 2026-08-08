@@ -34,45 +34,73 @@ export function Hero() {
       >
         {/* Top-right dotted wave.
          *
-         * Horizontal + vertical rules:
-         *   • phones — parked in the top-right corner well below the
-         *     header (`top-24`, `-right-4`, 280 px wide).
-         *   • desktop — the client explicitly wants the wave to slide
-         *     UNDER the hero photo so only the tip pokes out. The
-         *     hero cutout is centred with `max-w-[680px]`, so its
-         *     right edge lives at `50vw − 340px`. We push the wave
-         *     ~60 px further inward so its trailing dots visibly slip
-         *     behind the defender on the right (`z-0` here vs. hero's
-         *     `z-10` guarantees the underlap). Vertical stays low
-         *     (`md:top-10`) to match the approved composition. */}
+         * DESKTOP GEOMETRY (the whole point of this decoration):
+         *   The hero cutout is centred with `max-w-[680px]`, so its
+         *   RIGHT edge sits at `50vw + 340px`. We want the wave to
+         *   live mostly OUTSIDE the photo (out toward the viewport
+         *   edge) with only its trailing tip sneaking BEHIND the
+         *   right defender — the classic "dashed streamer emerging
+         *   from behind the subject" motif.
+         *
+         *   To achieve that, anchor by LEFT (not right):
+         *     `left: calc(50% + 300px)`
+         *   That puts the wave's LEFT edge 300 px right of centre =
+         *   just 40 px inside the hero's right edge (340 − 300). So
+         *   only ~40 px of the wave bounding-box overlaps the photo
+         *   — exactly the "tip peeking out from behind him" look —
+         *   while the rest of the 420 px wave streams off toward
+         *   the viewport's right edge (and beyond, safely clipped
+         *   by `.hero-deco-clip`).
+         *
+         *   Vertically we push it HIGH (`md:top-4`) so the streamer
+         *   reads as clearly ABOVE its bottom-left partner — the
+         *   user asked for the right wave to sit a touch higher
+         *   than the left one, and the diagonal contrast sells it.
+         *
+         *   PHONES: unchanged — parked in the top-right corner
+         *   (`top-24 -right-4`, 280 px wide). The `md:right-auto`
+         *   is essential so Tailwind cancels the mobile `right`
+         *   value once we switch to positioning by `left`. */}
         <Image
           src="/brand/wave-dotted-1.png"
           alt=""
           width={470} height={254}
           priority
-          className="absolute top-24 md:top-10
-                     -right-4 md:right-[calc(50%-280px)]
+          className="absolute top-24 md:top-4
+                     -right-4 md:right-auto md:left-[calc(50%+300px)]
                      w-[280px] md:w-[420px]
                      opacity-95 select-none"
         />
         {/* Bottom-left dotted wave.
          *
-         * Horizontal + vertical rules:
-         *   • phones — hugs the search-pill area (`bottom-2`,
-         *     `-left-2`, 200 px wide) always UNDER the cutout.
-         *   • desktop — same "tip pokes out from under the hero"
-         *     treatment as its sibling. Positioned relative to
-         *     centre (`left: 50vw − 280px`) so the trailing dots
-         *     slide behind the defender on the left. `md:bottom-4`
-         *     keeps the wave riding along the boot line rather than
-         *     the mid-torso. Mirrored horizontally with `scale-x-[-1]`
-         *     so the wave sweeps INTO the composition. */}
+         * DESKTOP GEOMETRY (mirror of wave-1):
+         *   Same "tip peeks out from behind the subject" motif, but
+         *   for the left defender. The hero's LEFT edge sits at
+         *   `50vw − 340px`; we anchor by RIGHT:
+         *     `right: calc(50% + 300px)`
+         *   which places the wave's RIGHT edge 300 px left of centre
+         *   = 40 px inside the hero's left edge. Only that 40 px
+         *   sliver disappears behind the left defender; the rest of
+         *   the wave streams off toward the viewport's left edge
+         *   (and beyond, clipped).
+         *
+         *   Vertically anchored LOW (`md:bottom-6`) so the streamer
+         *   sits below its top-right partner — enforcing the
+         *   requested diagonal (right-high, left-low) balance.
+         *
+         *   `scale-x-[-1]` mirrors the artwork so the S-curve sweeps
+         *   INTO the composition. The bounding-box right edge is
+         *   what visually contains the "tip" of the wave post-mirror,
+         *   which is exactly the sliver we tuck behind the defender.
+         *
+         *   PHONES: unchanged — `bottom-2 -left-2`, 200 px wide.
+         *   `md:left-auto` cancels the mobile `left` value. */}
         <Image
           src="/brand/wave-dotted-2.png"
           alt=""
           width={487} height={107}
-          className="absolute bottom-2 md:bottom-4
-                     -left-2 md:left-[calc(50%-280px)]
+          className="absolute bottom-2 md:bottom-6
+                     -left-2 md:left-auto md:right-[calc(50%+300px)]
                      w-[200px] md:w-[420px]
                      opacity-85 select-none scale-x-[-1]"
         />
