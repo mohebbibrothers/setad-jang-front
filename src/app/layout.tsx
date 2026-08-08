@@ -46,11 +46,23 @@ export const metadata: Metadata = {
     images: [siteConfig.ogImage],
   },
   icons: {
+    // Order matters: browsers pick the first supported entry.
+    // .ico ships three internal sizes (16/32/48) for legacy tabs,
+    // then crisp PNGs for modern browsers at 16/32/192/512, and
+    // apple-touch-icon for iOS home-screen. The SVG placeholder
+    // was removed when the graphic designer delivered the final
+    // brand mark — the PNGs ARE the source of truth now.
     icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      // `?v=2` cache-busts users who already visited the old placeholder
+      // favicon — browsers aggressively pin favicons for weeks otherwise.
+      { url: '/favicon.ico?v=2', sizes: 'any', type: 'image/x-icon' },
+      { url: '/favicon-16.png?v=2',  sizes: '16x16',   type: 'image/png' },
+      { url: '/favicon-32.png?v=2',  sizes: '32x32',   type: 'image/png' },
+      { url: '/favicon-192.png?v=2', sizes: '192x192', type: 'image/png' },
+      { url: '/favicon-512.png?v=2', sizes: '512x512', type: 'image/png' },
     ],
-    apple: '/apple-touch-icon.png',
+    shortcut: [{ url: '/favicon.ico?v=2' }],
+    apple: [{ url: '/apple-touch-icon.png?v=2', sizes: '180x180', type: 'image/png' }],
   },
   manifest: '/manifest.webmanifest',
   robots: {

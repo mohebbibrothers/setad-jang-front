@@ -14,11 +14,12 @@ export default function manifest(): MetadataRoute.Manifest {
     dir: 'rtl',
     lang: 'fa-IR',
     icons: [
-      { src: '/favicon.svg',     sizes: 'any',     type: 'image/svg+xml', purpose: 'any' },
+      { src: '/favicon.ico',     sizes: '48x48',   type: 'image/x-icon',  purpose: 'any' },
       { src: '/favicon-192.png', sizes: '192x192', type: 'image/png',     purpose: 'any' },
       { src: '/favicon-192.png', sizes: '192x192', type: 'image/png',     purpose: 'maskable' },
       { src: '/favicon-512.png', sizes: '512x512', type: 'image/png',     purpose: 'any' },
       { src: '/favicon-512.png', sizes: '512x512', type: 'image/png',     purpose: 'maskable' },
+      { src: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png', purpose: 'any' },
     ],
   };
 }
