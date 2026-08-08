@@ -102,9 +102,46 @@ function isServer(): boolean {
   return typeof window === 'undefined';
 }
 
+/**
+ * Return the base URL prefix that every path is joined against.
+ *
+ * Server-side (SSR / RSC / route handlers)
+ *   →  `<NEXT_PUBLIC_API_URL>/api/v1`
+ *      (absolute — the Node process has no notion of "same-origin".)
+ *
+ * Browser
+ *   →  If the API host matches the current page's origin (or is left
+ *      unset / relative), we go DIRECT to `/api/v1/…` — same-origin,
+ *      no CORS, no rewrite hop. This is the norm on besat.me where
+ *      the Django backend is reverse-proxied behind Nginx on the SAME
+ *      domain that serves the frontend; asking Nginx to route to a
+ *      Next.js /api/proxy/ rewrite is a wasteful extra layer that
+ *      also silently 404s if Nginx isn't wired to forward it.
+ *   →  If the API host differs from the page origin (e.g. dev-time
+ *      cross-origin backend, staging on a different sub-domain), we
+ *      fall back to the same-origin Next.js rewrite at `/api/proxy`,
+ *      which sidesteps CORS by forwarding server-side.
+ */
 function resolveBaseUrl(absolute: boolean): string {
   if (isServer() || absolute) {
     return `${siteConfig.apiUrl.replace(/\/+$/, '')}/api/v1`;
+  }
+  // Browser: pick between "direct same-origin" and "Next-proxy hop".
+  try {
+    const configured = (siteConfig.apiUrl || '').trim();
+    if (!configured) {
+      // No API host configured → treat as same-origin.
+      return '/api/v1';
+    }
+    const apiHost  = new URL(configured, window.location.origin).host;
+    const pageHost = window.location.host;
+    if (apiHost === pageHost) {
+      // Same origin — go direct, no proxy hop needed.
+      return '/api/v1';
+    }
+  } catch {
+    // If the URL isn't parseable for any reason, fall through to the
+    // proxy path — it's the safer of the two branches.
   }
   return '/api/proxy';
 }
