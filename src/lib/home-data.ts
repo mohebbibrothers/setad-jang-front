@@ -300,15 +300,21 @@ type ApiTabyin = {
   attachments?: ApiTabyinAttachment[];
 };
 
-/** The audio tab was retired from the homepage Tabyin filter strip
- *  (no standalone audio content is published on the front site right
- *  now), so we no longer need to preload the audio count either. The
- *  backend `?media_type=audio` filter still works — this only trims
- *  the always-empty roundtrip. */
+/**
+ * Tabyin filter counts.
+ *
+ * The strip on the homepage has 4 tabs: همه / تصویر / ویدئو / متن.
+ * "متن" is the union bucket for everything that isn't a picture or a
+ * video (audio, other, no-media). Backend has no dedicated count
+ * endpoint for "text" — we compute it as `all - image - video` so
+ * every content type is accounted for exactly once and audio/other
+ * items surface under the متن tab.
+ */
 export type TabyinCounts = {
   all: number;
   image: number;
   video: number;
+  text: number;
 };
 
 async function loadTabyinCount(mediaType?: 'image' | 'video'): Promise<number> {
@@ -329,7 +335,12 @@ export async function loadTabyinCounts(): Promise<TabyinCounts> {
     loadTabyinCount('video'),
   ]);
 
-  return { all, image, video };
+  // Everything that isn't image or video lives under the متن bucket
+  // (audio, other, no-media). Clamped to zero in the impossible
+  // case that partial counts round to more than the aggregate.
+  const text = Math.max(0, all - image - video);
+
+  return { all, image, video, text };
 }
 
 export async function loadTabyinItems(): Promise<TabyinItem[]> {

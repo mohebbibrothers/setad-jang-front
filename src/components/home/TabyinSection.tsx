@@ -148,6 +148,22 @@ function GridIcon({ className = 'w-3 h-3' }: { className?: string }) {
   );
 }
 
+/** Text/document glyph — used by the new "متن" filter tab. Three
+ *  horizontal lines inside a rounded card read instantly as prose /
+ *  a written passage, distinguishing it from the image / video /
+ *  grid glyphs on the same strip. */
+function TextIcon({ className = 'w-3 h-3' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}
+         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+      <polyline points="14 3 14 9 20 9" />
+      <line x1="8" y1="13" x2="16" y2="13" />
+      <line x1="8" y1="17" x2="13" y2="17" />
+    </svg>
+  );
+}
+
 /* ───────────────────────────────────────────────────────────────────────── */
 /*  Helpers                                                                  */
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -162,18 +178,29 @@ function formatDuration(s?: number): string {
 }
 
 /**
- * NOTE — the previous filter roster included an 'audio' tab. It was
- * pulled at the client's request: the Tabyin corpus doesn't ship
- * standalone audio content on the homepage, so the tab pointed at an
- * always-empty view. The 'audio' bucket is also stripped from the
- * global search facets and from the homepage TabyinCounts loader.
- * The backend still accepts `?media_type=audio` — we're only removing
- * the front-end surface, not the data contract.
+ * Filter roster for the Tabyin media-type strip.
+ *
+ * Includes the new 'text' tab (added when the upstream crawler
+ * started ingesting text-only content — quotes, manifestos, callouts —
+ * alongside the existing image / video streams). The 'text' bucket
+ * catches EVERY item whose primary media type isn't image OR video —
+ * that means audio content, `other`, and anything the backend hasn't
+ * assigned a media type to (typically pure prose posts). A user
+ * looking at "متن" therefore sees the union of "not-a-picture, not-
+ * a-video" — the honest interpretation of "متن" on a media wall.
+ *
+ * A previous version of this roster included a stand-alone 'audio'
+ * tab; it was removed because the homepage corpus didn't publish any
+ * audio, so the tab pointed at an always-empty view. Audio content
+ * (if any surfaces) now lands under the more general 'text/other'
+ * umbrella so the strip stays at 4 tabs — no risk of overflow on
+ * narrow phones.
  */
 const FILTERS = [
-  { key: 'all',   label: 'همه',     Glyph: GridIcon  },
-  { key: 'image', label: 'تصویر',   Glyph: ImageIcon },
-  { key: 'video', label: 'ویدئو',   Glyph: VideoIcon },
+  { key: 'all',   label: 'همه',   Glyph: GridIcon  },
+  { key: 'image', label: 'تصویر', Glyph: ImageIcon },
+  { key: 'video', label: 'ویدئو', Glyph: VideoIcon },
+  { key: 'text',  label: 'متن',   Glyph: TextIcon  },
 ] as const;
 type FilterKey = (typeof FILTERS)[number]['key'];
 
@@ -181,6 +208,9 @@ export type TabyinCounts = {
   all: number;
   image: number;
   video: number;
+  /** Everything else (audio / other / no-media). Optional so older
+   *  loaders that don't populate it still typecheck. */
+  text?: number;
 };
 
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -191,16 +221,35 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
   const [filter, setFilter] = useState<FilterKey>('all');
   const [page, setPage]     = useState(0);
 
-  const counts = useMemo(() => ({
-    all:   backendCounts?.all ?? items.length,
-    image: backendCounts?.image ?? items.filter((i) => (i.mediaType ?? 'image') === 'image').length,
-    video: backendCounts?.video ?? items.filter((i) => i.mediaType === 'video').length,
-  }), [items, backendCounts]);
+  /*
+   * `text` is derived from the items array as everything whose media
+   * type ISN'T image or video (i.e. audio, other, or no media at all).
+   * The backend also exposes it as an aggregate count via
+   * `loadTabyinCounts`; we prefer that when present, and fall back to
+   * a client-side count so the strip stays correct even for embedded
+   * previews that never round-trip to the counts endpoint.
+   */
+  const counts = useMemo(() => {
+    const isTextItem = (i: TabyinItem) => {
+      const t = i.mediaType ?? 'image';
+      return t !== 'image' && t !== 'video';
+    };
+    return {
+      all:   backendCounts?.all   ?? items.length,
+      image: backendCounts?.image ?? items.filter((i) => (i.mediaType ?? 'image') === 'image').length,
+      video: backendCounts?.video ?? items.filter((i) => i.mediaType === 'video').length,
+      text:  backendCounts?.text  ?? items.filter(isTextItem).length,
+    };
+  }, [items, backendCounts]);
 
   const filtered = useMemo(
     () => items.filter((i) => {
       if (filter === 'all') return true;
-      return (i.mediaType ?? 'image') === filter;
+      const t = i.mediaType ?? 'image';
+      // "متن" catches audio + other + missing type — anything that
+      // isn't a picture or a video.
+      if (filter === 'text') return t !== 'image' && t !== 'video';
+      return t === filter;
     }),
     [items, filter],
   );
@@ -286,11 +335,45 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
          * Both values collapse back to the desktop defaults from `sm:`
          * upward (p-1 / gap-0) — the wider chip padding on desktop
          * already carries all the breathing room needed there. */}
-        <div className="flex justify-center mb-6 w-full">
-          <div className="inline-flex p-1.5 sm:p-1 bg-ink-50 rounded-full ring-1 ring-ink-100 shadow-inner
-                          max-w-full"
-               role="tablist" aria-label="نوع رسانه">
-            <div className="flex gap-1 sm:gap-0 min-w-0">
+        {/* ── Filter strip ────────────────────────────────────────────
+         *
+         * Redesign notes for the 4-tab (همه / تصویر / ویدئو / متن)
+         * roster:
+         *
+         *   1. Outer wrapper: `max-w-full px-2 sm:px-0`. The 8 px
+         *      side-padding on phones guarantees the pill is never
+         *      flush with the viewport edge — required because the
+         *      count badges bleed 1 px past the tab's rounded-full
+         *      hit area and, without a gutter, could clip against
+         *      the browser chrome or nav.
+         *
+         *   2. Pill container: `w-full max-w-[420px] sm:w-auto` on
+         *      phones so the pill can't outgrow the viewport, but
+         *      collapses to intrinsic size (`sm:w-auto`) on desktop
+         *      where four short labels + counts fit comfortably.
+         *
+         *   3. Inner row: `grid grid-cols-4 gap-1` on phones so each
+         *      of the 4 tabs gets an EQUAL slice of the pill width —
+         *      no tab wraps, none overflow, none get squeezed to
+         *      illegibility even at 320 px viewports. `sm:flex
+         *      sm:gap-0` restores the compact desktop look.
+         *
+         *   4. Per-tab padding: `px-2 sm:px-4`. Phone padding is
+         *      minimal because the grid slots ARE the spacing. On
+         *      desktop we bump to 16 px so the pill breathes.
+         *
+         *   5. Label sizing: `text-[11px] sm:text-[12.5px]`. Persian
+         *      glyphs stay legible at 11 px; smaller than that
+         *      starts to strain on phones.
+         */}
+        <div className="flex justify-center mb-6 w-full px-2 sm:px-0">
+          <div
+            className="w-full max-w-[420px] sm:w-auto sm:max-w-full
+                       inline-flex p-1.5 sm:p-1 bg-ink-50 rounded-full
+                       ring-1 ring-ink-100 shadow-inner"
+            role="tablist" aria-label="نوع رسانه"
+          >
+            <div className="grid grid-cols-4 gap-1 sm:flex sm:gap-0 w-full min-w-0">
               {FILTERS.map((f) => {
                 const isActive = filter === f.key;
                 const c = counts[f.key];
@@ -301,16 +384,9 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => setFilter(f.key)}
-                    /* Each tab is content-hugging with intentional
-                     * horizontal padding — no more `flex-1` stretching
-                     * (which was compensating for the phantom-column
-                     * bug the parent grid used to introduce). Padding
-                     * is comfortable at every size so all three tabs
-                     * feel equal-weight without the pill looking
-                     * cramped on phones. */
-                    className={`relative inline-flex items-center justify-center gap-1.5
-                                h-10 px-3 sm:px-4 min-w-0
-                                rounded-full text-[11.5px] sm:text-[12.5px] font-extrabold whitespace-nowrap
+                    className={`relative inline-flex items-center justify-center gap-1 sm:gap-1.5
+                                h-10 px-2 sm:px-4 min-w-0
+                                rounded-full text-[11px] sm:text-[12.5px] font-extrabold whitespace-nowrap
                                 transition-all duration-200
                                 ${isActive
                                   ? 'bg-gradient-to-l from-brand-500 to-brand-700 text-white shadow-[0_8px_20px_-6px_rgba(13,128,116,.55)]'
@@ -510,16 +586,39 @@ function TabyinTile({
                   ${sparseSizing}`}
     >
       {isQuote ? (
-        /* ── Quote tile (solid brand-green text card) ───────────────── */
+        /* ── Quote tile (solid brand-green text card) ─────────────────
+         *
+         * Redesign notes:
+         *   • Left / right padding is now generous enough (px-9 md:px-10)
+         *     that the body copy sits inside a safe "text box" that
+         *     NEVER overlaps the corner quote glyphs — the original
+         *     bug the client reported ("قسمتی از متن میره روی اون دو
+         *     تا ویرگول"). Top/bottom padding also expanded so the
+         *     centred paragraph breathes.
+         *   • The paragraph is wrapped in an absolutely-positioned
+         *     inset column with its OWN safe-area padding, then
+         *     centred with flex — that means overflow ellipsis and
+         *     centering compose correctly even for tiles that stretch
+         *     to two rows on the desktop grid.
+         *   • `line-clamp-4` (short tiles) / `line-clamp-8` (tall
+         *     tiles) — long text is trimmed with a `…` instead of
+         *     ever spilling past the safe area. `word-break: break-word`
+         *     safeguards against a single unbroken URL/token pushing
+         *     the tile wider.
+         *   • Font sizing bumps a step for tall tiles so a two-row
+         *     card doesn't look empty.
+         */
         <Link
           href={tileHref} target={tileTarget} rel={tileRel}
-          className="relative block w-full h-full p-4 md:p-5 text-white
-                     flex items-center justify-center text-center
-                     bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700"
+          className="relative block w-full h-full text-white
+                     bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700
+                     overflow-hidden"
         >
-          {/* Decorative quote glyph in the corner */}
-          <QuoteIcon className="absolute top-3 right-3 w-6 h-6 opacity-25" />
-          <QuoteIcon className="absolute bottom-3 left-3 w-5 h-5 opacity-15 rotate-180" />
+          {/* Decorative quote glyphs at the corners. `pointer-events-none`
+              so they never intercept clicks; z-index kept below the text
+              layer so the safe-area padding does the heavy lifting. */}
+          <QuoteIcon className="pointer-events-none absolute top-2.5 right-2.5 w-5 h-5 md:w-6 md:h-6 opacity-20" />
+          <QuoteIcon className="pointer-events-none absolute bottom-2.5 left-2.5 w-4 h-4 md:w-5 md:h-5 opacity-15 rotate-180" />
           {/* Subtle dotted texture */}
           <div
             aria-hidden="true"
@@ -530,9 +629,23 @@ function TabyinTile({
               backgroundSize: '14px 14px',
             }}
           />
-          <p className="relative text-[12px] md:text-[13.5px] leading-7 font-bold drop-shadow">
-            {it.summary}
-          </p>
+          {/* Text container: absolute inset with a SAFE-AREA padding
+              wider than the corner glyphs, then flex-centred so the
+              paragraph is perfectly balanced regardless of length. */}
+          <div
+            className={`absolute inset-0 flex items-center justify-center text-center
+                        px-8 md:px-10 py-8 md:py-10`}
+          >
+            <p
+              className={`relative font-bold drop-shadow
+                          text-[12.5px] md:text-[13.5px]
+                          leading-[1.75]
+                          ${tall ? 'line-clamp-[8]' : 'line-clamp-4'}`}
+              style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+            >
+              {it.summary || it.title}
+            </p>
+          </div>
         </Link>
       ) : it.coverUrl ? (
         /* ── Cover tile (image) ─────────────────────────────────────── */
