@@ -8,6 +8,7 @@ import { EducationSection } from '@/components/home/EducationSection';
 import { KindnessSection } from '@/components/home/KindnessSection';
 import { TabyinSection } from '@/components/home/TabyinSection';
 import { PublicReportSection } from '@/components/home/PublicReportSection';
+import { SeoContent } from '@/components/home/SeoContent';
 import {
   loadCampaigns,
   loadCriminals,
@@ -165,6 +166,13 @@ export default async function HomePage() {
       <KindnessSection listings={kindness} />
       <TabyinSection items={tabyin} counts={tabyinCounts} />
       <PublicReportSection subjects={reportSubjects} />
+
+      {/*
+        Keyword-rich, human-readable brand context — critical for ranking
+        the single-token query «بعثت» in Persian search. Ships FAQPage +
+        AboutPage + Article JSON-LD in a single component.
+      */}
+      <SeoContent />
     </>
   );
 }
