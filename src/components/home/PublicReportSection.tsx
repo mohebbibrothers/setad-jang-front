@@ -321,8 +321,14 @@ function SlideToVerify({
   }, [measure]);
 
   // Whenever the verified state OR the available track width changes,
-  // pin the visual x to the end of the track.
-  useEffect(() => { if (verified) setX(maxX); }, [verified, maxX]);
+  // sync the thumb position:
+  //   • verified === true  → pin to the end of the track
+  //   • verified === false → snap back to the start (the parent flips
+  //     this after a successful POST so the whole form — thumb
+  //     included — visibly resets for the next report)
+  useEffect(() => {
+    setX(verified ? maxX : 0);
+  }, [verified, maxX]);
 
   const beginDrag = (clientX: number) => {
     if (verified) return;
