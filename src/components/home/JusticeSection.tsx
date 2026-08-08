@@ -490,13 +490,23 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
     <div
       data-active={open ? 'true' : undefined}
       className="justice-hammer relative shrink-0"
-      // Only the ROOT wrapper gets hover — CSS scopes hover-driven
-      // animations to `@media (hover: hover)` so touch devices don't
-      // inherit the sticky pseudo-hover state after a tap.
+      // Hover lifecycle for desktop.
+      //
+      // Deliberately NOT handling onFocus / onBlur here anymore.
+      //
+      // Reasoning: a mouse click on the trigger transfers keyboard
+      // focus to the button, which used to bubble to this wrapper's
+      // onFocus and re-open the menu we were trying to close. We
+      // already suppress the focus transfer inside `<button>` with
+      // `onMouseDown` → `preventDefault()`, but leaving the onFocus
+      // handler here would still fire for keyboard Tab, and Tab-
+      // opening a menu should be an explicit Enter/Space action, not
+      // a side-effect of navigating past the icon. Keyboard users
+      // now get an explicit `onKeyDown` handler on the button itself
+      // that toggles open/close — the exact same UX contract as
+      // Space/Enter on any other menubutton.
       onMouseEnter={enter}
       onMouseLeave={leave}
-      onFocus={enter}
-      onBlur={leave}
     >
       {/* ── Trigger — the hammer button ──────────────────────────────
        *
@@ -528,9 +538,39 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
       <button
         ref={btnRef}
         type="button"
+        onMouseDown={(e) => {
+          // ─────────────────────────────────────────────────────────
+          //  THE FIX for "hammer keeps swinging after mouse click"
+          // ─────────────────────────────────────────────────────────
+          //  On desktop we want the icon to be PURELY hover-driven:
+          //  hover in → open, hover out → close. A mouse click should
+          //  have no effect at all.
+          //
+          //  The subtle bug: even though we ignore the click in the
+          //  handler, the browser STILL moves keyboard-focus to the
+          //  button on `mousedown`. That focus event bubbles up to
+          //  the wrapper's `onFocus`, which calls `enter()` and keeps
+          //  the menu open. When the user then slides the cursor away,
+          //  `onMouseLeave` schedules a close — but the button stays
+          //  focused, so `onBlur` on the wrapper never fires, and on
+          //  some browsers a phantom hover state stays latched to the
+          //  button too. The end result: menu closes correctly, but
+          //  the choreography visually keeps running until the user
+          //  clicks somewhere else (which finally releases the focus
+          //  and clears the hover latch).
+          //
+          //  `preventDefault()` on `mousedown` cancels the default
+          //  focus-transfer, keeping focus WHEREVER it was before the
+          //  click (usually `<body>` or the previously-focused input).
+          //  Everything the user perceives — click, hover, keyboard —
+          //  keeps working, but the phantom-focus vector is closed.
+          //  Only fires for mouse; touch/pen still take the pointerdown
+          //  branch below.
+          if (e.button === 0) e.preventDefault();
+        }}
         onPointerDown={(e) => {
-          // Only touch / pen / keyboard should toggle. Mouse clicks
-          // are ignored — hover already handles the whole lifecycle.
+          // Only touch / pen should toggle. Mouse is ignored — hover
+          // (via the wrapper) already handles the whole lifecycle.
           if (e.pointerType === 'mouse') return;
           setOpen((o) => !o);
           // Release focus so touch browsers don't keep any pseudo-
