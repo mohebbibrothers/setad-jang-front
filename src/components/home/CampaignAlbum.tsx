@@ -991,7 +991,24 @@ export function CampaignAlbum({
                     {title}
                   </h3>
                   {resolvedSubtitle?.value && (
-                    <p className="hidden sm:block text-[12px] text-white/60 font-medium leading-5 truncate">
+                    /*
+                     * Subtitle line (e.g. "موقعیت: تهران، ایران").
+                     *
+                     * Historically this was `hidden sm:block` — the
+                     * subtitle only showed from tablet-up which meant
+                     * mobile users never saw the criminal's location
+                     * in the album header. Now visible on every size,
+                     * with responsive typography (11.5 → 12 px) and a
+                     * strict `truncate` so an over-long location gets
+                     * ellipsised inside its column instead of ever
+                     * pushing the header layout. The left column
+                     * already has `min-w-0 overflow-hidden` so the
+                     * ellipsis behaviour is bulletproof — the row's
+                     * right cluster (counter + close) always stays
+                     * pinned to the edge.
+                     */
+                    <p className="block text-[11.5px] sm:text-[12px] text-white/70 font-medium
+                                  leading-[1.35] sm:leading-5 truncate mt-0.5 sm:mt-0">
                       {resolvedSubtitle.label}: {resolvedSubtitle.value}
                     </p>
                   )}
