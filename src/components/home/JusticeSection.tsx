@@ -209,30 +209,86 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
   // Render portals only client-side (SSR-safe).
   useEffect(() => { setMounted(true); }, []);
 
-  // ── Outside click / touch closes the menu ──────────────────────────
-  //
-  // Also blurs the trigger button when closing via outside interaction.
-  // On touch devices, tapping the button gives it focus, and browsers
-  // then latch :hover to whatever was last touched. Even after the
-  // menu closes, that latched :hover kept the hammer swinging until
-  // the user tapped somewhere else. Explicitly blurring the button
-  // when we auto-close guarantees the animation stops the instant
-  // the popover disappears — regardless of the OS's touch-focus
-  // heuristic.
+  /*
+   * ── DESKTOP hover polling — the final, bulletproof fix ─────────
+   *
+   * The whole class of "hammer keeps swinging after click" bugs
+   * comes from ONE core fragility: React's synthetic `onMouseLeave`
+   * / `onPointerLeave` do NOT always fire when the cursor's real
+   * position changes without a mousemove — e.g. after a click that
+   * shifts layout, after the button's `blur()` steals focus back,
+   * after `preventDefault()` on mousedown swallows the natural
+   * event sequence.  Any missed leave-event = animation stuck ON
+   * with no way to turn it OFF short of the user clicking away.
+   *
+   * The definitive fix is to STOP RELYING on the browser to tell
+   * us when the cursor leaves the button.  Instead, once the menu
+   * is open, we start a global `pointermove` listener and check on
+   * every frame whether the cursor is still geometrically inside
+   * either the trigger OR the popover.  The moment it leaves both
+   * bounding rects, we close.  Same for `pointerdown` outside the
+   * two — instant close.
+   *
+   * This bypasses every synthetic-event edge case (focus stealing,
+   * layout thrash, hidden overlays, iframe boundaries, browser
+   * bugs) because we're reading the true cursor coordinate from
+   * the native event on every move.  Hover-capable pointer only —
+   * touch devices continue to use the tap-toggle model below.
+   */
   useEffect(() => {
     if (!open) return;
-    function onDown(e: MouseEvent | TouchEvent) {
+    // Skip on touch — the tap-toggle model already handles those.
+    if (typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      return;
+    }
+    function isInside(el: Element | null, x: number, y: number) {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    }
+    function check(x: number, y: number) {
+      const inBtn = isInside(btnRef.current, x, y);
+      const inPop = isInside(popRef.current, x, y);
+      if (!inBtn && !inPop) {
+        setOpen(false);
+        btnRef.current?.blur();
+      }
+    }
+    function onMove(e: PointerEvent) {
+      if (e.pointerType !== 'mouse') return;
+      check(e.clientX, e.clientY);
+    }
+    function onDown(e: PointerEvent) {
+      if (e.pointerType !== 'mouse') return;
+      check(e.clientX, e.clientY);
+    }
+    document.addEventListener('pointermove', onMove, { passive: true });
+    document.addEventListener('pointerdown', onDown, { passive: true, capture: true });
+    return () => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerdown', onDown, { capture: true } as EventListenerOptions);
+    };
+  }, [open]);
+
+  // ── TOUCH outside-tap closer ───────────────────────────────────
+  //
+  // Desktop cursor tracking above already handles outside-click on
+  // hover-capable pointers. This effect covers the touch branch:
+  // any tap that lands outside both the trigger and the popover
+  // closes the menu and blurs the button so no phantom :hover
+  // latches to it after the touch.
+  useEffect(() => {
+    if (!open) return;
+    function onTouch(e: TouchEvent) {
       const target = e.target as Node;
       if (btnRef.current?.contains(target)) return;
       if (popRef.current?.contains(target)) return;
       setOpen(false);
       btnRef.current?.blur();
     }
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('touchstart', onDown, { passive: true });
+    document.addEventListener('touchstart', onTouch, { passive: true });
     return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('touchstart', onDown);
+      document.removeEventListener('touchstart', onTouch);
     };
   }, [open]);
 
@@ -332,14 +388,13 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
     };
   }, [open, measure]);
 
-  // Hover-delay-close so the cursor can slip from trigger → menu.
-  // Only fires on true hover-capable devices (see CSS `@media (hover)`).
+  // Open-on-hover. Closing is delegated to the pointer-polling effect
+  // above, which detects the moment the cursor leaves BOTH the trigger
+  // and the popover — that path is immune to the missed-`mouseleave`
+  // browser edge cases that used to leave the animation stuck on.
   const enter = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
+    if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; }
     setOpen(true);
-  };
-  const leave = () => {
-    closeTimer.current = setTimeout(() => setOpen(false), 160);
   };
 
   /**
@@ -353,8 +408,11 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
       <motion.div
         key="hammer-popover"
         ref={popRef}
+        // No onMouseLeave here — the pointer-polling effect above
+        // already handles the "cursor left both trigger and popover"
+        // condition with more reliable geometry, not the fragile
+        // synthetic React event.
         onMouseEnter={enter}
-        onMouseLeave={leave}
         initial={{ opacity: 0, y: 8, scale: 0.94 }}
         animate={{ opacity: pos ? 1 : 0, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 6, scale: 0.96 }}
@@ -506,7 +564,8 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
       // that toggles open/close — the exact same UX contract as
       // Space/Enter on any other menubutton.
       onMouseEnter={enter}
-      onMouseLeave={leave}
+      // onMouseLeave omitted — see the pointer-polling effect above,
+      // which is the authoritative close mechanism on desktop.
     >
       {/* ── Trigger — the hammer button ──────────────────────────────
        *
