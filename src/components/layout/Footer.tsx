@@ -51,6 +51,10 @@ const COLS = [
       { label: 'جهاد تبیین',         href: '/#tabyin' },
       { label: 'جایزه‌ای برای عدالت', href: '/#justice' },
       { label: 'گزارش‌های مردمی',    href: '/#reports' },
+      // Dedicated brand/about page — link exists so crawlers discover
+      // it from every page of the site (footer is a canonical crawl
+      // seed) and users can reach a proper "about us" story in one hop.
+      { label: 'درباره بعثت',        href: '/about-besat' },
     ],
   },
 ];

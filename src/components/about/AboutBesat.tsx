@@ -2,33 +2,34 @@ import Link from 'next/link';
 import { siteConfig } from '@/lib/site';
 
 /**
- * SEO Content Section — visible, semantic, keyword-rich prose that gives
- * Googlebot the textual context a photograph-heavy hero cannot supply.
+ * AboutBesat — the "درباره بعثت" editorial + FAQ block, promoted to a
+ * dedicated route at `/about-besat`.
  *
- *  WHY THIS EXISTS
+ *  HISTORY
+ *  ───────
+ *  This component originally lived at the bottom of the homepage as a
+ *  keyword-rich SEO section. The client asked to keep the homepage
+ *  pristine, so the block was extracted into its own standalone page.
+ *  That's actually the schema-correct home for an AboutPage / FAQPage
+ *  rich-result markup anyway — Google prefers editorial content at a
+ *  discoverable URL with a real title, not stuffed onto the root.
+ *
+ *  WHAT IT DELIVERS
  *  ────────────────
- *  Google ranks Persian pages primarily on VISIBLE TEXT relevance, and
- *  the rest of the homepage is mostly imagery + short section titles.
- *  Without a paragraph-length "about the brand" block, the term-frequency
- *  vector for the word «بعثت» stays near zero — no matter how good the
- *  JSON-LD is, the page competes with 12M other Persian results for that
- *  query and loses.
- *
- *  This component:
- *    • repeats «بعثت» / «بعثت مردم» / «besat.me» a natural number of times
- *      (target: 1–1.5 % density, well under keyword-stuffing thresholds)
- *    • wraps key phrases in <strong> — a real SEO signal, not decorative
- *    • surfaces internal anchors so crawlers follow into every section
- *    • ships a FAQ block that unlocks FAQPage rich snippets in the SERP
- *    • uses proper heading hierarchy (h2 → h3) which Google reads as
- *      the page's topic outline
+ *   • Editorial prose introducing the brand «بعثت مردم».
+ *   • Bold-marked brand tokens («بعثت», «بعثت مردم», besat.me) —
+ *     hitting a natural keyword density (~1.5 %) without stuffing.
+ *   • Internal-linking grid to every domain area (crawler follow-through).
+ *   • 6-question FAQ block that unlocks the FAQPage rich accordion in
+ *     the SERP.
+ *   • FAQPage + AboutPage + Article JSON-LD graph, cross-linked to the
+ *     root #organization / #website entities from RootLayout.
  *
  *  VISUAL DESIGN
  *  ─────────────
- *  This is meant to READ as premium editorial content, not as a wall of
- *  SEO filler. Column-widths capped for readability, brand-tinted rules
- *  for hierarchy, subtle mint tint on the FAQ card. Zero animations —
- *  crawlers need static text.
+ *  Reads as premium editorial content — column-widths capped for
+ *  readability, brand-tinted rules for hierarchy, subtle mint tint on
+ *  the FAQ card. Zero animations — crawlers need static text.
  */
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
@@ -58,12 +59,12 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
 ];
 
-export function SeoContent() {
+export function AboutBesat() {
   return (
     <section
       id="about-besat"
       aria-labelledby="about-besat-title"
-      className="relative bg-white pt-14 md:pt-20 pb-16 md:pb-24 border-t border-ink-100"
+      className="relative bg-white pt-14 md:pt-20 pb-16 md:pb-24"
     >
       <div className="container-edge max-w-4xl mx-auto">
         {/* ── Editorial header ─────────────────────────────────────── */}
@@ -218,7 +219,11 @@ export function SeoContent() {
             '@graph': [
               {
                 '@type': 'FAQPage',
-                '@id': `${siteConfig.url}/#faq`,
+                '@id': `${siteConfig.url}/about-besat#faq`,
+                url: `${siteConfig.url}/about-besat`,
+                inLanguage: 'fa-IR',
+                isPartOf: { '@id': `${siteConfig.url}#website` },
+                about: { '@id': `${siteConfig.url}#organization` },
                 mainEntity: FAQ_ITEMS.map((f) => ({
                   '@type': 'Question',
                   name: f.q,
@@ -230,16 +235,27 @@ export function SeoContent() {
               },
               {
                 '@type': 'AboutPage',
-                '@id': `${siteConfig.url}/#about`,
-                url: `${siteConfig.url}/#about-besat`,
+                '@id': `${siteConfig.url}/about-besat#aboutpage`,
+                url: `${siteConfig.url}/about-besat`,
                 name: 'درباره بعثت مردم',
                 inLanguage: 'fa-IR',
+                isPartOf: { '@id': `${siteConfig.url}#website` },
                 mainEntity: { '@id': `${siteConfig.url}#organization` },
                 about: { '@id': `${siteConfig.url}#organization` },
+                primaryImageOfPage: { '@id': `${siteConfig.url}#logo` },
+                breadcrumb: { '@id': `${siteConfig.url}/about-besat#breadcrumbs` },
+              },
+              {
+                '@type': 'BreadcrumbList',
+                '@id': `${siteConfig.url}/about-besat#breadcrumbs`,
+                itemListElement: [
+                  { '@type': 'ListItem', position: 1, name: 'خانه',       item: siteConfig.url },
+                  { '@type': 'ListItem', position: 2, name: 'درباره بعثت', item: `${siteConfig.url}/about-besat` },
+                ],
               },
               {
                 '@type': 'Article',
-                '@id': `${siteConfig.url}/#brand-article`,
+                '@id': `${siteConfig.url}/about-besat#brand-article`,
                 headline: 'بعثت مردم — سامانه یکپارچه جهاد تبیین و همبستگی',
                 description:
                   'بعثت مردم یک سامانه مردمی و غیرانتفاعی است که شش حوزه جهاد تبیین، مددکاری، آموزش، دیوار مهربانی، پشتیبانی مالی جبهه و پیگیری پرونده‌های مجرمان جهانی را در یک پلتفرم واحد کنار هم آورده است.',
@@ -255,7 +271,7 @@ export function SeoContent() {
                   'بعثت, بعثت مردم, besat, besat.me, جهاد تبیین, دیوار مهربانی',
                 author: { '@id': `${siteConfig.url}#organization` },
                 publisher: { '@id': `${siteConfig.url}#organization` },
-                mainEntityOfPage: { '@id': `${siteConfig.url}/#webpage` },
+                mainEntityOfPage: { '@id': `${siteConfig.url}/about-besat#aboutpage` },
                 image: `${siteConfig.url}${siteConfig.ogImage}`,
                 datePublished: '2025-01-01T00:00:00+03:30',
                 dateModified: new Date().toISOString(),
