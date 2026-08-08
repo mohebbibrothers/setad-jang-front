@@ -578,14 +578,20 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
           href={`/r4j/${slug}/report`}
           role="menuitem"
           onClick={() => { setOpen(false); btnRef.current?.blur(); }}
-          // block+pb-2.5 puts the 10 px breathing gutter INSIDE the
-          // Link so hover paints it too; the inner <div> reproduces
-          // the original h-11 row layout so nothing about the row
-          // itself moves or resizes visually.
+          // ─────────────────────────────────────────────────────────
+          //  ONE hover surface covers the whole option
+          // ─────────────────────────────────────────────────────────
+          //  block + pb-2.5 → the 10 px breathing gap is INSIDE the
+          //  Link, so hover paints it as part of the same fill. The
+          //  inner <div> reproduces the original h-11 row so nothing
+          //  visually shifts. Hover tint bumped from /[0.07] to
+          //  /[0.1] (matching the same-weight brand row on Option 1
+          //  when the palette accumulates ring+icon+text) so the
+          //  fill is unambiguously visible even in the thin gutter.
           className="group/item relative block pb-2.5
-                     hover:bg-brand-500/[0.07] transition-colors duration-150"
+                     hover:bg-brand-500/[0.1] transition-colors duration-150"
         >
-          <div className="flex items-center gap-2.5 px-3.5 h-11">
+          <div className="flex items-center gap-2.5 px-3.5 h-11 bg-transparent">
             <span
               className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0
                          bg-brand-500/[0.12] text-brand-600
