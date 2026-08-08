@@ -3,7 +3,8 @@
 import Image from 'next/image';
 import { SmartImage } from '@/components/ui/SmartImage';
 import Link from 'next/link';
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SectionTitle } from './SectionTitle';
 import { apiFetch } from '@/lib/api';
@@ -171,16 +172,39 @@ function HammerIcon({ className = 'w-4 h-4' }: { className?: string }) {
  *    • prefers-reduced-motion honoured via the standard media query.       *
  *  ────────────────────────────────────────────────────────────────────── */
 
+/**
+ * The popover is rendered via `createPortal` into `document.body` so that:
+ *   • It escapes the card's `overflow-hidden` (which was clipping it on
+ *     mobile when the card sits near the viewport edge).
+ *   • It escapes every ancestor `transform` / `filter` that would
+ *     otherwise create a new stacking context and force z-index arithmetic.
+ *   • Its position is computed from the trigger's `getBoundingClientRect`
+ *     each frame the menu is open, so it stays glued to the hammer
+ *     button through scrolling, resizing, or layout shifts.
+ * The popover is sized responsively for phones and pinned to the
+ * viewport gutters so it never overflows offscreen at either edge.
+ */
+type PopoverPos = { top: number; left: number; caretLeft: number };
+
 function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [pos, setPos] = useState<PopoverPos | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Click / touch outside closes the menu
+  // Render portals only client-side (SSR-safe).
+  useEffect(() => { setMounted(true); }, []);
+
+  // ── Outside click / touch closes the menu ──────────────────────────
   useEffect(() => {
     if (!open) return;
     function onDown(e: MouseEvent | TouchEvent) {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (btnRef.current?.contains(target)) return;
+      if (popRef.current?.contains(target)) return;
+      setOpen(false);
     }
     document.addEventListener('mousedown', onDown);
     document.addEventListener('touchstart', onDown, { passive: true });
@@ -190,7 +214,72 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
     };
   }, [open]);
 
-  // Hover-delay-close so the cursor can slip from trigger → menu
+  // ── ESC closes the menu ────────────────────────────────────────────
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  /**
+   * Compute the popover position relative to the viewport.
+   *
+   *   • Vertically: anchored to sit ABOVE the trigger with a 10 px gap
+   *     (`triggerTop - popHeight - 10`). We defer the measurement to a
+   *     `useLayoutEffect` after the popover mounts so we know its real
+   *     rendered height (not a guessed constant).
+   *   • Horizontally: centred on the trigger. Clamped to a 12 px
+   *     viewport gutter on both sides so it never bleeds off screen on
+   *     narrow phones. If the popover has to shift to stay in-viewport,
+   *     we compute where the trigger centre lands INSIDE the popover
+   *     and place the little caret (diamond tail) exactly there — so
+   *     the tail always points at the hammer, even after a shift.
+   */
+  const measure = useCallback(() => {
+    const btn = btnRef.current;
+    const pop = popRef.current;
+    if (!btn || !pop) return;
+
+    const btnRect = btn.getBoundingClientRect();
+    const popWidth = pop.offsetWidth;
+    const popHeight = pop.offsetHeight;
+    const gutter = 12;
+    const vpWidth = document.documentElement.clientWidth;
+
+    const triggerCentre = btnRect.left + btnRect.width / 2;
+    let left = triggerCentre - popWidth / 2;
+    // Clamp to viewport gutters.
+    left = Math.max(gutter, Math.min(left, vpWidth - popWidth - gutter));
+    const top = btnRect.top - popHeight - 10;
+
+    // Caret x — offset from the popover's LEFT so it always sits under
+    // the trigger centre regardless of the clamp above.
+    let caretLeft = triggerCentre - left;
+    // Keep caret inside the popover's rounded corners.
+    caretLeft = Math.max(14, Math.min(caretLeft, popWidth - 14));
+
+    setPos({ top, left, caretLeft });
+  }, []);
+
+  // Measure once mounted, then on scroll / resize while open.
+  useLayoutEffect(() => {
+    if (!open) return;
+    measure();
+    const onScroll = () => measure();
+    const onResize = () => measure();
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('scroll', onScroll, { capture: true } as EventListenerOptions);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [open, measure]);
+
+  // Hover-delay-close so the cursor can slip from trigger → menu.
+  // Only fires on true hover-capable devices (see CSS `@media (hover)`).
   const enter = () => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
     setOpen(true);
@@ -199,108 +288,132 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
     closeTimer.current = setTimeout(() => setOpen(false), 160);
   };
 
+  /**
+   * ── PORTALED POPOVER ────────────────────────────────────────────
+   * Lives outside the section tree, so `overflow-hidden` on the card
+   * cannot clip it. Same hover-grace behaviour: entering the popover
+   * cancels the close timer, leaving it schedules another close.
+   */
+  const popover = mounted && open ? createPortal(
+    <AnimatePresence>
+      <motion.div
+        key="hammer-popover"
+        ref={popRef}
+        onMouseEnter={enter}
+        onMouseLeave={leave}
+        initial={{ opacity: 0, y: 8, scale: 0.94 }}
+        animate={{ opacity: pos ? 1 : 0, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 6, scale: 0.96 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 26, mass: 0.55 }}
+        role="menu"
+        aria-label={`${fullName} — گزینه‌های مشارکت در مجازات`}
+        // `w-[min(240px,calc(100vw-24px))]` guarantees the popover never
+        // exceeds the viewport minus a 12 px gutter on either side even
+        // on the narrowest phones.
+        className="fixed z-[80] w-[min(240px,calc(100vw-24px))]
+                   bg-white rounded-2xl overflow-hidden
+                   shadow-[0_24px_60px_-12px_rgba(0,0,0,.42),0_0_0_1px_rgba(217,222,229,.75)]"
+        style={{
+          direction: 'rtl',
+          top: pos?.top ?? -9999,
+          left: pos?.left ?? -9999,
+          transformOrigin: 'bottom center',
+        }}
+      >
+        {/* ── Title strip ─────────────────────────────────────────
+            Larger, properly centred, no forced uppercase (uppercase
+            makes zero sense for Persian glyphs and looked cramped). */}
+        <div className="px-4 pt-3 pb-2 text-center text-[13px] font-extrabold
+                        text-ink-800 border-b border-ink-100/70">
+          مشارکت در مجازات
+        </div>
+
+        {/* Option 1: ثبت جایزه */}
+        <Link
+          href={`/r4j/${slug}/bounty`}
+          role="menuitem"
+          onClick={() => setOpen(false)}
+          className="group/item relative flex items-center gap-2.5 px-3.5 h-11
+                     hover:bg-accent-500/[0.07] transition-colors duration-150"
+        >
+          <span
+            className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0
+                       bg-accent-500/[0.12] text-accent-600
+                       group-hover/item:bg-accent-500 group-hover/item:text-white
+                       group-hover/item:shadow-[0_6px_14px_-4px_rgba(229,82,20,.5)]
+                       transition-all duration-200"
+          >
+            <TrophyIcon className="w-3.5 h-3.5" />
+          </span>
+          <span className="flex-1 text-right text-[12.5px] font-extrabold text-ink-800
+                           group-hover/item:text-accent-700 transition-colors">
+            ثبت جایزه
+          </span>
+          <ChevronLeftIcon className="w-3.5 h-3.5 text-ink-400
+                                      group-hover/item:text-accent-600
+                                      group-hover/item:-translate-x-0.5
+                                      transition-all duration-200" />
+        </Link>
+
+        <div className="mx-2 h-px bg-gradient-to-l from-transparent via-ink-100 to-transparent" />
+
+        {/* Option 2: گزارش اطلاعات */}
+        <Link
+          href={`/r4j/${slug}/report`}
+          role="menuitem"
+          onClick={() => setOpen(false)}
+          className="group/item relative flex items-center gap-2.5 px-3.5 h-11
+                     hover:bg-brand-500/[0.07] transition-colors duration-150"
+        >
+          <span
+            className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0
+                       bg-brand-500/[0.12] text-brand-600
+                       group-hover/item:bg-brand-500 group-hover/item:text-white
+                       group-hover/item:shadow-[0_6px_14px_-4px_rgba(13,128,116,.5)]
+                       transition-all duration-200"
+          >
+            <InfoIcon className="w-3.5 h-3.5" />
+          </span>
+          <span className="flex-1 text-right text-[12.5px] font-extrabold text-ink-800
+                           group-hover/item:text-brand-700 transition-colors">
+            گزارش اطلاعات
+          </span>
+          <ChevronLeftIcon className="w-3.5 h-3.5 text-ink-400
+                                      group-hover/item:text-brand-600
+                                      group-hover/item:-translate-x-0.5
+                                      transition-all duration-200" />
+        </Link>
+
+        {/* Tail — dynamic-left diamond that always points at the hammer,
+            even after the popover shifts to stay in-viewport. */}
+        <div
+          aria-hidden="true"
+          className="absolute -bottom-1.5 w-3 h-3 rotate-45 bg-white -translate-x-1/2"
+          style={{
+            left: pos?.caretLeft ?? '50%',
+            boxShadow: '1px 1px 0 rgba(217,222,229,.7)',
+          }}
+        />
+      </motion.div>
+    </AnimatePresence>,
+    document.body,
+  ) : null;
+
   return (
     <div
-      ref={wrapRef}
+      data-active={open ? 'true' : undefined}
+      className="justice-hammer relative shrink-0"
+      // Only the ROOT wrapper gets hover — CSS scopes hover-driven
+      // animations to `@media (hover: hover)` so touch devices don't
+      // inherit the sticky pseudo-hover state after a tap.
       onMouseEnter={enter}
       onMouseLeave={leave}
       onFocus={enter}
       onBlur={leave}
-      data-active={open ? 'true' : undefined}
-      className="justice-hammer relative shrink-0"
     >
-      {/* ── Popover ─────────────────────────────────────────────────
-       * Anchored to the trigger button and fans UPWARD (bottom-full)
-       * so it opens into the photo area, never below the plate. */}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.94 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.96 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 26, mass: 0.55 }}
-            role="menu"
-            aria-label={`${fullName} — گزینه‌های مشارکت در مجازات`}
-            className="absolute bottom-[calc(100%+12px)] right-1/2 translate-x-1/2
-                       w-[190px] sm:w-[210px]
-                       bg-white rounded-2xl overflow-hidden
-                       shadow-[0_24px_60px_-12px_rgba(0,0,0,.42),0_0_0_1px_rgba(217,222,229,.75)]
-                       z-30"
-            style={{ direction: 'rtl' }}
-          >
-            {/* Title strip — establishes context so the two options aren't
-                floating unlabeled above the card. */}
-            <div className="px-3.5 pt-2.5 pb-1.5 text-[10.5px] font-extrabold text-ink-500
-                            tracking-wide uppercase">
-              مشارکت در مجازات
-            </div>
-
-            {/* Option 1: ثبت جایزه */}
-            <Link
-              href={`/r4j/${slug}/bounty`}
-              role="menuitem"
-              className="group/item relative flex items-center gap-2.5 px-3.5 h-11
-                         hover:bg-accent-500/[0.07] transition-colors duration-150"
-            >
-              <span
-                className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0
-                           bg-accent-500/[0.12] text-accent-600
-                           group-hover/item:bg-accent-500 group-hover/item:text-white
-                           group-hover/item:shadow-[0_6px_14px_-4px_rgba(229,82,20,.5)]
-                           transition-all duration-200"
-              >
-                <TrophyIcon className="w-3.5 h-3.5" />
-              </span>
-              <span className="flex-1 text-right text-[12.5px] font-extrabold text-ink-800
-                               group-hover/item:text-accent-700 transition-colors">
-                ثبت جایزه
-              </span>
-              <ChevronLeftIcon className="w-3.5 h-3.5 text-ink-400
-                                          group-hover/item:text-accent-600
-                                          group-hover/item:-translate-x-0.5
-                                          transition-all duration-200" />
-            </Link>
-
-            <div className="mx-2 h-px bg-gradient-to-l from-transparent via-ink-100 to-transparent" />
-
-            {/* Option 2: گزارش اطلاعات */}
-            <Link
-              href={`/r4j/${slug}/report`}
-              role="menuitem"
-              className="group/item relative flex items-center gap-2.5 px-3.5 h-11
-                         hover:bg-brand-500/[0.07] transition-colors duration-150"
-            >
-              <span
-                className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0
-                           bg-brand-500/[0.12] text-brand-600
-                           group-hover/item:bg-brand-500 group-hover/item:text-white
-                           group-hover/item:shadow-[0_6px_14px_-4px_rgba(13,128,116,.5)]
-                           transition-all duration-200"
-              >
-                <InfoIcon className="w-3.5 h-3.5" />
-              </span>
-              <span className="flex-1 text-right text-[12.5px] font-extrabold text-ink-800
-                               group-hover/item:text-brand-700 transition-colors">
-                گزارش اطلاعات
-              </span>
-              <ChevronLeftIcon className="w-3.5 h-3.5 text-ink-400
-                                          group-hover/item:text-brand-600
-                                          group-hover/item:-translate-x-0.5
-                                          transition-all duration-200" />
-            </Link>
-
-            {/* Tail — small diamond pointing DOWN to the hammer icon */}
-            <div
-              aria-hidden="true"
-              className="absolute right-1/2 translate-x-1/2 -bottom-1.5 w-3 h-3 rotate-45 bg-white"
-              style={{ boxShadow: '1px 1px 0 rgba(217,222,229,.7)' }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ── Trigger — the hammer button ────────────────────────────── */}
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
@@ -323,6 +436,7 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
         />
       </button>
 
+      {popover}
     </div>
   );
 }
@@ -342,20 +456,42 @@ const HAMMER_STYLES = `
 [data-hammer-head]  { transform-box: fill-box; transform-origin: 22px 6px;  transition: transform 240ms cubic-bezier(.7,.05,.2,1); }
 [data-hammer-anvil] { transform-box: fill-box; transform-origin: 16px 28px; transition: transform 180ms ease-out; }
 
-.justice-hammer:hover [data-hammer-head],
-.justice-hammer:focus-within [data-hammer-head],
-.justice-hammer[data-active='true'] [data-hammer-head] {
-  animation: hammerSwing 900ms cubic-bezier(.65,.05,.2,1) infinite;
-}
-.justice-hammer:hover [data-hammer-anvil],
-.justice-hammer:focus-within [data-hammer-anvil],
-.justice-hammer[data-active='true'] [data-hammer-anvil] {
-  animation: anvilPulse 900ms cubic-bezier(.65,.05,.2,1) infinite;
-}
-.justice-hammer:hover .justice-hammer-halo,
-.justice-hammer:focus-within .justice-hammer-halo,
-.justice-hammer[data-active='true'] .justice-hammer-halo {
-  animation: hammerHalo 900ms ease-out infinite;
+/*
+ * ── ACTIVE DRIVER (canonical source of truth) ────────────────────
+ * The wrapper flips \`data-active="true"\` whenever the menu is open.
+ * When active, the choreography plays. Works IDENTICALLY on desktop
+ * and mobile — the animation lifetime is bound to the menu's
+ * lifetime, so it stops the instant the menu closes (touching
+ * outside the card, ESC, choosing an option, etc.).
+ */
+.justice-hammer[data-active='true'] [data-hammer-head]  { animation: hammerSwing 900ms cubic-bezier(.65,.05,.2,1) infinite; }
+.justice-hammer[data-active='true'] [data-hammer-anvil] { animation: anvilPulse  900ms cubic-bezier(.65,.05,.2,1) infinite; }
+.justice-hammer[data-active='true'] .justice-hammer-halo { animation: hammerHalo 900ms ease-out infinite; }
+
+/*
+ * ── HOVER DRIVER (desktop-only) ───────────────────────────────────
+ * On real hover-capable pointers (mice, trackpads) we ALSO run the
+ * animation on hover so the icon feels alive as the user scans the
+ * grid. Gated by \`@media (hover: hover)\` so touch devices never
+ * inherit a sticky :hover state after a tap — that was the bug the
+ * client reported ("the hammer keeps swinging after I close the
+ * menu until I tap somewhere else"). On touch, \`:hover\` gets latched
+ * to the last-tapped element indefinitely; scoping the rule to
+ * true hover devices eliminates the problem at the root.
+ */
+@media (hover: hover) and (pointer: fine) {
+  .justice-hammer:hover [data-hammer-head],
+  .justice-hammer:focus-within [data-hammer-head] {
+    animation: hammerSwing 900ms cubic-bezier(.65,.05,.2,1) infinite;
+  }
+  .justice-hammer:hover [data-hammer-anvil],
+  .justice-hammer:focus-within [data-hammer-anvil] {
+    animation: anvilPulse 900ms cubic-bezier(.65,.05,.2,1) infinite;
+  }
+  .justice-hammer:hover .justice-hammer-halo,
+  .justice-hammer:focus-within .justice-hammer-halo {
+    animation: hammerHalo 900ms ease-out infinite;
+  }
 }
 
 @keyframes hammerSwing {
@@ -378,16 +514,10 @@ const HAMMER_STYLES = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .justice-hammer:hover [data-hammer-head],
-  .justice-hammer:focus-within [data-hammer-head],
-  .justice-hammer[data-active='true'] [data-hammer-head],
-  .justice-hammer:hover [data-hammer-anvil],
-  .justice-hammer:focus-within [data-hammer-anvil],
-  .justice-hammer[data-active='true'] [data-hammer-anvil],
-  .justice-hammer:hover .justice-hammer-halo,
-  .justice-hammer:focus-within .justice-hammer-halo,
-  .justice-hammer[data-active='true'] .justice-hammer-halo {
-    animation: none;
+  .justice-hammer [data-hammer-head],
+  .justice-hammer [data-hammer-anvil],
+  .justice-hammer .justice-hammer-halo {
+    animation: none !important;
   }
 }
 `;
