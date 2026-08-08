@@ -65,24 +65,11 @@ export type CriminalCard = {
 /*  Icons                                                                    */
 /* ───────────────────────────────────────────────────────────────────────── */
 
-function GavelIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.3}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <path d="m14.5 12.5-8 8a2.119 2.119 0 1 1-3-3l8-8" />
-      <path d="m16 16 6-6" /><path d="m8 8 6-6" />
-      <path d="m9 7 8 8" /><path d="m21 11-8-8" />
-    </svg>
-  );
-}
-function ChevronDownIcon({ className = 'w-3 h-3' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
+// NOTE — the standalone GavelIcon and ChevronDownIcon that used to
+// power the retired orange split-action pill were removed with that
+// pill. If you need a lucide-style gavel/chevron elsewhere on this
+// page in the future, import from `lucide-react` — the tree-shakeable
+// version keeps bundle size in check.
 function ChevronLeftIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}
@@ -116,16 +103,80 @@ function InfoIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
   );
 }
 
-/* ───────────────────────────────────────────────────────────────────────── */
-/*  Split-action pill with popover menu                                      */
-/* ───────────────────────────────────────────────────────────────────────── */
+/**
+ * HammerIcon — a bespoke gavel-hammer drawn as TWO SVG groups so we can
+ * animate the head independently from the handle.
+ *
+ *   • `<g data-hammer-head>`  → the mallet (rotates from the base of
+ *                                the handle to fake a "swing").
+ *   • `<g data-hammer-anvil>` → the strike-anvil (pulses when the head
+ *                                lands, for the satisfying "hit" beat).
+ *
+ * Actual keyframes live in `<style>` inline below the icon so the
+ * animation only fires when the hover-parent flips a data-attribute
+ * (no JS state needed → zero re-renders → butter smooth).
+ */
+function HammerIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+      {/* Anvil — the strike surface at the bottom */}
+      <g data-hammer-anvil>
+        <rect x="7"  y="26" width="18" height="3"   rx="1.4" fill="currentColor" opacity=".55" />
+        <rect x="10" y="23" width="12" height="3"   rx="1"   fill="currentColor" opacity=".85" />
+      </g>
+      {/* Hammer — head (rectangle) + handle (rounded stick).
+          Pivot for the swing is at the TAIL of the handle (top-right in
+          RTL viewport), so the head arcs down toward the anvil. */}
+      <g data-hammer-head style={{ transformOrigin: '22px 6px' }}>
+        {/* Handle */}
+        <rect
+          x="9" y="5" width="14" height="3.2" rx="1.6"
+          fill="currentColor"
+          transform="rotate(-32 16 6.6)"
+        />
+        {/* Head (mallet) */}
+        <g transform="rotate(-32 16 6.6)">
+          <rect x="2.5" y="1.8" width="8" height="9.5" rx="1.8" fill="currentColor" />
+          {/* Highlight strip on the mallet — reads as a metallic gleam */}
+          <rect x="3.5" y="2.6" width="6" height="1.3" rx="0.6" fill="#ffffff" opacity=".28" />
+        </g>
+      </g>
+    </svg>
+  );
+}
 
-function ActionPill({ slug, label = 'مشارکت در مجازات' }: { slug: string; label?: string }) {
+/* ───────────────────────────────────────────────────────────────────────── */
+/*  Hammer menu — nameplate-mounted "gavel" that fans out on hover / tap.    */
+/*                                                                           */
+/*  Design intent                                                            */
+/*  ─────────────                                                            */
+/*  The old orange split-action pill lived INSIDE the portrait and                                                   *
+ *  visually competed with the criminal's face. The client asked for a       *
+ *  cleaner solution: relocate the entire action affordance to the green     *
+ *  nameplate at the bottom of the card, using a delightful hammer          *
+ *  icon that "swings down" whenever the user hovers, focuses, or taps      *
+ *  it. The popover — same content as before (ثبت جایزه + گزارش               *
+ *  اطلاعات) — fans upward, over the photo, so the plate + name stay        *
+ *  untouched.                                                              *
+ *                                                                          *
+ *  Animation                                                               *
+ *  ─────────                                                               *
+ *    • The hammer head rotates from a pivot at the tail of the handle,    *
+ *      so it arcs down like a real strike (rest = -32° → strike = +8°).    *
+ *    • On rest → strike we also apply a subtle brightness/scale bump.     *
+ *    • The anvil beneath receives a matching "hit-pulse" (scale-y            *
+ *      compresses for 90 ms) synced to the head landing.                  *
+ *    • All keyframes are declarative CSS keyed to a `data-active`         *
+ *      attribute on the wrapper, so there's zero React re-render churn.   *
+ *    • prefers-reduced-motion honoured via the standard media query.       *
+ *  ────────────────────────────────────────────────────────────────────── */
+
+function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Click outside closes (touch / desktop alike)
+  // Click / touch outside closes the menu
   useEffect(() => {
     if (!open) return;
     function onDown(e: MouseEvent | TouchEvent) {
@@ -139,13 +190,13 @@ function ActionPill({ slug, label = 'مشارکت در مجازات' }: { slug: 
     };
   }, [open]);
 
-  // Hover-delay-close so the cursor can slip from pill → menu
+  // Hover-delay-close so the cursor can slip from trigger → menu
   const enter = () => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
     setOpen(true);
   };
   const leave = () => {
-    closeTimer.current = setTimeout(() => setOpen(false), 180);
+    closeTimer.current = setTimeout(() => setOpen(false), 160);
   };
 
   return (
@@ -153,34 +204,49 @@ function ActionPill({ slug, label = 'مشارکت در مجازات' }: { slug: 
       ref={wrapRef}
       onMouseEnter={enter}
       onMouseLeave={leave}
-      className="absolute bottom-2.5 sm:bottom-3.5 left-1/2 -translate-x-1/2 w-[94%] sm:w-[88%] z-20"
+      onFocus={enter}
+      onBlur={leave}
+      data-active={open ? 'true' : undefined}
+      className="justice-hammer relative shrink-0"
     >
+      {/* ── Popover ─────────────────────────────────────────────────
+       * Anchored to the trigger button and fans UPWARD (bottom-full)
+       * so it opens into the photo area, never below the plate. */}
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.94 }}
+            initial={{ opacity: 0, y: 8, scale: 0.94 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.96 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 26, mass: 0.6 }}
-            className="absolute inset-x-0 bottom-[calc(100%+10px)]
-                       bg-white rounded-2xl overflow-hidden
-                       shadow-[0_24px_60px_-12px_rgba(0,0,0,.35),0_0_0_1px_rgba(217,222,229,.7)]
-                       backdrop-blur-xl"
+            transition={{ type: 'spring', stiffness: 380, damping: 26, mass: 0.55 }}
             role="menu"
-            aria-label={`${label} — گزینه‌ها`}
+            aria-label={`${fullName} — گزینه‌های مشارکت در مجازات`}
+            className="absolute bottom-[calc(100%+12px)] right-1/2 translate-x-1/2
+                       w-[190px] sm:w-[210px]
+                       bg-white rounded-2xl overflow-hidden
+                       shadow-[0_24px_60px_-12px_rgba(0,0,0,.42),0_0_0_1px_rgba(217,222,229,.75)]
+                       z-30"
+            style={{ direction: 'rtl' }}
           >
-            {/* Option 1: ثبت جایزه — accent (urgent, action-leaning) */}
+            {/* Title strip — establishes context so the two options aren't
+                floating unlabeled above the card. */}
+            <div className="px-3.5 pt-2.5 pb-1.5 text-[10.5px] font-extrabold text-ink-500
+                            tracking-wide uppercase">
+              مشارکت در مجازات
+            </div>
+
+            {/* Option 1: ثبت جایزه */}
             <Link
               href={`/r4j/${slug}/bounty`}
               role="menuitem"
-              className="group/item relative flex items-center gap-2.5 px-3.5 h-12
+              className="group/item relative flex items-center gap-2.5 px-3.5 h-11
                          hover:bg-accent-500/[0.07] transition-colors duration-150"
             >
               <span
-                className="flex items-center justify-center w-8 h-8 rounded-xl shrink-0
+                className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0
                            bg-accent-500/[0.12] text-accent-600
                            group-hover/item:bg-accent-500 group-hover/item:text-white
-                           group-hover/item:shadow-[0_6px_16px_-4px_rgba(229,82,20,.5)]
+                           group-hover/item:shadow-[0_6px_14px_-4px_rgba(229,82,20,.5)]
                            transition-all duration-200"
               >
                 <TrophyIcon className="w-3.5 h-3.5" />
@@ -197,18 +263,18 @@ function ActionPill({ slug, label = 'مشارکت در مجازات' }: { slug: 
 
             <div className="mx-2 h-px bg-gradient-to-l from-transparent via-ink-100 to-transparent" />
 
-            {/* Option 2: گزارش اطلاعات — brand-teal (informational, trustworthy) */}
+            {/* Option 2: گزارش اطلاعات */}
             <Link
               href={`/r4j/${slug}/report`}
               role="menuitem"
-              className="group/item relative flex items-center gap-2.5 px-3.5 h-12
+              className="group/item relative flex items-center gap-2.5 px-3.5 h-11
                          hover:bg-brand-500/[0.07] transition-colors duration-150"
             >
               <span
-                className="flex items-center justify-center w-8 h-8 rounded-xl shrink-0
+                className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0
                            bg-brand-500/[0.12] text-brand-600
                            group-hover/item:bg-brand-500 group-hover/item:text-white
-                           group-hover/item:shadow-[0_6px_16px_-4px_rgba(13,128,116,.5)]
+                           group-hover/item:shadow-[0_6px_14px_-4px_rgba(13,128,116,.5)]
                            transition-all duration-200"
               >
                 <InfoIcon className="w-3.5 h-3.5" />
@@ -223,49 +289,108 @@ function ActionPill({ slug, label = 'مشارکت در مجازات' }: { slug: 
                                           transition-all duration-200" />
             </Link>
 
-            {/* Tail — small white diamond pointing down to the pill */}
+            {/* Tail — small diamond pointing DOWN to the hammer icon */}
             <div
               aria-hidden="true"
-              className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 rotate-45 bg-white"
+              className="absolute right-1/2 translate-x-1/2 -bottom-1.5 w-3 h-3 rotate-45 bg-white"
               style={{ boxShadow: '1px 1px 0 rgba(217,222,229,.7)' }}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Trigger: glossy gradient pill with chevron */}
+      {/* ── Trigger — the hammer button ────────────────────────────── */}
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`relative w-full flex items-center justify-center gap-1 sm:gap-1.5 h-9 sm:h-10 px-2 sm:px-3.5
-                    rounded-full text-white text-[11px] sm:text-[12.5px] font-extrabold overflow-hidden
-                    ring-1 ring-black/5 transition-all duration-200 min-w-0
-                    ${open ? 'scale-[1.03] -translate-y-0.5' : 'hover:scale-[1.02]'}`}
-        style={{
-          backgroundImage: 'linear-gradient(180deg, #FF7B2E 0%, #FF6B1A 50%, #E55214 100%)',
-          boxShadow: open
-            ? '0 14px 32px -8px rgba(229,82,20,.65), inset 0 1px 0 rgba(255,255,255,.4), inset 0 -1px 0 rgba(0,0,0,.12)'
-            : '0 8px 20px -6px rgba(229,82,20,.55), inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(0,0,0,.1)',
-        }}
+        aria-label={`مشارکت در مجازات ${fullName}`}
+        className="justice-hammer-btn relative inline-flex items-center justify-center
+                   w-8 h-8 rounded-full text-white
+                   bg-white/10 hover:bg-white/25 focus:bg-white/25
+                   ring-1 ring-white/25 hover:ring-white/60
+                   transition-[background-color,box-shadow,transform] duration-200
+                   focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80
+                   hover:shadow-[0_6px_16px_-4px_rgba(0,0,0,.35)]"
       >
-        {/* Top gloss */}
+        <HammerIcon className="w-[18px] h-[18px] relative z-10 drop-shadow-[0_1px_0_rgba(0,0,0,.35)]" />
+        {/* Impact halo — tiny ring that pings out when the head strikes */}
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-full
-                     bg-gradient-to-b from-white/25 to-transparent"
-        />
-        <GavelIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 relative z-10 drop-shadow-[0_1px_0_rgba(0,0,0,.2)] shrink-0" />
-        <span className="relative z-10 drop-shadow-[0_1px_0_rgba(0,0,0,.18)] truncate">{label}</span>
-        <ChevronDownIcon
-          className={`w-3 h-3 relative z-10 transition-transform duration-300 shrink-0
-                      ${open ? 'rotate-180' : ''}`}
+          className="justice-hammer-halo pointer-events-none absolute inset-0 rounded-full
+                     ring-2 ring-white/70 opacity-0"
         />
       </button>
+
     </div>
   );
 }
+
+/**
+ * Hammer choreography styles.
+ *
+ * These live at module scope (in a plain <style> block emitted once
+ * from HAMMER_STYLES below) instead of styled-jsx because styled-jsx
+ * doesn't play nicely with the multi-line Tailwind template strings we
+ * use elsewhere in this file — the SWC transform gets confused by the
+ * embedded newlines and mis-tokenises the classNames. A single global
+ * style block is simpler, cheaper (zero per-render cost), and easier
+ * to reason about.
+ */
+const HAMMER_STYLES = `
+[data-hammer-head]  { transform-box: fill-box; transform-origin: 22px 6px;  transition: transform 240ms cubic-bezier(.7,.05,.2,1); }
+[data-hammer-anvil] { transform-box: fill-box; transform-origin: 16px 28px; transition: transform 180ms ease-out; }
+
+.justice-hammer:hover [data-hammer-head],
+.justice-hammer:focus-within [data-hammer-head],
+.justice-hammer[data-active='true'] [data-hammer-head] {
+  animation: hammerSwing 900ms cubic-bezier(.65,.05,.2,1) infinite;
+}
+.justice-hammer:hover [data-hammer-anvil],
+.justice-hammer:focus-within [data-hammer-anvil],
+.justice-hammer[data-active='true'] [data-hammer-anvil] {
+  animation: anvilPulse 900ms cubic-bezier(.65,.05,.2,1) infinite;
+}
+.justice-hammer:hover .justice-hammer-halo,
+.justice-hammer:focus-within .justice-hammer-halo,
+.justice-hammer[data-active='true'] .justice-hammer-halo {
+  animation: hammerHalo 900ms ease-out infinite;
+}
+
+@keyframes hammerSwing {
+  0%   { transform: rotate(0deg); }
+  40%  { transform: rotate(-14deg); }
+  58%  { transform: rotate(28deg); }
+  72%  { transform: rotate(20deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes anvilPulse {
+  0%, 50%, 100% { transform: scaleY(1); }
+  58%           { transform: scaleY(.55); }
+  72%           { transform: scaleY(1.05); }
+  85%           { transform: scaleY(1); }
+}
+@keyframes hammerHalo {
+  0%, 50%       { transform: scale(1);    opacity: 0; }
+  60%           { transform: scale(1.05); opacity: .85; }
+  100%          { transform: scale(1.55); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .justice-hammer:hover [data-hammer-head],
+  .justice-hammer:focus-within [data-hammer-head],
+  .justice-hammer[data-active='true'] [data-hammer-head],
+  .justice-hammer:hover [data-hammer-anvil],
+  .justice-hammer:focus-within [data-hammer-anvil],
+  .justice-hammer[data-active='true'] [data-hammer-anvil],
+  .justice-hammer:hover .justice-hammer-halo,
+  .justice-hammer:focus-within .justice-hammer-halo,
+  .justice-hammer[data-active='true'] .justice-hammer-halo {
+    animation: none;
+  }
+}
+`;
 
 /* ───────────────────────────────────────────────────────────────────────── */
 /*  Card                                                                     */
@@ -340,19 +465,45 @@ function CriminalCardView({
           )}
         </button>
 
-        {/* Split-action pill — popover opens upward inside the photo */}
-        <ActionPill slug={p.slug} />
+        {/* NOTE — the standalone orange "مشارکت در مجازات" pill that used
+            to live here was retired at the client's request. Its action
+            surface was moved to the green nameplate below where it lives
+            next to the criminal's name via <HammerMenu/>. That keeps
+            the portrait clean and gives the CTA a warmer, more integrated
+            home. */}
       </div>
 
-      {/* Green name plate */}
-      <Link
-        href={`/r4j/${p.slug}`}
-        className="block px-3 pt-3 pb-3 bg-brand-500 text-white text-center
-                   text-[14px] md:text-[14.5px] font-extrabold leading-6
-                   rounded-b-[28px] hover:bg-brand-600 transition-colors"
+      {/* ── Green name plate ────────────────────────────────────────
+          A single flex row: the criminal's name is a link to the
+          detail page (as before) and the hammer trigger sits to its
+          left (RTL) as a peer child of the plate. */}
+      <div
+        className="relative flex items-center gap-2 px-3 pt-3 pb-3 bg-brand-500
+                   rounded-b-[28px] group/plate transition-colors
+                   hover:bg-brand-600"
       >
-        {p.fullName}
-      </Link>
+        {/* Hammer trigger — peer of the name link so its own hover
+            state stays isolated from the plate's hover state (both
+            can highlight independently). */}
+        <HammerMenu slug={p.slug} fullName={p.fullName} />
+
+        {/* The name itself remains the primary click target for
+            "open detail page" — full-width so tap area stays generous. */}
+        <Link
+          href={`/r4j/${p.slug}`}
+          className="flex-1 min-w-0 text-white text-center
+                     text-[14px] md:text-[14.5px] font-extrabold leading-6
+                     truncate"
+          title={p.fullName}
+        >
+          {p.fullName}
+        </Link>
+
+        {/* Symmetry spacer — mirrors the hammer button's footprint so
+            the name reads truly centred instead of drifting toward one
+            edge. Non-interactive. */}
+        <span aria-hidden="true" className="shrink-0 w-8 h-8" />
+      </div>
     </motion.article>
   );
 }
@@ -481,6 +632,14 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
 
   return (
     <section className="section-y section-alt" id="justice">
+      {/*
+        One-shot injection of the hammer-icon keyframes for every card
+        under this section. Idempotent (CSS rules with identical names
+        just overwrite the same declaration), so even if the section
+        appears twice on some future layout, we don't cause style bloat.
+      */}
+      <style dangerouslySetInnerHTML={{ __html: HAMMER_STYLES }} />
+
       <div className="container-edge">
         <SectionTitle
           title="جایزه‌ای برای عدالت"
