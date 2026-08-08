@@ -416,12 +416,13 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
         // never exceeds the viewport minus a 10 px gutter on either
         // side, even on the narrowest phones. 260 px is the sweet
         // spot for two touch-sized rows without feeling cramped.
-        // `pb-2` breathes a little air below the last option ("گزارش
-        // اطلاعات") so it doesn't crowd the popover's bottom radius —
-        // a small standard courtesy that makes the menu read as
-        // properly framed rather than clipped.
+        // `pb-2.5` (10 px) breathes a proper standard gap below the
+        // last option ("گزارش اطلاعات") so it doesn't crowd the
+        // popover's bottom radius. Bumped from pb-2 → pb-2.5 to make
+        // the breathing room clearly perceptible without over-
+        // inflating the menu.
         className="fixed z-[80] w-[min(260px,calc(100vw-20px))]
-                   bg-white rounded-2xl overflow-hidden pb-2
+                   bg-white rounded-2xl overflow-hidden pb-2.5
                    shadow-[0_24px_60px_-12px_rgba(0,0,0,.42),0_0_0_1px_rgba(217,222,229,.75)]"
         style={{
           direction: 'rtl',
