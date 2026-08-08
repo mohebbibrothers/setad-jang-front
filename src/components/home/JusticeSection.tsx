@@ -234,14 +234,40 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
     if (typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
       return;
     }
-    function isInside(el: Element | null, x: number, y: number) {
+    /**
+     * `isInside` accepts an optional `pad` that inflates the target
+     * rectangle by that many pixels on every side. We use it to build
+     * a "hover corridor" that stitches the trigger button and the
+     * floating popover into ONE continuous hit-region.
+     *
+     * WHY THE CORRIDOR EXISTS
+     * ───────────────────────
+     * The popover is anchored 10 px above the button (see `gap = 10`
+     * in `measure()`), so there's a 10 px vertical gutter of empty
+     * space between them. When the user slides the cursor from the
+     * button UP toward the popover, that gutter is momentarily NOT
+     * covered by either element — pointer polling then says "you're
+     * outside both", closes the menu, and the user never reaches the
+     * options. That's the bug.
+     *
+     * The fix: pad EACH rectangle by 16 px (a hair more than the
+     * 10 px gap) so their inflated bounds overlap along the gutter.
+     * As long as the cursor stays in that fatter combined region
+     * the menu stays open. The instant the cursor leaves BOTH fat
+     * regions (i.e. clearly walks away from the widget), we close.
+     * 16 px is a comfortable Fitts-law tolerance without letting the
+     * menu linger absurdly long after the user has clearly left.
+     */
+    const PAD = 16;
+    function isInside(el: Element | null, x: number, y: number, pad = 0) {
       if (!el) return false;
       const r = el.getBoundingClientRect();
-      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      return x >= r.left - pad && x <= r.right + pad
+          && y >= r.top - pad && y <= r.bottom + pad;
     }
     function check(x: number, y: number) {
-      const inBtn = isInside(btnRef.current, x, y);
-      const inPop = isInside(popRef.current, x, y);
+      const inBtn = isInside(btnRef.current, x, y, PAD);
+      const inPop = isInside(popRef.current, x, y, PAD);
       if (!inBtn && !inPop) {
         setOpen(false);
         btnRef.current?.blur();
