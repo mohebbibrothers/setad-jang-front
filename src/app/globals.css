@@ -367,3 +367,31 @@
    automatic — when the RAF loop that drives `progress` freezes on
    hover / help / zoom, the transform freezes with it. No
    animation-play-state races, no separate scheduler to sync. */
+
+/* ── Album open animation (CSS keyframes, GPU-only) ────────────────
+   These keyframes replace the Framer Motion <AnimatePresence> that
+   used to wrap the album root + panel. Framer's spring integrator
+   ran on the main thread and blocked the first paint until the
+   animation was ready — visible as a ~100-150 ms click-hitch on
+   mid-range phones. Vanilla @keyframes on transform + opacity are
+   dispatched straight to the compositor thread, so the modal
+   paints on the FIRST frame after setState and settles in <220ms.
+
+   Only two properties are animated (opacity + transform) — those
+   are the ONLY two the browser can promote to the compositor
+   without triggering layout / paint on every frame. */
+@keyframes albumFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes albumPanelIn {
+  from { opacity: 0; transform: translateY(12px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[albumFadeIn_180ms_ease-out_both\],
+  .animate-\[albumPanelIn_220ms_cubic-bezier\(\.2\,\.7\,\.2\,1\)_both\] {
+    animation: none !important;
+  }
+}
