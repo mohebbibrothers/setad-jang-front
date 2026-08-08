@@ -258,20 +258,65 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
      * 16 px is a comfortable Fitts-law tolerance without letting the
      * menu linger absurdly long after the user has clearly left.
      */
-    const PAD = 16;
-    function isInside(el: Element | null, x: number, y: number, pad = 0) {
-      if (!el) return false;
-      const r = el.getBoundingClientRect();
-      return x >= r.left - pad && x <= r.right + pad
-          && y >= r.top - pad && y <= r.bottom + pad;
+    /**
+     * `check(x, y)` decides whether the cursor is still inside the
+     * "hover safe zone" made of THREE overlapping rectangles:
+     *
+     *    ┌────────────────────────────────────┐
+     *    │  1. popover rect (padded)          │
+     *    │  ┌────────────────────────────┐    │
+     *    │  │ [ ثبت جایزه ]              │    │
+     *    │  │ [ گزارش اطلاعات ]          │    │
+     *    │  └────────────────────────────┘    │
+     *    └────────────────────────────────────┘
+     *      ▲                                     ← 2. BRIDGE rect  (invisible corridor
+     *      │                                        stretching from popover's bottom
+     *      │                                        edge to button's top edge, spanning
+     *      │                                        the FULL horizontal extent of
+     *      │                                        both — no matter which side the
+     *      │                                        cursor slides through it always
+     *      │                                        stays inside this bridge).
+     *      ▼
+     *                             ┌──┐
+     *                             │🔨│  ← 3. trigger rect (padded)
+     *                             └──┘
+     *
+     * The bridge fixes the "cursor closes menu mid-slide" bug fully:
+     * even if the cursor takes a diagonal that skirts the padded
+     * button/popover, it still lands in the bridge and the menu
+     * stays open.  The instant the cursor leaves ALL THREE regions
+     * (i.e. clearly walks away from the widget) we close and blur.
+     */
+    const PAD = 8;
+    function inRect(x: number, y: number, l: number, t: number, r: number, b: number) {
+      return x >= l && x <= r && y >= t && y <= b;
     }
     function check(x: number, y: number) {
-      const inBtn = isInside(btnRef.current, x, y, PAD);
-      const inPop = isInside(popRef.current, x, y, PAD);
-      if (!inBtn && !inPop) {
-        setOpen(false);
-        btnRef.current?.blur();
+      const btn = btnRef.current?.getBoundingClientRect();
+      const pop = popRef.current?.getBoundingClientRect();
+      if (!btn) return;
+
+      // 1. padded button
+      if (inRect(x, y, btn.left - PAD, btn.top - PAD, btn.right + PAD, btn.bottom + PAD)) return;
+
+      if (pop) {
+        // 2. padded popover
+        if (inRect(x, y, pop.left - PAD, pop.top - PAD, pop.right + PAD, pop.bottom + PAD)) return;
+
+        // 3. bridge rectangle between the two — spans the union of
+        //    their horizontal extents so a diagonal cursor path is
+        //    still caught. Vertically it stretches from whichever
+        //    element is on top to whichever is on bottom.
+        const bridgeLeft   = Math.min(btn.left, pop.left)   - PAD;
+        const bridgeRight  = Math.max(btn.right, pop.right) + PAD;
+        const bridgeTop    = Math.min(btn.top, pop.top);
+        const bridgeBottom = Math.max(btn.bottom, pop.bottom);
+        if (inRect(x, y, bridgeLeft, bridgeTop, bridgeRight, bridgeBottom)) return;
       }
+
+      // Cursor is decisively outside the whole widget → close.
+      setOpen(false);
+      btnRef.current?.blur();
     }
     function onMove(e: PointerEvent) {
       if (e.pointerType !== 'mouse') return;
