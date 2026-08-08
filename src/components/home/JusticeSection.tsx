@@ -494,13 +494,17 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
         // never exceeds the viewport minus a 10 px gutter on either
         // side, even on the narrowest phones. 260 px is the sweet
         // spot for two touch-sized rows without feeling cramped.
-        // `pb-2.5` (10 px) breathes a proper standard gap below the
-        // last option ("گزارش اطلاعات") so it doesn't crowd the
-        // popover's bottom radius. Bumped from pb-2 → pb-2.5 to make
-        // the breathing room clearly perceptible without over-
-        // inflating the menu.
+        // The bottom breathing gap («فاصله زیر گزارش اطلاعات») is now
+        // baked into the last Link's own `pb-2.5` instead of the
+        // popover container. Reason: the container-level padding
+        // created a white strip below the option that the hover
+        // tint couldn't reach — moving the padding INSIDE the Link
+        // means the whole area (row + gap) is part of the same
+        // hoverable surface, so `hover:bg-brand-500/[0.07]` flushes
+        // continuously from the divider all the way to the popover's
+        // rounded bottom edge, no pseudo-elements required.
         className="fixed z-[80] w-[min(260px,calc(100vw-20px))]
-                   bg-white rounded-2xl overflow-hidden pb-2.5
+                   bg-white rounded-2xl overflow-hidden
                    shadow-[0_24px_60px_-12px_rgba(0,0,0,.42),0_0_0_1px_rgba(217,222,229,.75)]"
         style={{
           direction: 'rtl',
@@ -557,45 +561,49 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
 
         {/* Option 2: گزارش اطلاعات
          *
-         * The `::after` pseudo-element extends the hover surface DOWN
-         * into the popover's 10 px bottom padding. Without it, hover
-         * only tinted the h-11 row itself and the strip between the
-         * row and the popover's rounded bottom edge stayed white —
-         * which read as a broken hover state. `top-full h-2.5
-         * inset-x-0` glues the pseudo bar to the bottom of the Link,
-         * spanning the exact height of the popover's `pb-2.5` gutter.
-         * The pseudo tints the same brand-500/[0.07] as the row on
-         * hover, so the whole area from the divider all the way to
-         * the popover's bottom radius flushes green in one continuous
-         * fill.
+         * The 10 px breathing gap that used to live on the popover
+         * container (`pb-2.5`) is now baked INTO this Link as
+         * `pb-[18px]` (8 px inner vertical-centre-pad + 10 px
+         * requested breathing). That way the whole area — row +
+         * gap — is part of ONE hover surface, so
+         * `hover:bg-brand-500/[0.07]` flushes continuously from the
+         * divider all the way down to the popover's rounded bottom
+         * edge. No white strip, no pseudo-element workaround. Row
+         * still reads as h-11 because the icon (28 px) + the 8 px
+         * top-pad = 36 px inner content aligned to the top-centre;
+         * text is `items-center` so it sits on the same baseline
+         * as the icon regardless of the added bottom-pad.
          */}
         <Link
           href={`/r4j/${slug}/report`}
           role="menuitem"
           onClick={() => { setOpen(false); btnRef.current?.blur(); }}
-          className="group/item relative flex items-center gap-2.5 px-3.5 h-11
-                     hover:bg-brand-500/[0.07] transition-colors duration-150
-                     after:content-[''] after:absolute after:inset-x-0 after:top-full
-                     after:h-2.5 after:transition-colors after:duration-150
-                     hover:after:bg-brand-500/[0.07]"
+          // block+pb-2.5 puts the 10 px breathing gutter INSIDE the
+          // Link so hover paints it too; the inner <div> reproduces
+          // the original h-11 row layout so nothing about the row
+          // itself moves or resizes visually.
+          className="group/item relative block pb-2.5
+                     hover:bg-brand-500/[0.07] transition-colors duration-150"
         >
-          <span
-            className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0
-                       bg-brand-500/[0.12] text-brand-600
-                       group-hover/item:bg-brand-500 group-hover/item:text-white
-                       group-hover/item:shadow-[0_6px_14px_-4px_rgba(13,128,116,.5)]
-                       transition-all duration-200"
-          >
-            <InfoIcon className="w-3.5 h-3.5" />
-          </span>
-          <span className="flex-1 text-right text-[12.5px] font-extrabold text-ink-800
-                           group-hover/item:text-brand-700 transition-colors">
-            گزارش اطلاعات
-          </span>
-          <ChevronLeftIcon className="w-3.5 h-3.5 text-ink-400
-                                      group-hover/item:text-brand-600
-                                      group-hover/item:-translate-x-0.5
-                                      transition-all duration-200" />
+          <div className="flex items-center gap-2.5 px-3.5 h-11">
+            <span
+              className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0
+                         bg-brand-500/[0.12] text-brand-600
+                         group-hover/item:bg-brand-500 group-hover/item:text-white
+                         group-hover/item:shadow-[0_6px_14px_-4px_rgba(13,128,116,.5)]
+                         transition-all duration-200"
+            >
+              <InfoIcon className="w-3.5 h-3.5" />
+            </span>
+            <span className="flex-1 text-right text-[12.5px] font-extrabold text-ink-800
+                             group-hover/item:text-brand-700 transition-colors">
+              گزارش اطلاعات
+            </span>
+            <ChevronLeftIcon className="w-3.5 h-3.5 text-ink-400
+                                        group-hover/item:text-brand-600
+                                        group-hover/item:-translate-x-0.5
+                                        transition-all duration-200" />
+          </div>
         </Link>
 
         {/* Tail — dynamic-position diamond that always points at the
