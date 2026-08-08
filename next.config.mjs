@@ -88,10 +88,26 @@ const nextConfig = {
     // Same-origin proxy — browser calls /api/proxy/xxx, Next server
     // forwards to <NEXT_PUBLIC_API_URL>/api/v1/xxx. Bypasses CORS and
     // gives the client a stable path even if the backend host changes.
+    //
+    // ─── The double-slash 404 bug (fixed here) ─────────────────────
+    // Django requires a trailing slash on every registered route.
+    // The old rewrite hard-coded that trailing slash INSIDE the
+    // destination template (`/api/v1/:path*/`), while Next.js with
+    // `trailingSlash: false` (our default) keeps whatever slash the
+    // caller sent INSIDE `:path*`. Because every one of our client
+    // paths already ends in `/`, the two slashes stacked into
+    // `.../reports//` — which Nginx on besat.me rejects as 404.
+    // The client-reported "Public Reports section broken" bug is
+    // exactly this.
+    //
+    // Fix — the destination no longer appends its own trailing slash.
+    // Every caller in src/lib/api.ts already sends a path ending in
+    // `/` (that's the frontend contract), so the resulting URL is
+    // exactly `.../<path>/` end-of-string. No double slash, no 404.
     return [
       {
         source: '/api/proxy/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/:path*/`,
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/:path*`,
       },
     ];
   },
