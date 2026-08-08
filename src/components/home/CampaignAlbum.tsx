@@ -994,22 +994,46 @@ export function CampaignAlbum({
                     /*
                      * Subtitle line (e.g. "موقعیت: تهران، ایران").
                      *
-                     * Historically this was `hidden sm:block` — the
-                     * subtitle only showed from tablet-up which meant
-                     * mobile users never saw the criminal's location
-                     * in the album header. Now visible on every size,
-                     * with responsive typography (11.5 → 12 px) and a
-                     * strict `truncate` so an over-long location gets
-                     * ellipsised inside its column instead of ever
-                     * pushing the header layout. The left column
-                     * already has `min-w-0 overflow-hidden` so the
-                     * ellipsis behaviour is bulletproof — the row's
-                     * right cluster (counter + close) always stays
-                     * pinned to the edge.
+                     * Visible on EVERY size — historically was
+                     * `hidden sm:block` which is why the criminal's
+                     * location was missing on mobile.
+                     *
+                     * Layout guarantees:
+                     *   • parent left column has `min-w-0` +
+                     *     `overflow-hidden` → this row can shrink.
+                     *   • `<span class="truncate">` on the value →
+                     *     overflow becomes an ellipsis (`…`).
+                     *   • `<span shrink-0>` on the "label:" prefix
+                     *     stays intact so the user always sees WHAT
+                     *     the trimmed value represents.
+                     *   • row itself uses `flex min-w-0` so the
+                     *     truncated child respects the container
+                     *     width in every browser (Safari-safe).
+                     *   • right-side counter+close cluster keeps
+                     *     `shrink-0` so it never gets pushed.
                      */
-                    <p className="block text-[11.5px] sm:text-[12px] text-white/70 font-medium
-                                  leading-[1.35] sm:leading-5 truncate mt-0.5 sm:mt-0">
-                      {resolvedSubtitle.label}: {resolvedSubtitle.value}
+                    <p
+                      className="flex items-center gap-1 min-w-0 mt-0.5 sm:mt-0
+                                 text-[12px] sm:text-[12px] text-white/80 font-medium
+                                 leading-[1.4] sm:leading-5"
+                    >
+                      {/* Location pin glyph — a tiny visual anchor
+                          so the subtitle reads instantly as a place,
+                          before the user even parses the Persian
+                          label. Hidden from screen readers because
+                          the following text already carries the
+                          semantic meaning. */}
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                        className="shrink-0 w-3 h-3 sm:w-3.5 sm:h-3.5 text-white/70"
+                      >
+                        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                      </svg>
+                      <span className="shrink-0">{resolvedSubtitle.label}:</span>
+                      <span className="truncate min-w-0">{resolvedSubtitle.value}</span>
                     </p>
                   )}
                 </div>
