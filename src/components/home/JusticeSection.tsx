@@ -299,20 +299,27 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
       // 1. padded button
       if (inRect(x, y, btn.left - PAD, btn.top - PAD, btn.right + PAD, btn.bottom + PAD)) return;
 
-      if (pop) {
-        // 2. padded popover
-        if (inRect(x, y, pop.left - PAD, pop.top - PAD, pop.right + PAD, pop.bottom + PAD)) return;
+      // If the popover hasn't been laid out yet (React portal /
+      // AnimatePresence mount is asynchronous — the first
+      // pointermove after `open` flips to true typically arrives
+      // BEFORE `popRef.current` has a real bounding rect), we
+      // MUST NOT close: the cursor is on its way to a menu that
+      // doesn't yet know its geometry. Bail out and let the next
+      // frame — with a real `pop` rect — do the check.
+      if (!pop || pop.width === 0 || pop.height === 0) return;
 
-        // 3. bridge rectangle between the two — spans the union of
-        //    their horizontal extents so a diagonal cursor path is
-        //    still caught. Vertically it stretches from whichever
-        //    element is on top to whichever is on bottom.
-        const bridgeLeft   = Math.min(btn.left, pop.left)   - PAD;
-        const bridgeRight  = Math.max(btn.right, pop.right) + PAD;
-        const bridgeTop    = Math.min(btn.top, pop.top);
-        const bridgeBottom = Math.max(btn.bottom, pop.bottom);
-        if (inRect(x, y, bridgeLeft, bridgeTop, bridgeRight, bridgeBottom)) return;
-      }
+      // 2. padded popover
+      if (inRect(x, y, pop.left - PAD, pop.top - PAD, pop.right + PAD, pop.bottom + PAD)) return;
+
+      // 3. bridge rectangle between the two — spans the union of
+      //    their horizontal extents PLUS an extra `PAD` on top and
+      //    bottom so a diagonal cursor path is caught cleanly even
+      //    if it briefly exits both element rects.
+      const bridgeLeft   = Math.min(btn.left,  pop.left)   - PAD;
+      const bridgeRight  = Math.max(btn.right, pop.right)  + PAD;
+      const bridgeTop    = Math.min(btn.top,    pop.top)    - PAD;
+      const bridgeBottom = Math.max(btn.bottom, pop.bottom) + PAD;
+      if (inRect(x, y, bridgeLeft, bridgeTop, bridgeRight, bridgeBottom)) return;
 
       // Cursor is decisively outside the whole widget → close.
       setOpen(false);
