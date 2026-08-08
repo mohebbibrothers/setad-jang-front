@@ -555,13 +555,29 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
 
         <div className="mx-2 h-px bg-gradient-to-l from-transparent via-ink-100 to-transparent" />
 
-        {/* Option 2: گزارش اطلاعات */}
+        {/* Option 2: گزارش اطلاعات
+         *
+         * The `::after` pseudo-element extends the hover surface DOWN
+         * into the popover's 10 px bottom padding. Without it, hover
+         * only tinted the h-11 row itself and the strip between the
+         * row and the popover's rounded bottom edge stayed white —
+         * which read as a broken hover state. `top-full h-2.5
+         * inset-x-0` glues the pseudo bar to the bottom of the Link,
+         * spanning the exact height of the popover's `pb-2.5` gutter.
+         * The pseudo tints the same brand-500/[0.07] as the row on
+         * hover, so the whole area from the divider all the way to
+         * the popover's bottom radius flushes green in one continuous
+         * fill.
+         */}
         <Link
           href={`/r4j/${slug}/report`}
           role="menuitem"
           onClick={() => { setOpen(false); btnRef.current?.blur(); }}
           className="group/item relative flex items-center gap-2.5 px-3.5 h-11
-                     hover:bg-brand-500/[0.07] transition-colors duration-150"
+                     hover:bg-brand-500/[0.07] transition-colors duration-150
+                     after:content-[''] after:absolute after:inset-x-0 after:top-full
+                     after:h-2.5 after:transition-colors after:duration-150
+                     hover:after:bg-brand-500/[0.07]"
         >
           <span
             className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0
