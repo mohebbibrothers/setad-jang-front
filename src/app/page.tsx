@@ -8,7 +8,6 @@ import { EducationSection } from '@/components/home/EducationSection';
 import { KindnessSection } from '@/components/home/KindnessSection';
 import { TabyinSection } from '@/components/home/TabyinSection';
 import { PublicReportSection } from '@/components/home/PublicReportSection';
-import { SeoContent } from '@/components/home/SeoContent';
 import {
   loadCampaigns,
   loadCriminals,
@@ -168,11 +167,17 @@ export default async function HomePage() {
       <PublicReportSection subjects={reportSubjects} />
 
       {/*
-        Keyword-rich, human-readable brand context — critical for ranking
-        the single-token query «بعثت» in Persian search. Ships FAQPage +
-        AboutPage + Article JSON-LD in a single component.
+        NOTE — the "درباره بعثت" editorial + FAQ + JSON-LD block used to
+        be rendered here at the bottom of the homepage. Per the client's
+        explicit direction, the homepage MUST stay pristine (Hero →
+        Activities → 5 domain sections → Public Reports → Footer), so
+        that content was extracted into its own dedicated route:
+        `/about-besat` (see `src/app/about-besat/page.tsx`). The route
+        is linked from Footer and included in sitemap.ts so crawlers
+        still discover it — and it now has a proper standalone URL,
+        which is the schema-correct home for AboutPage / FAQPage
+        rich snippets.
       */}
-      <SeoContent />
     </>
   );
 }
