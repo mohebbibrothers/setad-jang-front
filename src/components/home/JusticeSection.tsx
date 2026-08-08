@@ -104,6 +104,18 @@ function InfoIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
   );
 }
 
+/** Compact gavel bullet used as the popover-title lead-in glyph. */
+function MiniGavelIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}
+         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="m14.5 12.5-8 8a2.119 2.119 0 1 1-3-3l8-8" />
+      <path d="m16 16 6-6" /><path d="m8 8 6-6" />
+      <path d="m9 7 8 8" /><path d="m21 11-8-8" />
+    </svg>
+  );
+}
+
 /**
  * HammerIcon — a bespoke gavel-hammer drawn as TWO SVG groups so we can
  * animate the head independently from the handle.
@@ -184,7 +196,7 @@ function HammerIcon({ className = 'w-4 h-4' }: { className?: string }) {
  * The popover is sized responsively for phones and pinned to the
  * viewport gutters so it never overflows offscreen at either edge.
  */
-type PopoverPos = { top: number; left: number; caretLeft: number };
+type PopoverPos = { top: number; left: number; caretLeft: number; placement: 'top' | 'bottom' };
 
 function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
   const [open, setOpen] = useState(false);
@@ -198,6 +210,15 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
   useEffect(() => { setMounted(true); }, []);
 
   // ── Outside click / touch closes the menu ──────────────────────────
+  //
+  // Also blurs the trigger button when closing via outside interaction.
+  // On touch devices, tapping the button gives it focus, and browsers
+  // then latch :hover to whatever was last touched. Even after the
+  // menu closes, that latched :hover kept the hammer swinging until
+  // the user tapped somewhere else. Explicitly blurring the button
+  // when we auto-close guarantees the animation stops the instant
+  // the popover disappears — regardless of the OS's touch-focus
+  // heuristic.
   useEffect(() => {
     if (!open) return;
     function onDown(e: MouseEvent | TouchEvent) {
@@ -205,6 +226,7 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
       if (btnRef.current?.contains(target)) return;
       if (popRef.current?.contains(target)) return;
       setOpen(false);
+      btnRef.current?.blur();
     }
     document.addEventListener('mousedown', onDown);
     document.addEventListener('touchstart', onDown, { passive: true });
@@ -218,7 +240,7 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') { setOpen(false); btnRef.current?.blur(); }
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -238,6 +260,21 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
    *     and place the little caret (diamond tail) exactly there — so
    *     the tail always points at the hammer, even after a shift.
    */
+  /**
+   * Compute popover placement with automatic flip.
+   *
+   *   HORIZONTAL: centred on the trigger, then clamped to a 10 px
+   *   viewport gutter on both sides so the popover NEVER touches the
+   *   screen edge on narrow phones. The caret is repositioned to
+   *   whatever offset the trigger falls at INSIDE the shifted popover.
+   *
+   *   VERTICAL: PREFER top-placement (popover above the plate, opens
+   *   upward into the card). If the popover would collide with the
+   *   viewport top (< 8 px), FLIP to bottom-placement (opens
+   *   downward, below the plate). This is the fix for "popover
+   *   truncated on mobile" — on a phone with a fully-scrolled card,
+   *   there just isn't room above the plate, so we open below instead.
+   */
   const measure = useCallback(() => {
     const btn = btnRef.current;
     const pop = popRef.current;
@@ -246,22 +283,39 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
     const btnRect = btn.getBoundingClientRect();
     const popWidth = pop.offsetWidth;
     const popHeight = pop.offsetHeight;
-    const gutter = 12;
+    const gutter = 10;
+    const gap = 10;
+    const edgeSafe = 8;
     const vpWidth = document.documentElement.clientWidth;
+    const vpHeight = window.innerHeight;
 
+    // ── Horizontal (with clamp) ────────────────────────────────────
     const triggerCentre = btnRect.left + btnRect.width / 2;
     let left = triggerCentre - popWidth / 2;
-    // Clamp to viewport gutters.
     left = Math.max(gutter, Math.min(left, vpWidth - popWidth - gutter));
-    const top = btnRect.top - popHeight - 10;
 
-    // Caret x — offset from the popover's LEFT so it always sits under
-    // the trigger centre regardless of the clamp above.
+    // ── Vertical with automatic flip ───────────────────────────────
+    const topAbove = btnRect.top - popHeight - gap;
+    const topBelow = btnRect.bottom + gap;
+    let placement: 'top' | 'bottom' = 'top';
+    let top = topAbove;
+    if (topAbove < edgeSafe) {
+      // Not enough headroom → flip to below the button.
+      placement = 'bottom';
+      top = topBelow;
+      // If BOTH orientations overflow (extreme case: taller popover
+      // than viewport), pin to whichever side has more room.
+      if (topBelow + popHeight > vpHeight - edgeSafe && topAbove >= edgeSafe - popHeight) {
+        placement = 'top';
+        top = Math.max(edgeSafe, topAbove);
+      }
+    }
+
+    // Caret offset from popover left — always sits under the trigger.
     let caretLeft = triggerCentre - left;
-    // Keep caret inside the popover's rounded corners.
     caretLeft = Math.max(14, Math.min(caretLeft, popWidth - 14));
 
-    setPos({ top, left, caretLeft });
+    setPos({ top, left, caretLeft, placement });
   }, []);
 
   // Measure once mounted, then on scroll / resize while open.
@@ -307,32 +361,48 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
         transition={{ type: 'spring', stiffness: 380, damping: 26, mass: 0.55 }}
         role="menu"
         aria-label={`${fullName} — گزینه‌های مشارکت در مجازات`}
-        // `w-[min(240px,calc(100vw-24px))]` guarantees the popover never
-        // exceeds the viewport minus a 12 px gutter on either side even
-        // on the narrowest phones.
-        className="fixed z-[80] w-[min(240px,calc(100vw-24px))]
+        // `w-[min(260px,calc(100vw-20px))]` guarantees the popover
+        // never exceeds the viewport minus a 10 px gutter on either
+        // side, even on the narrowest phones. 260 px is the sweet
+        // spot for two touch-sized rows without feeling cramped.
+        className="fixed z-[80] w-[min(260px,calc(100vw-20px))]
                    bg-white rounded-2xl overflow-hidden
                    shadow-[0_24px_60px_-12px_rgba(0,0,0,.42),0_0_0_1px_rgba(217,222,229,.75)]"
         style={{
           direction: 'rtl',
           top: pos?.top ?? -9999,
           left: pos?.left ?? -9999,
-          transformOrigin: 'bottom center',
+          // transformOrigin follows placement so the spring animation
+          // grows FROM the caret (which sits on the hammer side of the
+          // popover), not from the far edge.
+          transformOrigin: pos?.placement === 'bottom' ? 'top center' : 'bottom center',
         }}
       >
         {/* ── Title strip ─────────────────────────────────────────
-            Larger, properly centred, no forced uppercase (uppercase
-            makes zero sense for Persian glyphs and looked cramped). */}
-        <div className="px-4 pt-3 pb-2 text-center text-[13px] font-extrabold
-                        text-ink-800 border-b border-ink-100/70">
-          مشارکت در مجازات
+            Redesigned per client feedback: bigger, centred, with a
+            small gavel bullet to add visual weight; brand-tinted
+            surface so it reads as an intentional header, not a
+            forgotten line of muted text. */}
+        <div className="relative flex items-center justify-center gap-2
+                        px-4 pt-3 pb-3 bg-gradient-to-b from-brand-50/70 to-white
+                        border-b border-brand-100/70">
+          <span
+            aria-hidden="true"
+            className="flex items-center justify-center w-6 h-6 rounded-full
+                       bg-accent-500/[0.14] text-accent-600"
+          >
+            <MiniGavelIcon className="w-3.5 h-3.5" />
+          </span>
+          <span className="text-[14px] font-extrabold text-ink-900 leading-none">
+            مشارکت در مجازات
+          </span>
         </div>
 
         {/* Option 1: ثبت جایزه */}
         <Link
           href={`/r4j/${slug}/bounty`}
           role="menuitem"
-          onClick={() => setOpen(false)}
+          onClick={() => { setOpen(false); btnRef.current?.blur(); }}
           className="group/item relative flex items-center gap-2.5 px-3.5 h-11
                      hover:bg-accent-500/[0.07] transition-colors duration-150"
         >
@@ -361,7 +431,7 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
         <Link
           href={`/r4j/${slug}/report`}
           role="menuitem"
-          onClick={() => setOpen(false)}
+          onClick={() => { setOpen(false); btnRef.current?.blur(); }}
           className="group/item relative flex items-center gap-2.5 px-3.5 h-11
                      hover:bg-brand-500/[0.07] transition-colors duration-150"
         >
@@ -384,16 +454,33 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
                                       transition-all duration-200" />
         </Link>
 
-        {/* Tail — dynamic-left diamond that always points at the hammer,
-            even after the popover shifts to stay in-viewport. */}
-        <div
-          aria-hidden="true"
-          className="absolute -bottom-1.5 w-3 h-3 rotate-45 bg-white -translate-x-1/2"
-          style={{
-            left: pos?.caretLeft ?? '50%',
-            boxShadow: '1px 1px 0 rgba(217,222,229,.7)',
-          }}
-        />
+        {/* Tail — dynamic-position diamond that always points at the
+            hammer, even after the popover shifts to stay in-viewport.
+            Renders BELOW the popover for the default `top` placement
+            (menu above the button) and ABOVE the popover for `bottom`
+            placement (menu below the button). The tiny box-shadow
+            uses opposite diagonals in each case so the outer hairline
+            ring around the popover stays visually continuous with
+            the caret's outer edge. */}
+        {pos?.placement === 'bottom' ? (
+          <div
+            aria-hidden="true"
+            className="absolute -top-1.5 w-3 h-3 rotate-45 bg-gradient-to-b from-brand-50/70 to-brand-50/70 -translate-x-1/2"
+            style={{
+              left: pos?.caretLeft ?? '50%',
+              boxShadow: '-1px -1px 0 rgba(178,205,201,.55)',
+            }}
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="absolute -bottom-1.5 w-3 h-3 rotate-45 bg-white -translate-x-1/2"
+            style={{
+              left: pos?.caretLeft ?? '50%',
+              boxShadow: '1px 1px 0 rgba(217,222,229,.7)',
+            }}
+          />
+        )}
       </motion.div>
     </AnimatePresence>,
     document.body,
@@ -415,7 +502,16 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
       <button
         ref={btnRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={(e) => {
+          setOpen((o) => {
+            const next = !o;
+            // Toggle-close should immediately release focus so touch
+            // devices don't keep :hover latched to the button (which
+            // would leave the hammer swinging forever).
+            if (!next) e.currentTarget.blur();
+            return next;
+          });
+        }}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`مشارکت در مجازات ${fullName}`}
@@ -461,37 +557,39 @@ const HAMMER_STYLES = `
  * The wrapper flips \`data-active="true"\` whenever the menu is open.
  * When active, the choreography plays. Works IDENTICALLY on desktop
  * and mobile — the animation lifetime is bound to the menu's
- * lifetime, so it stops the instant the menu closes (touching
+ * lifetime, so it stops the INSTANT the menu closes (touching
  * outside the card, ESC, choosing an option, etc.).
+ *
+ * This is the ONLY driver on touch devices. Historically we also
+ * chained hover / focus-within here, which meant a tap left the
+ * button focused → \`:focus-within\` stayed true → the hammer kept
+ * swinging even after the menu closed. Fixed by scoping :hover to
+ * true hover-capable pointers only, and REMOVING :focus-within
+ * from the animation chain entirely (see below).
  */
 .justice-hammer[data-active='true'] [data-hammer-head]  { animation: hammerSwing 900ms cubic-bezier(.65,.05,.2,1) infinite; }
 .justice-hammer[data-active='true'] [data-hammer-anvil] { animation: anvilPulse  900ms cubic-bezier(.65,.05,.2,1) infinite; }
 .justice-hammer[data-active='true'] .justice-hammer-halo { animation: hammerHalo 900ms ease-out infinite; }
 
 /*
- * ── HOVER DRIVER (desktop-only) ───────────────────────────────────
+ * ── HOVER DRIVER (desktop pointer only, no touch) ─────────────────
  * On real hover-capable pointers (mice, trackpads) we ALSO run the
  * animation on hover so the icon feels alive as the user scans the
- * grid. Gated by \`@media (hover: hover)\` so touch devices never
- * inherit a sticky :hover state after a tap — that was the bug the
- * client reported ("the hammer keeps swinging after I close the
- * menu until I tap somewhere else"). On touch, \`:hover\` gets latched
- * to the last-tapped element indefinitely; scoping the rule to
- * true hover devices eliminates the problem at the root.
+ * grid. TRIPLE-gated so touch never triggers this branch:
+ *   1. (hover: hover)        → device supports true hover
+ *   2. (pointer: fine)       → precise pointer (mouse, stylus)
+ *   3. NOT (pointer: coarse) → belt-and-braces guard against tablets
+ *                              in "hybrid" mode that misreport (hover: hover)
+ * We deliberately do NOT include :focus / :focus-within here — click-
+ * focused buttons keep focus after the menu closes, which was the
+ * root cause of "hammer keeps swinging after I tap elsewhere". The
+ * [data-active] driver above already handles the open-menu case for
+ * both mouse and keyboard.
  */
-@media (hover: hover) and (pointer: fine) {
-  .justice-hammer:hover [data-hammer-head],
-  .justice-hammer:focus-within [data-hammer-head] {
-    animation: hammerSwing 900ms cubic-bezier(.65,.05,.2,1) infinite;
-  }
-  .justice-hammer:hover [data-hammer-anvil],
-  .justice-hammer:focus-within [data-hammer-anvil] {
-    animation: anvilPulse 900ms cubic-bezier(.65,.05,.2,1) infinite;
-  }
-  .justice-hammer:hover .justice-hammer-halo,
-  .justice-hammer:focus-within .justice-hammer-halo {
-    animation: hammerHalo 900ms ease-out infinite;
-  }
+@media (hover: hover) and (pointer: fine) and (not (pointer: coarse)) {
+  .justice-hammer:hover [data-hammer-head]   { animation: hammerSwing 900ms cubic-bezier(.65,.05,.2,1) infinite; }
+  .justice-hammer:hover [data-hammer-anvil]  { animation: anvilPulse  900ms cubic-bezier(.65,.05,.2,1) infinite; }
+  .justice-hammer:hover .justice-hammer-halo { animation: hammerHalo  900ms ease-out infinite; }
 }
 
 @keyframes hammerSwing {
