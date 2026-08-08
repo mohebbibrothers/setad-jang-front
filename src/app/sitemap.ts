@@ -2,30 +2,28 @@ import type { MetadataRoute } from 'next';
 import { siteConfig } from '@/lib/site';
 
 /**
- * Dynamic sitemap. Static routes are listed here; per-resource sitemaps
- * (campaigns, courses, content, criminals, listings, reports) will be
- * appended in subsequent steps using server-side data fetching.
+ * Dynamic sitemap.
+ *
+ * ⚠️  Homepage-only milestone: only routes that actually resolve are
+ * listed. The domain-area routes (/madadkar, /r4j, /lms, /kindness-wall,
+ * /public-reports) plus the corporate pages (/about, /contact, /faq,
+ * /privacy, /terms, /support) and the auth flow (/auth/*) are NOT built
+ * yet — listing them would ask crawlers to index 404s and hurt SEO.
+ *
+ * The moment a page ships, add its `{ path, priority, changeFrequency }`
+ * entry back to `staticRoutes` below. Per-resource sitemaps
+ * (individual tabyin content, campaigns, etc.) can then be appended
+ * with server-side data fetching in this same handler.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = siteConfig.url.replace(/\/+$/, '');
   const now = new Date();
 
   const staticRoutes = [
-    { path: '/',                priority: 1.0, changeFrequency: 'daily' as const },
-    { path: '/madadkar',        priority: 0.95, changeFrequency: 'daily' as const },
-    { path: '/lms',             priority: 0.9, changeFrequency: 'daily' as const },
-    { path: '/kindness-wall',   priority: 0.9, changeFrequency: 'hourly' as const },
-    { path: '/r4j',             priority: 0.85, changeFrequency: 'weekly' as const },
-    { path: '/tabyin',          priority: 0.85, changeFrequency: 'daily' as const },
-    { path: '/public-reports',  priority: 0.8, changeFrequency: 'weekly' as const },
-    { path: '/support',         priority: 0.6, changeFrequency: 'monthly' as const },
-    { path: '/about',           priority: 0.7, changeFrequency: 'monthly' as const },
-    { path: '/contact',         priority: 0.6, changeFrequency: 'monthly' as const },
-    { path: '/auth/login',      priority: 0.4, changeFrequency: 'yearly' as const },
-    { path: '/auth/signup',     priority: 0.4, changeFrequency: 'yearly' as const },
-    { path: '/faq',             priority: 0.5, changeFrequency: 'monthly' as const },
-    { path: '/privacy',         priority: 0.3, changeFrequency: 'yearly' as const },
-    { path: '/terms',           priority: 0.3, changeFrequency: 'yearly' as const },
+    { path: '/',                priority: 1.00, changeFrequency: 'daily' as const },
+    { path: '/tabyin',          priority: 0.90, changeFrequency: 'daily' as const },
+    { path: '/tabyin/new',      priority: 0.60, changeFrequency: 'monthly' as const },
+    { path: '/search',          priority: 0.50, changeFrequency: 'weekly' as const },
   ];
 
   return staticRoutes.map((r) => ({

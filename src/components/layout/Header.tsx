@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Menu, X, LogIn } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { TopBar } from './TopBar';
 import { cn } from '@/lib/utils';
@@ -18,8 +18,11 @@ type NavItem = { label: string; href: string };
  *
  * Hrefs are in-page anchors for the five domain sections (so the header
  * smooth-scrolls instead of jumping to a separate route) plus '/' for
- * 'خانه' and '/contact' for 'ارتباط با ما'. The delegated anchor handler
- * we already ship globally takes care of the smooth-scroll.
+ * 'خانه'. The delegated anchor handler we already ship globally takes
+ * care of the smooth-scroll.
+ *
+ * NOTE — 'ارتباط با ما' (/contact) was removed pending its dedicated
+ * page. Add it back the moment src/app/contact/page.tsx exists.
  */
 const NAV: NavItem[] = [
   { label: 'خانه',                href: '/' },
@@ -28,7 +31,7 @@ const NAV: NavItem[] = [
   { label: 'قرارگاه آموزشی',      href: '/#education' },
   { label: 'دیوار مهربانی',       href: '/#kindness' },
   { label: 'جهاد تبیین',          href: '/#tabyin' },
-  { label: 'ارتباط با ما',        href: '/contact' },
+  { label: 'گزارش‌های مردمی',    href: '/#reports' },
 ];
 
 /** Smooth-scroll to the anchor when the user is already on '/'. Falls
@@ -93,18 +96,11 @@ export function Header() {
               ))}
             </nav>
 
-            {/* Login CTA (left in RTL) */}
+            {/* Trailing slot (LTR-end / RTL-start).
+             * The 'ورود / ثبت‌نام' CTA was removed pending its dedicated
+             * /auth/* routes. Re-instate the <Link href="/auth/login">
+             * pill here the moment the auth flow ships. */}
             <div className="mr-auto flex items-center gap-2">
-              <Link
-                href="/auth/login"
-                className="hidden sm:inline-flex items-center gap-2 h-10 lg:h-11 px-5 lg:px-6
-                           rounded-full bg-mint-500 hover:bg-mint-600 text-white font-semibold
-                           shadow-soft transition-all"
-              >
-                <LogIn className="w-4 h-4" />
-                ورود / ثبت‌نام
-              </Link>
-
               <button
                 type="button"
                 className="lg:hidden w-11 h-11 inline-flex items-center justify-center rounded-xl
@@ -166,12 +162,8 @@ export function Header() {
               </a>
             ))}
           </nav>
-          <div className="p-4 border-t border-ink-100 flex flex-col gap-2">
-            <Link href="/auth/login" className="inline-flex items-center justify-center gap-2 h-12
-                                                rounded-full bg-mint-500 text-white font-semibold">
-              <LogIn className="w-4 h-4" /> ورود / ثبت‌نام
-            </Link>
-          </div>
+          {/* Mobile 'ورود / ثبت‌نام' pill removed alongside the desktop
+              CTA — see the note at line ~100 above. */}
         </aside>
       </div>
     </>
