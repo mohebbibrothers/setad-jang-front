@@ -104,17 +104,10 @@ function InfoIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
   );
 }
 
-/** Compact gavel bullet used as the popover-title lead-in glyph. */
-function MiniGavelIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <path d="m14.5 12.5-8 8a2.119 2.119 0 1 1-3-3l8-8" />
-      <path d="m16 16 6-6" /><path d="m8 8 6-6" />
-      <path d="m9 7 8 8" /><path d="m21 11-8-8" />
-    </svg>
-  );
-}
+// NOTE — MiniGavelIcon (the tiny gavel bullet that used to sit next
+// to "مشارکت در مجازات" in the popover header) was retired at the
+// client's request; the title is now cleaner without it. The Lucide
+// path is preserved in git history if a future revision wants it back.
 
 /**
  * HammerIcon — a bespoke gavel-hammer drawn as TWO SVG groups so we can
@@ -423,8 +416,12 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
         // never exceeds the viewport minus a 10 px gutter on either
         // side, even on the narrowest phones. 260 px is the sweet
         // spot for two touch-sized rows without feeling cramped.
+        // `pb-2` breathes a little air below the last option ("گزارش
+        // اطلاعات") so it doesn't crowd the popover's bottom radius —
+        // a small standard courtesy that makes the menu read as
+        // properly framed rather than clipped.
         className="fixed z-[80] w-[min(260px,calc(100vw-20px))]
-                   bg-white rounded-2xl overflow-hidden
+                   bg-white rounded-2xl overflow-hidden pb-2
                    shadow-[0_24px_60px_-12px_rgba(0,0,0,.42),0_0_0_1px_rgba(217,222,229,.75)]"
         style={{
           direction: 'rtl',
@@ -437,20 +434,14 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
         }}
       >
         {/* ── Title strip ─────────────────────────────────────────
-            Redesigned per client feedback: bigger, centred, with a
-            small gavel bullet to add visual weight; brand-tinted
-            surface so it reads as an intentional header, not a
-            forgotten line of muted text. */}
-        <div className="relative flex items-center justify-center gap-2
+            Redesigned per client feedback: bigger, centred, brand-
+            tinted surface so it reads as an intentional header, not
+            a forgotten line of muted text. The lead-in gavel glyph
+            was retired at the client's request — the title now
+            stands on its own, cleaner and more legible. */}
+        <div className="relative flex items-center justify-center
                         px-4 pt-3 pb-3 bg-gradient-to-b from-brand-50/70 to-white
                         border-b border-brand-100/70">
-          <span
-            aria-hidden="true"
-            className="flex items-center justify-center w-6 h-6 rounded-full
-                       bg-accent-500/[0.14] text-accent-600"
-          >
-            <MiniGavelIcon className="w-3.5 h-3.5" />
-          </span>
           <span className="text-[14px] font-extrabold text-ink-900 leading-none">
             مشارکت در مجازات
           </span>
