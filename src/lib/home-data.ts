@@ -660,18 +660,23 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
     //     under سایر (not ویدئو). We honour that first so it can't
     //     be overridden by the has-video-attachment heuristic
     //     below.
+    //   • Defence-in-depth: an item that carries an audio
+    //     attachment ALONGSIDE video attachments (the podcast
+    //     shape) is also routed to سایر even if the backend's
+    //     primary_media_type happens to be missing/miscomputed.
+    //     This catches edge cases where the podcast's audio is
+    //     the SECOND attachment (so backend's "first-attachment"
+    //     heuristic labels it as video).
     //   • Otherwise, bucket by attachment shape — mirrors the
     //     backend's `?media_type=X` semantics so tile counts
     //     match the badge exactly.
-    //
-    // Precedence (top-down):
-    //   1. primary_media_type in {audio, other}         → other
-    //   2. no image attachment AND no video attachment  → other
-    //   3. only image attachments                       → image
-    //   4. only video attachments                       → video
-    //   5. both — defer to primary_media_type or image  → image/video
+    const hasAudioAttachment = attachments.some((a) => a.media_type === 'audio');
     let mediaType: 'image' | 'video' | 'audio' | 'other';
     if (t.primary_media_type === 'audio' || t.primary_media_type === 'other') {
+      mediaType = 'other';
+    } else if (hasAudioAttachment) {
+      // Audio anywhere in the attachment list → podcast → سایر,
+      // regardless of any accompanying video preview.
       mediaType = 'other';
     } else if (!hasImageAttachment && !hasVideoAttachment) {
       mediaType = 'other';
