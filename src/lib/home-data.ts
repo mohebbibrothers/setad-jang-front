@@ -650,10 +650,30 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
     // URLs — they carry an extra `&& a.url` guard that would
     // otherwise mis-bucket rows whose attachments technically exist
     // but have empty URL strings.
+    // ── Bucket assignment ──────────────────────────────────────
+    //
+    // Rule of thumb:
+    //   • Backend `primary_media_type = 'audio' | 'other'` → سایر,
+    //     UNCONDITIONALLY. A podcast row that also happens to
+    //     carry an .mp4 preview attachment is still fundamentally
+    //     a podcast, and the client asked audio content to live
+    //     under سایر (not ویدئو). We honour that first so it can't
+    //     be overridden by the has-video-attachment heuristic
+    //     below.
+    //   • Otherwise, bucket by attachment shape — mirrors the
+    //     backend's `?media_type=X` semantics so tile counts
+    //     match the badge exactly.
+    //
+    // Precedence (top-down):
+    //   1. primary_media_type in {audio, other}         → other
+    //   2. no image attachment AND no video attachment  → other
+    //   3. only image attachments                       → image
+    //   4. only video attachments                       → video
+    //   5. both — defer to primary_media_type or image  → image/video
     let mediaType: 'image' | 'video' | 'audio' | 'other';
-    if (!hasImageAttachment && !hasVideoAttachment) {
-      // No image AND no video attachment → belongs to سایر
-      // (matches the badge count: all − image − video).
+    if (t.primary_media_type === 'audio' || t.primary_media_type === 'other') {
+      mediaType = 'other';
+    } else if (!hasImageAttachment && !hasVideoAttachment) {
       mediaType = 'other';
     } else if (hasImageAttachment && !hasVideoAttachment) {
       mediaType = 'image';
