@@ -200,7 +200,7 @@ const FILTERS = [
   { key: 'all',   label: 'همه',   Glyph: GridIcon  },
   { key: 'image', label: 'تصویر', Glyph: ImageIcon },
   { key: 'video', label: 'ویدئو', Glyph: VideoIcon },
-  { key: 'text',  label: 'متن',   Glyph: TextIcon  },
+  { key: 'text',  label: 'سایر',  Glyph: TextIcon  },
 ] as const;
 type FilterKey = (typeof FILTERS)[number]['key'];
 

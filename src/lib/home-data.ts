@@ -343,12 +343,81 @@ export async function loadTabyinCounts(): Promise<TabyinCounts> {
   return { all, image, video, text };
 }
 
+/**
+ * Load Tabyin items across every filter bucket so the homepage strip
+ * has a full page-of-10-tiles-times-10-pages ceiling for EACH tab —
+ * not just for the "همه" mixed feed.
+ *
+ * ── Why the fan-out ──
+ * The previous single call was `?page_size=100&ordering=-...` which
+ * fetched the 100 most recent items across ALL media types. If those
+ * 100 happened to skew heavily to one bucket (say, 92 images + 6
+ * videos + 2 text posts) then the "تصویر" tab only had 9 pages and
+ * "سایر" only had 1 — even though the backend has thousands more of
+ * each. The client-side counts endpoint (loadTabyinCounts) confirmed
+ * the imbalance, and users noticed the empty pager arrows on the
+ * smaller tabs.
+ *
+ * Fix: fetch UP TO 100 items PER bucket (image / video / text / other)
+ * in parallel, then merge into a single deduplicated list. Every tab
+ * now surfaces its own 100 latest items → 10 tiles × 10 pages ceiling
+ * per tab, capped only by how many items actually exist upstream.
+ *
+ * "text" here means the union of everything that isn't an image or a
+ * video (audio + other + no-media). We collapse it into a single
+ * "text" fetch on the client — the backend has no dedicated flag,
+ * but the union is what the "سایر" tab shows on the wall, so we
+ * fetch both `audio` and `other` and merge, taking the newest 100.
+ */
 export async function loadTabyinItems(): Promise<TabyinItem[]> {
-  const data = await safeApiFetch<Paginated<ApiTabyin>>(
-    '/tabyin/contents/?page_size=100&ordering=-source_created_at',
-    { revalidate: 180, tags: ['tabyin', 'homepage'] },
-  );
-  const list = unwrap(data);
+  const PER_BUCKET = 100;
+  const params = `page_size=${PER_BUCKET}&ordering=-source_created_at`;
+
+  const [allData, imageData, videoData, audioData, otherData] = await Promise.all([
+    safeApiFetch<Paginated<ApiTabyin>>(
+      `/tabyin/contents/?${params}`,
+      { revalidate: 180, tags: ['tabyin', 'homepage'] },
+    ),
+    safeApiFetch<Paginated<ApiTabyin>>(
+      `/tabyin/contents/?${params}&media_type=image`,
+      { revalidate: 180, tags: ['tabyin', 'homepage'] },
+    ),
+    safeApiFetch<Paginated<ApiTabyin>>(
+      `/tabyin/contents/?${params}&media_type=video`,
+      { revalidate: 180, tags: ['tabyin', 'homepage'] },
+    ),
+    safeApiFetch<Paginated<ApiTabyin>>(
+      `/tabyin/contents/?${params}&media_type=audio`,
+      { revalidate: 180, tags: ['tabyin', 'homepage'] },
+    ),
+    safeApiFetch<Paginated<ApiTabyin>>(
+      `/tabyin/contents/?${params}&media_type=other`,
+      { revalidate: 180, tags: ['tabyin', 'homepage'] },
+    ),
+  ]);
+
+  // Merge + dedupe by external_id, preferring the newest
+  // source_created_at when duplicates occur.
+  const byId = new Map<string, ApiTabyin>();
+  for (const bucket of [allData, imageData, videoData, audioData, otherData]) {
+    const list = unwrap(bucket);
+    for (const t of list) {
+      if (!t?.external_id) continue;
+      const prev = byId.get(t.external_id);
+      if (!prev) { byId.set(t.external_id, t); continue; }
+      const prevTs = prev.source_created_at ? Date.parse(prev.source_created_at) : 0;
+      const currTs = t.source_created_at   ? Date.parse(t.source_created_at)    : 0;
+      if (currTs >= prevTs) byId.set(t.external_id, t);
+    }
+  }
+
+  // Sort merged corpus by source_created_at DESC so each downstream
+  // filter (همه / تصویر / ویدئو / سایر) slices in chronological order.
+  const list = Array.from(byId.values()).sort((a, b) => {
+    const at = a.source_created_at ? Date.parse(a.source_created_at) : 0;
+    const bt = b.source_created_at ? Date.parse(b.source_created_at) : 0;
+    return bt - at;
+  });
 
   return list.map((t) => {
     const attachments = t.attachments ?? [];
