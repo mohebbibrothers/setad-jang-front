@@ -112,6 +112,19 @@ export const metadata: Metadata = {
     apple: [{ url: '/apple-touch-icon.png?v=2', sizes: '180x180', type: 'image/png' }],
   },
   manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    // Force iOS home-screen tap to launch fullscreen (no Safari
+    // chrome), matching the Android PWA experience.
+    capable: true,
+    // A tight brand title under the icon on the iOS home screen.
+    // Longer titles get iOS-clipped mid-word; this fits every
+    // launcher size cleanly.
+    title: 'بعثت',
+    // Match the maskable icon's white ground so the Safari status
+    // bar sits on the same surface as the launch splash and our
+    // Vazirmatn overlay.
+    statusBarStyle: 'default',
+  },
   robots: {
     index: true,
     follow: true,
