@@ -28,27 +28,25 @@ import { siteConfig } from '@/lib/site';
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    // ── The `name` / `short_name` game ─────────────────────────
+    // ── name / short_name strategy ─────────────────────────────
     //
-    // Chrome (Android) renders the PWA launch splash as:
-    //   [ maskable icon ]
-    //   [ short_name text  in system default font ]
+    // Android launcher uses `short_name` (falling back to `name`)
+    // as the label rendered UNDER the home-screen icon. If we
+    // send an empty / ZWSP string here, the launcher shows the
+    // icon with NO caption at all — which is exactly the
+    // "the label disappeared" bug the client just reported. So
+    // `short_name` must always be a real, human-readable label.
     //
-    // The system default font is NOT Vazirmatn — it's whatever
-    // the OEM ships (MI Sans on Xiaomi, Roboto on Pixel), and it
-    // paints Persian glyphs poorly at the tiny splash size. Since
-    // we can't inject a custom font into Chrome's native splash,
-    // the pragmatic fix is to give it NOTHING to paint: a single
-    // U+200B (zero-width space) reads as "empty text" so Chrome
-    // draws no label at all, and our own <div id="app-splash">
-    // takes over the moment the HTML starts to stream. Result:
-    // a clean icon-only Chrome splash → seamless handoff to the
-    // Vazirmatn overlay with the proper "بعثت مردم" + soft slogan.
-    //
-    // The full brand name is still preserved in `name` (accessibility
-    // tools, installer flow, notification titles).
-    name: siteConfig.name,          // «بعثت مردم» — accessibility + installer
-    short_name: '\u200B',           // ZWSP → Chrome native splash label is blank
+    // Chrome's PWA launch splash ALSO renders the short_name
+    // (in a system default font that looks poor for Persian).
+    // We can't have both — we CAN'T remove the ugly splash text
+    // without also removing the home-screen label. Since a
+    // labelless icon is far worse UX than a slightly-imperfect
+    // splash caption, we go back to a proper short_name and
+    // rely on our own <div id="app-splash"> Vazirmatn overlay
+    // to cover Chrome's native splash the instant HTML streams.
+    name: siteConfig.name,          // «بعثت مردم» — installer + a11y
+    short_name: 'بعثت',            // home-screen icon caption + Chrome splash label
     description: siteConfig.description,
     start_url: '/',
     display: 'standalone',

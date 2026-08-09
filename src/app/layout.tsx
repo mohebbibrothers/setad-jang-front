@@ -318,21 +318,38 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <style
           id="app-splash-boot"
           dangerouslySetInnerHTML={{ __html: `
-            #app-splash{position:fixed;inset:0;z-index:2147483647;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font-family:'Vazirmatn',Tahoma,sans-serif;direction:rtl;pointer-events:none;transition:opacity .35s ease-out}
-            #app-splash img{width:128px;height:128px;animation:appSplashPop .55s cubic-bezier(.2,.7,.2,1) both}
-            #app-splash .lbl{display:flex;flex-direction:column;align-items:center;gap:6px;animation:appSplashFadeUp .55s .15s cubic-bezier(.2,.7,.2,1) both}
+            /*
+              Splash overlay geometry:
+                - Icon sits DEAD CENTRE of the viewport, matching
+                  where Chrome's native PWA splash also puts it.
+                  This is the trick that hides the "old screen
+                  flashes first" complaint: Chrome shows the icon,
+                  our overlay shows the icon in the SAME PLACE at
+                  the SAME SIZE with the SAME white background —
+                  visually indistinguishable, so there's no
+                  "transition" the eye can perceive. The label
+                  block below then fades UP from beneath the icon,
+                  reading as a natural loading beat rather than a
+                  swap between two splash designs.
+                - Label block is absolutely-positioned so the icon
+                  keeps its exact vertical centre regardless of
+                  whether the label has rendered yet.
+            */
+            #app-splash{position:fixed;inset:0;z-index:2147483647;background:#fff;display:flex;align-items:center;justify-content:center;font-family:'Vazirmatn',Tahoma,sans-serif;direction:rtl;pointer-events:none;transition:opacity .35s ease-out}
+            #app-splash .ic{width:128px;height:128px;display:block;animation:appSplashPop .5s cubic-bezier(.2,.7,.2,1) both}
+            #app-splash .lbl{position:absolute;left:0;right:0;top:calc(50% + 92px);display:flex;flex-direction:column;align-items:center;gap:6px;animation:appSplashFadeUp .5s .35s cubic-bezier(.2,.7,.2,1) both;opacity:0}
             #app-splash .n{font-size:22px;font-weight:800;letter-spacing:.5px;color:#0B3530}
             #app-splash .s{font-size:12.5px;font-weight:500;color:#6B7280;letter-spacing:.3px}
             #app-splash.hide{opacity:0}
             html.app-splash-lock,html.app-splash-lock body{overflow:hidden}
-            @keyframes appSplashPop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
-            @keyframes appSplashFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-            @media (prefers-reduced-motion:reduce){#app-splash img,#app-splash .lbl{animation:none!important}}
+            @keyframes appSplashPop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+            @keyframes appSplashFadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+            @media (prefers-reduced-motion:reduce){#app-splash .ic,#app-splash .lbl{animation:none!important;opacity:1!important}}
           ` }}
         />
         <div id="app-splash" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/favicon-maskable-512.png?v=4" alt="" width={128} height={128} />
+          <img className="ic" src="/favicon-maskable-512.png?v=4" alt="" width={128} height={128} />
           <div className="lbl">
             <div className="n">بعثت مردم</div>
             <div className="s">همراه با مردم ایران</div>
@@ -348,10 +365,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           dangerouslySetInnerHTML={{ __html: `
             (function(){var h=document.documentElement;h.classList.add('app-splash-lock');
-            function done(){var el=document.getElementById('app-splash');if(!el)return;el.classList.add('hide');h.classList.remove('app-splash-lock');setTimeout(function(){if(el&&el.parentNode)el.parentNode.removeChild(el)},400)}
-            if(document.readyState==='complete')requestAnimationFrame(function(){setTimeout(done,150)});
-            else window.addEventListener('load',function(){requestAnimationFrame(function(){setTimeout(done,150)})},{once:true});
-            setTimeout(done,1600);})();
+            /*
+              MIN_HOLD_MS = 1100. The overlay stays up for at
+              least this long so the "بعثت مردم / همراه با مردم
+              ایران" label (which fades in at t=350ms and finishes
+              at t=850ms) is fully visible before the splash
+              retires. Without the floor, a fast page load could
+              rip the overlay away while the caption was still
+              mid-animation, and users would perceive it as
+              "the label barely flashed and disappeared". The
+              floor also gives Chrome's native splash time to
+              transition into our overlay without a race.
+            */
+            var MIN_HOLD_MS = 1100;
+            var HARD_TIMEOUT_MS = 3500;
+            var startedAt = Date.now();
+            var done = function(){
+              var el = document.getElementById('app-splash');
+              if (!el) return;
+              var remaining = Math.max(0, MIN_HOLD_MS - (Date.now() - startedAt));
+              setTimeout(function(){
+                el.classList.add('hide');
+                h.classList.remove('app-splash-lock');
+                setTimeout(function(){ if (el && el.parentNode) el.parentNode.removeChild(el); }, 400);
+              }, remaining);
+            };
+            if (document.readyState === 'complete') requestAnimationFrame(done);
+            else window.addEventListener('load', function(){ requestAnimationFrame(done); }, { once: true });
+            setTimeout(done, HARD_TIMEOUT_MS);})();
           ` }}
         />
         {/*
