@@ -252,20 +252,25 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
    *  An item counts as "سایر" ONLY when:
    *    1. It's typed as `other` by the loader (no image AND no
    *       video attachment — matches backend ?media_type semantics),
-   *    2. AND it has SOMETHING to actually render — a summary
-   *       (description) or a title. Rows whose only content is a
-   *       broken/empty attachment produce a hollow quote card with
-   *       no text inside, which the client explicitly asked us to
-   *       hide.
+   *    2. AND it has SOMETHING to actually render — a description
+   *       or a title. Rows whose only content is a broken/empty
+   *       attachment produce a hollow quote card with no text
+   *       inside, which the client explicitly asked us to hide.
    *
-   *  `hasReadableText` collapses whitespace-only strings to empty
-   *  so a row with ` \n \t ` in the description still counts as
-   *  empty and gets filtered out.
+   *  `hasReadableText` normalises Persian zero-width joiner (ZWNJ,
+   *  U+200C), no-break space (U+00A0), and other whitespace-like
+   *  invisibles before checking, so a description that is
+   *  technically non-empty ("‌" alone, or "   " with only spaces
+   *  and joiners) STILL counts as empty and gets filtered out.
    */
   const hasReadableText = (i: TabyinItem) => {
-    const summary = (i.summary ?? '').trim();
-    const title = (i.title ?? '').trim();
-    return summary.length > 0 || title.length > 0;
+    const clean = (s: string | undefined) =>
+      (s ?? '')
+        // strip ZWNJ / ZWJ / BOM / RTL/LTR marks / no-break space /
+        // any other whitespace-like invisibles
+        .replace(/[\u200B-\u200F\u202A-\u202E\u2060\u00A0\uFEFF]/g, '')
+        .trim();
+    return clean(i.summary).length > 0 || clean(i.title).length > 0;
   };
   const isTextItem = (i: TabyinItem) => i.mediaType === 'other' && hasReadableText(i);
 
