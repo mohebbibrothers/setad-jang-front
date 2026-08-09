@@ -263,12 +263,31 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
   // `grid-auto-flow: dense` packs the cells gap-free. Tall positions live
   // on the items themselves (see seed/loader) so every cover matches its
   // slot's aspect-ratio — the cover never gets cropped weirdly.
+  /*
+   * Hard cap per tab: 10 pages of 10 tiles = 100 items maximum.
+   *
+   * The pager arrows previously read `filtered.length` directly, so a
+   * bucket with 105 items would flash 11 pages, and a bucket with 96
+   * items would sometimes flash 10 with a nearly-empty last page.
+   * The client's contract is simpler: EVERY tab shows at most 10
+   * pages, capped at whatever count exists upstream (so "سایر" with
+   * only 35 items still shows 4 pages, and "ویدئو" with 1474 items
+   * caps at exactly 10). Slicing `filtered` down to 100 up-front
+   * makes this invariant obvious in one place — the pager and the
+   * page-window slicer both then compute against the SAME bounded
+   * array, so they can't disagree.
+   */
   const PAGE_SIZE = 10;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const MAX_PAGES = 10;
+  const capped = useMemo(
+    () => filtered.slice(0, PAGE_SIZE * MAX_PAGES),
+    [filtered],
+  );
+  const totalPages = Math.max(1, Math.min(MAX_PAGES, Math.ceil(capped.length / PAGE_SIZE)));
 
   const visible = useMemo(
-    () => filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
-    [filtered, page],
+    () => capped.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
+    [capped, page],
   );
 
   // Reset to first page when filter changes
