@@ -465,11 +465,18 @@ async function fetchTabyinBucket(
  */
 async function fetchTabyinAllComplete(hardCap = 5000): Promise<ApiTabyin[]> {
   const PAGE_SIZE = 100;
+  // Slightly tighter revalidation (was 180 s) so that after a fresh
+  // deploy the "سایر" tab picks up new/removed rows within a minute
+  // rather than waiting three. The tab is the most-scrutinised part
+  // of the Tabyin section right now and this makes the corpus feel
+  // "live" while still being cheap (Next.js dedupes concurrent
+  // fetches to the same URL).
+  const REVAL = 60;
 
   // Step 1 — page 1 alone; also tells us the total `count`.
   const firstPage = await safeApiFetch<Paginated<ApiTabyin>>(
     `/tabyin/contents/?page_size=${PAGE_SIZE}&page=1&ordering=-source_created_at`,
-    { revalidate: 180, tags: ['tabyin', 'homepage'] },
+    { revalidate: REVAL, tags: ['tabyin', 'homepage'] },
   );
   if (!firstPage) return [];
   const firstBatch = unwrap(firstPage);
@@ -485,7 +492,7 @@ async function fetchTabyinAllComplete(hardCap = 5000): Promise<ApiTabyin[]> {
     pagePromises.push(
       safeApiFetch<Paginated<ApiTabyin>>(
         `/tabyin/contents/?page_size=${PAGE_SIZE}&page=${p}&ordering=-source_created_at`,
-        { revalidate: 180, tags: ['tabyin', 'homepage'] },
+        { revalidate: REVAL, tags: ['tabyin', 'homepage'] },
       ),
     );
   }
