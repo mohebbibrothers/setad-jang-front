@@ -294,125 +294,64 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {/*
           ── PWA / installed-app splash overlay ───────────────────
-          When the site is launched from the Android home-screen
-          shortcut, Chrome shows a native splash generated from the
-          manifest icon + name — but its typography is the platform
-          default (poor for Persian glyphs) and there's no
-          designer-controlled polish. To hide that behind a
-          proper brand splash we render our OWN full-screen loader
-          that fades away the instant the page paints. The loader
-          is inline-styled + inline-JS so it works BEFORE React
-          hydration, and self-removes on `load` (or after 900 ms
-          as a safety net so a stuck script never traps the user).
-          Only visible for ~200-500 ms in most cases.
+          Full-screen brand splash that covers the entire viewport
+          from the FIRST byte of HTML the browser parses, and
+          fades away the instant the page has painted. Because it
+          is inline in server-rendered HTML — with inline styles,
+          inline CSS and inline JS — it's visible BEFORE any
+          React hydration, before any font load, before any
+          Tailwind class parse. That's the only way to hide
+          Chrome's native PWA splash (which the client called
+          "the old screen that flashes first").
 
           Design:
-            - Solid white ground matching the maskable icon bg
-              → seamless transition from Chrome's native splash.
-            - Logo mark, 128 px, gentle scale-in.
-            - Site name in Vazirmatn ExtraBold + a whisper-quiet
-              slogan underneath — reads as the client asked:
-              "professional apps show a soft, faded caption below".
-            - Zero horizontal jitter: transform-based animation
-              on the compositor thread.
+            - White ground matching the maskable icon so there's
+              no colour flash between Chrome's icon-only splash
+              and this overlay.
+            - Logo mark 128 px, gentle scale-in.
+            - "بعثت مردم" in Vazirmatn ExtraBold + a whisper-quiet
+              slogan "همراه با مردم ایران" underneath.
+            - `#app-splash-boot` inline stylesheet sets the base
+              layout so styles apply from paint #1 — no FOUC
+              between the raw HTML and the eventual Tailwind pass.
         */}
-        <div
-          id="app-splash"
-          aria-hidden="true"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: '#ffffff',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '18px',
-            fontFamily: "'Vazirmatn', Tahoma, sans-serif",
-            direction: 'rtl',
-            transition: 'opacity .35s ease-out',
-            pointerEvents: 'none',
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/favicon-512.png?v=2"
-            alt=""
-            width={128}
-            height={128}
-            style={{
-              width: 128,
-              height: 128,
-              animation: 'appSplashPop .55s cubic-bezier(.2,.7,.2,1) both',
-            }}
-          />
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '6px',
-              animation: 'appSplashFadeUp .55s .15s cubic-bezier(.2,.7,.2,1) both',
-            }}
-          >
-            <div
-              style={{
-                fontSize: '22px',
-                fontWeight: 800,
-                letterSpacing: '.5px',
-                color: '#0B3530',
-              }}
-            >
-              بعثت مردم
-            </div>
-            <div
-              style={{
-                fontSize: '12.5px',
-                fontWeight: 500,
-                color: '#6B7280',
-                letterSpacing: '.3px',
-              }}
-            >
-              همراه با مردم ایران
-            </div>
-          </div>
-          <style dangerouslySetInnerHTML={{ __html: `
-            @keyframes appSplashPop {
-              from { opacity: 0; transform: scale(.9); }
-              to   { opacity: 1; transform: scale(1);  }
-            }
-            @keyframes appSplashFadeUp {
-              from { opacity: 0; transform: translateY(6px); }
-              to   { opacity: 1; transform: translateY(0);   }
-            }
-            #app-splash.app-splash-hidden { opacity: 0; }
-            @media (prefers-reduced-motion: reduce) {
-              #app-splash img, #app-splash > div { animation: none !important; }
-            }
-          `}} />
-        </div>
-        <Script
-          id="app-splash-remover"
-          strategy="afterInteractive"
+        <style
+          id="app-splash-boot"
           dangerouslySetInnerHTML={{ __html: `
-            (function() {
-              var el = document.getElementById('app-splash');
-              if (!el) return;
-              var remove = function() {
-                el.classList.add('app-splash-hidden');
-                setTimeout(function() { el && el.parentNode && el.parentNode.removeChild(el); }, 380);
-              };
-              // Fade out after first paint + safety timer
-              if (document.readyState === 'complete') {
-                requestAnimationFrame(function() { setTimeout(remove, 180); });
-              } else {
-                window.addEventListener('load', function() {
-                  requestAnimationFrame(function() { setTimeout(remove, 180); });
-                }, { once: true });
-              }
-              setTimeout(remove, 1500);
-            })();
+            #app-splash{position:fixed;inset:0;z-index:2147483647;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font-family:'Vazirmatn',Tahoma,sans-serif;direction:rtl;pointer-events:none;transition:opacity .35s ease-out}
+            #app-splash img{width:128px;height:128px;animation:appSplashPop .55s cubic-bezier(.2,.7,.2,1) both}
+            #app-splash .lbl{display:flex;flex-direction:column;align-items:center;gap:6px;animation:appSplashFadeUp .55s .15s cubic-bezier(.2,.7,.2,1) both}
+            #app-splash .n{font-size:22px;font-weight:800;letter-spacing:.5px;color:#0B3530}
+            #app-splash .s{font-size:12.5px;font-weight:500;color:#6B7280;letter-spacing:.3px}
+            #app-splash.hide{opacity:0}
+            html.app-splash-lock,html.app-splash-lock body{overflow:hidden}
+            @keyframes appSplashPop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+            @keyframes appSplashFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+            @media (prefers-reduced-motion:reduce){#app-splash img,#app-splash .lbl{animation:none!important}}
+          ` }}
+        />
+        <div id="app-splash" aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/favicon-maskable-512.png?v=3" alt="" width={128} height={128} />
+          <div className="lbl">
+            <div className="n">بعثت مردم</div>
+            <div className="s">همراه با مردم ایران</div>
+          </div>
+        </div>
+        {/*
+          Splash-remover — inline script so it runs BEFORE the
+          React bundle even starts to download. Locks scroll while
+          the overlay is up, fades on `load`, hard-removes after
+          400 ms, plus a 1600 ms safety net in case `load` never
+          fires (offline, blocked resource, etc).
+        */}
+        <script
+          dangerouslySetInnerHTML={{ __html: `
+            (function(){var h=document.documentElement;h.classList.add('app-splash-lock');
+            function done(){var el=document.getElementById('app-splash');if(!el)return;el.classList.add('hide');h.classList.remove('app-splash-lock');setTimeout(function(){if(el&&el.parentNode)el.parentNode.removeChild(el)},400)}
+            if(document.readyState==='complete')requestAnimationFrame(function(){setTimeout(done,150)});
+            else window.addEventListener('load',function(){requestAnimationFrame(function(){setTimeout(done,150)})},{once:true});
+            setTimeout(done,1600);})();
           ` }}
         />
 
