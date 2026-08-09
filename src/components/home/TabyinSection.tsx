@@ -217,7 +217,26 @@ export type TabyinCounts = {
 /*  Section                                                                  */
 /* ───────────────────────────────────────────────────────────────────────── */
 
-export function TabyinSection({ items, counts: backendCounts }: { items: TabyinItem[]; counts?: TabyinCounts }) {
+/**
+ * ── TabyinSection ──────────────────────────────────────────────
+ *
+ *  The `counts` prop is DELIBERATELY IGNORED here — every badge
+ *  number is derived locally from the `items` array via the
+ *  `renderableItems` corpus. Rationale: the backend-supplied
+ *  counts (all / image / video / text) don't know which rows the
+ *  client is going to filter out as hollow (no cover, no video
+ *  URL, no readable text). If we rendered a backend count while
+ *  the tab actually showed a smaller filtered set, the badge and
+ *  the tile count would disagree — exactly the "همه = 3301 but
+ *  تصویر+ویدئو+سایر = 3297" mismatch users kept reporting.
+ *
+ *  We accept `counts` in the signature so `page.tsx` can keep
+ *  passing it without a compile error, but we shadow it with an
+ *  underscore-prefixed unused binding so future readers of this
+ *  file understand at a glance that it's intentionally dead.
+ */
+export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]; counts?: TabyinCounts }) {
+  void _ignored;
   const [filter, setFilter] = useState<FilterKey>('all');
   const [page, setPage]     = useState(0);
 
