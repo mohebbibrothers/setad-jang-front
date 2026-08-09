@@ -319,9 +319,14 @@ export type TabyinCounts = {
 
 async function loadTabyinCount(mediaType?: 'image' | 'video' | 'audio' | 'other'): Promise<number> {
   const suffix = mediaType ? '&media_type=' + mediaType : '';
+  // Revalidate every 60 s (was 180 s) so the badge numbers on the
+  // Tabyin filter strip refresh quickly when the upstream crawler
+  // ingests new items — the strip is the first thing users glance
+  // at on the section and a stale count for 3 minutes is visually
+  // noisy on a wall that otherwise animates in real time.
   const data = await safeApiFetch<Paginated<ApiTabyin>>(
     '/tabyin/contents/?page_size=1&ordering=-source_created_at' + suffix,
-    { revalidate: 180, tags: ['tabyin', 'homepage'] },
+    { revalidate: 60, tags: ['tabyin', 'homepage'] },
   );
 
   if (!data || Array.isArray(data)) return 0;
