@@ -246,12 +246,18 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
    *  primary_media_type still lack a usable cover URL and correctly
    *  land under سایر).
    */
-  const isTextItem = (i: TabyinItem) => {
-    if (i.videoUrl) return false;
-    if (i.coverUrl) return false;
-    if (i.mediaType === 'image' || i.mediaType === 'video') return false;
-    return true;
-  };
+  /*
+   * `isTextItem` mirrors the loader's mediaType-assignment rule
+   * exactly: a row belongs to سایر if it has neither an image
+   * attachment nor a video attachment. The loader already collapses
+   * that condition into `mediaType === 'other'`, so checking that
+   * one flag is both correct and cheap. Any check on coverUrl /
+   * videoUrl here would double-filter — an image row without a
+   * public-hosted cover (variant='quote') would incorrectly leak
+   * into سایر even though its attachments show it's clearly an
+   * image row. Keep the source of truth in ONE place.
+   */
+  const isTextItem = (i: TabyinItem) => i.mediaType === 'other';
 
   const counts = useMemo(() => ({
     all:   backendCounts?.all   ?? items.length,
