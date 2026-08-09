@@ -28,23 +28,33 @@ import { siteConfig } from '@/lib/site';
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    // Chrome uses `short_name` for the home-screen icon label and
-    // for the label under the launch splash screen. Kept short so
-    // the fallback OS-font rendering (which Chrome uses BEFORE
-    // our own splash overlay takes over post-hydration) stays
-    // visually minimal. `name` is what accessibility tools /
-    // installer flow see — full brand name is still there.
-    name: siteConfig.name,          // «بعثت مردم»
-    short_name: 'بعثت',            // shorter, tighter under-icon label
+    // ── The `name` / `short_name` game ─────────────────────────
+    //
+    // Chrome (Android) renders the PWA launch splash as:
+    //   [ maskable icon ]
+    //   [ short_name text  in system default font ]
+    //
+    // The system default font is NOT Vazirmatn — it's whatever
+    // the OEM ships (MI Sans on Xiaomi, Roboto on Pixel), and it
+    // paints Persian glyphs poorly at the tiny splash size. Since
+    // we can't inject a custom font into Chrome's native splash,
+    // the pragmatic fix is to give it NOTHING to paint: a single
+    // U+200B (zero-width space) reads as "empty text" so Chrome
+    // draws no label at all, and our own <div id="app-splash">
+    // takes over the moment the HTML starts to stream. Result:
+    // a clean icon-only Chrome splash → seamless handoff to the
+    // Vazirmatn overlay with the proper "بعثت مردم" + soft slogan.
+    //
+    // The full brand name is still preserved in `name` (accessibility
+    // tools, installer flow, notification titles).
+    name: siteConfig.name,          // «بعثت مردم» — accessibility + installer
+    short_name: '\u200B',           // ZWSP → Chrome native splash label is blank
     description: siteConfig.description,
     start_url: '/',
     display: 'standalone',
     display_override: ['standalone', 'minimal-ui'],
     categories: ['social', 'utilities', 'news'],
     scope: '/',
-    // WHITE, matching the maskable icon's white ground so
-    // Chrome's native splash (icon + name text below) reads as
-    // one continuous white card behind our own overlay.
     background_color: '#FFFFFF',
     theme_color: siteConfig.themeColor,
     orientation: 'portrait',
