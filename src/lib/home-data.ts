@@ -534,6 +534,41 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
       primaryCoverUrl && !primaryCoverUrl.includes('app-service.armansky.ir'),
     );
 
+    /*
+     * ── Media type resolution ────────────────────────────────────
+     *
+     * The client's "سایر" tab is defined as `all − image − video`
+     * (the backend-count contract the badge advertises: 35 items).
+     * "سایر" must therefore be the set of items that have NO
+     * image AND NO video attachment — the exact complement of
+     * image ∪ video from the backend's query-set perspective.
+     *
+     * Concretely: if we found neither an `imageCover` nor a `video`
+     * in the attachments array, this row would NOT be returned by
+     * `?media_type=image` OR `?media_type=video`, so it belongs
+     * under سایر regardless of what `primary_media_type` says (the
+     * backend's `primary_media_type` is derived from the FIRST
+     * attachment, which may be an `other` file that later carries
+     * a video too — we don't second-guess it, we key off the
+     * concrete attachments set).
+     *
+     * That guarantees exact parity between the badge count and the
+     * tab contents.
+     */
+    let mediaType: 'image' | 'video' | 'audio' | 'other';
+    if (!imageCover && !video) {
+      // No usable image OR video attachment → belongs to سایر.
+      mediaType = 'other';
+    } else if (imageCover && !video) {
+      mediaType = 'image';
+    } else if (video && !imageCover) {
+      mediaType = 'video';
+    } else {
+      // Has BOTH — defer to backend's primary_media_type or fall
+      // back to image (image tiles are the wall's default).
+      mediaType = t.primary_media_type === 'video' ? 'video' : 'image';
+    }
+
     return {
       id: t.external_id,
       slug: t.external_id,
@@ -543,15 +578,7 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
       videoUrl: absoluteMediaUrl(video?.url),
       thumbnailUrl: videoThumbnailUrl,
       variant: coverIsKnownPublic ? 'cover' : 'quote',
-      // Media type resolution order:
-      //   1. Backend's own primary_media_type (authoritative).
-      //   2. If missing, sniff attachments: image cover, then video.
-      //   3. Fall back to 'other' — NOT 'image' — so content the
-      //      crawler couldn't classify shows up under the سایر tab
-      //      (the intended "everything not obviously a picture or
-      //      a video" bucket) rather than silently polluting the
-      //      تصویر tab with unclassified items.
-      mediaType: t.primary_media_type ?? imageCover?.media_type ?? video?.media_type ?? 'other',
+      mediaType,
       durationSeconds: videoOrAudio?.duration,
       origin: t.origin,
       authorName: t.author_username,
