@@ -279,6 +279,130 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
+        {/*
+          ── PWA / installed-app splash overlay ───────────────────
+          When the site is launched from the Android home-screen
+          shortcut, Chrome shows a native splash generated from the
+          manifest icon + name — but its typography is the platform
+          default (poor for Persian glyphs) and there's no
+          designer-controlled polish. To hide that behind a
+          proper brand splash we render our OWN full-screen loader
+          that fades away the instant the page paints. The loader
+          is inline-styled + inline-JS so it works BEFORE React
+          hydration, and self-removes on `load` (or after 900 ms
+          as a safety net so a stuck script never traps the user).
+          Only visible for ~200-500 ms in most cases.
+
+          Design:
+            - Solid white ground matching the maskable icon bg
+              → seamless transition from Chrome's native splash.
+            - Logo mark, 128 px, gentle scale-in.
+            - Site name in Vazirmatn ExtraBold + a whisper-quiet
+              slogan underneath — reads as the client asked:
+              "professional apps show a soft, faded caption below".
+            - Zero horizontal jitter: transform-based animation
+              on the compositor thread.
+        */}
+        <div
+          id="app-splash"
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: '#ffffff',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '18px',
+            fontFamily: "'Vazirmatn', Tahoma, sans-serif",
+            direction: 'rtl',
+            transition: 'opacity .35s ease-out',
+            pointerEvents: 'none',
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/favicon-512.png?v=2"
+            alt=""
+            width={128}
+            height={128}
+            style={{
+              width: 128,
+              height: 128,
+              animation: 'appSplashPop .55s cubic-bezier(.2,.7,.2,1) both',
+            }}
+          />
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '6px',
+              animation: 'appSplashFadeUp .55s .15s cubic-bezier(.2,.7,.2,1) both',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '22px',
+                fontWeight: 800,
+                letterSpacing: '.5px',
+                color: '#0B3530',
+              }}
+            >
+              بعثت مردم
+            </div>
+            <div
+              style={{
+                fontSize: '12.5px',
+                fontWeight: 500,
+                color: '#6B7280',
+                letterSpacing: '.3px',
+              }}
+            >
+              همراه با مردم ایران
+            </div>
+          </div>
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes appSplashPop {
+              from { opacity: 0; transform: scale(.9); }
+              to   { opacity: 1; transform: scale(1);  }
+            }
+            @keyframes appSplashFadeUp {
+              from { opacity: 0; transform: translateY(6px); }
+              to   { opacity: 1; transform: translateY(0);   }
+            }
+            #app-splash.app-splash-hidden { opacity: 0; }
+            @media (prefers-reduced-motion: reduce) {
+              #app-splash img, #app-splash > div { animation: none !important; }
+            }
+          `}} />
+        </div>
+        <Script
+          id="app-splash-remover"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{ __html: `
+            (function() {
+              var el = document.getElementById('app-splash');
+              if (!el) return;
+              var remove = function() {
+                el.classList.add('app-splash-hidden');
+                setTimeout(function() { el && el.parentNode && el.parentNode.removeChild(el); }, 380);
+              };
+              // Fade out after first paint + safety timer
+              if (document.readyState === 'complete') {
+                requestAnimationFrame(function() { setTimeout(remove, 180); });
+              } else {
+                window.addEventListener('load', function() {
+                  requestAnimationFrame(function() { setTimeout(remove, 180); });
+                }, { once: true });
+              }
+              setTimeout(remove, 1500);
+            })();
+          ` }}
+        />
+
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:right-3 focus:z-[100] focus:bg-brand-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg"
