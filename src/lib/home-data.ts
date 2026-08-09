@@ -578,6 +578,25 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
 
   return list.map((t) => {
     const attachments = t.attachments ?? [];
+    // ── Detection: does this content have image / video attachments? ──
+    //
+    // Two separate checks, deliberately DIFFERENT semantics:
+    //
+    //   1. `hasImageAttachment` / `hasVideoAttachment` — do we bucket
+    //      this content under تصویر / ویدئو on the wall? The rule
+    //      must MATCH THE BACKEND'S ?media_type=X query semantics
+    //      exactly (any attachment with media_type=X, url-optional)
+    //      so that:  buckets(image) ∪ buckets(video) ∪ buckets(other)
+    //      == all — every backend-visible row lands in exactly one
+    //      tab, and the badge count (all − image − video) equals
+    //      the tab-render count in the wall.
+    //
+    //   2. `imageCoverForDisplay` / `videoForDisplay` — do we have
+    //      a USABLE URL to actually render a cover thumb / video
+    //      element with? Needs the url to be non-empty (the `&& a.url`
+    //      guard). Used only for the visual layer.
+    const hasImageAttachment = attachments.some((a) => a.media_type === 'image');
+    const hasVideoAttachment = attachments.some((a) => a.media_type === 'video');
     const imageCover = attachments.find((a) => a.media_type === 'image' && a.url);
     const video      = attachments.find((a) => a.media_type === 'video' && a.url);
     const videoOrAudio = attachments.find((a) => a.duration);
@@ -617,17 +636,27 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
      * That guarantees exact parity between the badge count and the
      * tab contents.
      */
+    // Bucket assignment uses the URL-INDEPENDENT `hasXAttachment`
+    // flags so the client filter is byte-for-byte identical to the
+    // backend's `?media_type=X` query semantics. The `imageCover`
+    // and `video` variables above are only used to build the display
+    // URLs — they carry an extra `&& a.url` guard that would
+    // otherwise mis-bucket rows whose attachments technically exist
+    // but have empty URL strings.
     let mediaType: 'image' | 'video' | 'audio' | 'other';
-    if (!imageCover && !video) {
-      // No usable image OR video attachment → belongs to سایر.
+    if (!hasImageAttachment && !hasVideoAttachment) {
+      // No image AND no video attachment → belongs to سایر
+      // (matches the badge count: all − image − video).
       mediaType = 'other';
-    } else if (imageCover && !video) {
+    } else if (hasImageAttachment && !hasVideoAttachment) {
       mediaType = 'image';
-    } else if (video && !imageCover) {
+    } else if (hasVideoAttachment && !hasImageAttachment) {
       mediaType = 'video';
     } else {
-      // Has BOTH — defer to backend's primary_media_type or fall
-      // back to image (image tiles are the wall's default).
+      // Has BOTH image AND video attachments — defer to the backend's
+      // authoritative primary_media_type; if that's also ambiguous
+      // (never in practice on the current corpus) fall back to image
+      // since image tiles are the wall's default surface.
       mediaType = t.primary_media_type === 'video' ? 'video' : 'image';
     }
 
