@@ -375,28 +375,52 @@ export async function loadTabyinCounts(): Promise<TabyinCounts> {
  * backend `max_page_size` limits that could silently cap our
  * single-call fetch below the 100-item ceiling we advertise.
  */
+/**
+ * Fetch UP TO `target` items from a Tabyin bucket, following the
+ * pagination cursor as many hops as needed. Defensive against
+ * backend `max_page_size` limits that could silently cap our
+ * single-call fetch below the target ceiling.
+ *
+ *  Implementation notes
+ *  ────────────────────
+ *   • `PAGE_SIZE` is fixed at 100 (a value the backend definitely
+ *     honours — verified with a live probe). Using a variable
+ *     `page_size=target` caused a subtle bug: when target > 100,
+ *     the backend silently capped the response at 100 and then the
+ *     drain-detection check (`batch.length < target`) fired FALSELY,
+ *     breaking the loop after page 1. That's why the "سایر" tab
+ *     showed only 8 items instead of the backend-advertised 35, and
+ *     the ویدئو tab short-changed the last page.
+ *
+ *   • Drain detection now compares against `PAGE_SIZE`, not `target`:
+ *     if the batch came back with FEWER than PAGE_SIZE items the
+ *     bucket is genuinely drained. Otherwise we keep paginating.
+ *
+ *   • Loop cap raised to 20 iterations so `target=300` (the deep
+ *     `all` pull) can complete in three 100-item pages with room
+ *     to spare, and no realistic backend response can hang us.
+ */
 async function fetchTabyinBucket(
   target: number,
   mediaType?: 'image' | 'video' | 'audio' | 'other',
 ): Promise<ApiTabyin[]> {
+  const PAGE_SIZE = 100;
   const collected: ApiTabyin[] = [];
   let page = 1;
-  // Cap the loop at 10 hops so a misbehaving pagination endpoint
-  // can never spin forever.
-  for (let i = 0; i < 10 && collected.length < target; i++) {
+  for (let i = 0; i < 20 && collected.length < target; i++) {
     const suffix = mediaType ? `&media_type=${mediaType}` : '';
     const data = await safeApiFetch<Paginated<ApiTabyin>>(
-      `/tabyin/contents/?page_size=${target}&page=${page}&ordering=-source_created_at${suffix}`,
+      `/tabyin/contents/?page_size=${PAGE_SIZE}&page=${page}&ordering=-source_created_at${suffix}`,
       { revalidate: 180, tags: ['tabyin', 'homepage'] },
     );
     if (!data) break;
     const batch = unwrap(data);
     if (batch.length === 0) break;
     collected.push(...batch);
-    // If the batch came back smaller than we asked for, the bucket
-    // is drained — no more pages exist. Otherwise, ask for the next
-    // page and keep merging until we hit `target` or run out.
-    if (batch.length < target) break;
+    // Genuine drain: fewer items than a full page came back → no
+    // more pages exist upstream. Any other case (full page) means
+    // there might be more, so keep going.
+    if (batch.length < PAGE_SIZE) break;
     page += 1;
   }
   return collected.slice(0, target);
