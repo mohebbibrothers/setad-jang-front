@@ -404,9 +404,15 @@ async function fetchTabyinBucket(
 
 export async function loadTabyinItems(): Promise<TabyinItem[]> {
   const PER_BUCKET = 100;
+  // `all` bucket is fetched deeper (up to 300) so we capture the
+  // ~33 items the backend has WITHOUT a primary_media_type set.
+  // Those items never surface from the media_type=X buckets (no
+  // matching filter value), so without this deeper pull the "سایر"
+  // tab would only ever contain the two explicit audio/other rows.
+  const ALL_DEPTH = 300;
 
   const [allList, imageList, videoList, audioList, otherList] = await Promise.all([
-    fetchTabyinBucket(PER_BUCKET),
+    fetchTabyinBucket(ALL_DEPTH),
     fetchTabyinBucket(PER_BUCKET, 'image'),
     fetchTabyinBucket(PER_BUCKET, 'video'),
     fetchTabyinBucket(PER_BUCKET, 'audio'),
@@ -464,7 +470,15 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
       videoUrl: absoluteMediaUrl(video?.url),
       thumbnailUrl: videoThumbnailUrl,
       variant: coverIsKnownPublic ? 'cover' : 'quote',
-      mediaType: t.primary_media_type ?? imageCover?.media_type ?? video?.media_type ?? 'image',
+      // Media type resolution order:
+      //   1. Backend's own primary_media_type (authoritative).
+      //   2. If missing, sniff attachments: image cover, then video.
+      //   3. Fall back to 'other' — NOT 'image' — so content the
+      //      crawler couldn't classify shows up under the سایر tab
+      //      (the intended "everything not obviously a picture or
+      //      a video" bucket) rather than silently polluting the
+      //      تصویر tab with unclassified items.
+      mediaType: t.primary_media_type ?? imageCover?.media_type ?? video?.media_type ?? 'other',
       durationSeconds: videoOrAudio?.duration,
       origin: t.origin,
       authorName: t.author_username,
