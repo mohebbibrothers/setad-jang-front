@@ -317,7 +317,7 @@ export type TabyinCounts = {
   text: number;
 };
 
-async function loadTabyinCount(mediaType?: 'image' | 'video'): Promise<number> {
+async function loadTabyinCount(mediaType?: 'image' | 'video' | 'audio' | 'other'): Promise<number> {
   const suffix = mediaType ? '&media_type=' + mediaType : '';
   const data = await safeApiFetch<Paginated<ApiTabyin>>(
     '/tabyin/contents/?page_size=1&ordering=-source_created_at' + suffix,
@@ -329,16 +329,27 @@ async function loadTabyinCount(mediaType?: 'image' | 'video'): Promise<number> {
 }
 
 export async function loadTabyinCounts(): Promise<TabyinCounts> {
-  const [all, image, video] = await Promise.all([
+  // Fetch counts DIRECTLY from the backend for every media type
+  // instead of computing text = all - image - video. The subtraction
+  // trick was inflating the سایر chip badge to 35 while the actual
+  // audio+other rows in the corpus are only 2 — because the
+  // remaining 33 rows are cross-typed (an audio row with a video
+  // attachment, an image row without a primary_media_type set, …)
+  // and they don't cleanly belong under سایر at all.
+  //
+  // With the counts read authoritatively from `?media_type=X`,
+  // every tab badge matches the actual number of tiles the tab
+  // will render — no more phantom "we have 35 items but you only
+  // see 8" mismatch.
+  const [all, image, video, audio, other] = await Promise.all([
     loadTabyinCount(),
     loadTabyinCount('image'),
     loadTabyinCount('video'),
+    loadTabyinCount('audio'),
+    loadTabyinCount('other'),
   ]);
 
-  // Everything that isn't image or video lives under the متن bucket
-  // (audio, other, no-media). Clamped to zero in the impossible
-  // case that partial counts round to more than the aggregate.
-  const text = Math.max(0, all - image - video);
+  const text = audio + other;
 
   return { all, image, video, text };
 }
