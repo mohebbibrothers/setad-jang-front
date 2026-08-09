@@ -355,25 +355,51 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           ` }}
         />
         {/*
-          Service worker — registered ONLY to bulldoze Chrome's
-          PWA cache after a deploy. The SW itself has no fetch
-          handler (see /sw.js) so it can't ever serve stale
-          content; on every activate it wipes every cache
-          namespace and claims all open clients. This is what
-          finally makes the "old screen flashes first" bug go
-          away for existing PWA installs — Chrome had been
-          serving the old shell HTML/icons from its install-time
-          cache, and there was no user-visible way to force it
-          to refresh. With the SW in place, opening the app once
-          after a deploy purges the cache in the background;
-          the NEXT open shows the fresh brand splash straight
-          away, no reinstall needed.
+          Service worker — registered to bulldoze Chrome's PWA
+          install-time cache after a deploy. The SW itself has
+          no fetch handler (see /sw.js) so it can't ever serve
+          stale content; on every activate it wipes every cache
+          namespace, claims all open clients, AND broadcasts a
+          'SW_ACTIVATED' message so we can reload the page ONCE
+          — that's the only way to force Chrome to re-read the
+          manifest (icons, background_color, short_name) it
+          snapshotted at install time. Without the reload,
+          Chrome keeps showing the old splash & icon until the
+          user uninstalls and reinstalls the PWA (which we
+          absolutely cannot ask real users to do).
+
+          The reload is gated by a sessionStorage flag so it
+          can never fire twice in the same window, and a
+          `controllerchange` listener catches the case where
+          the SW updates while the page is already open.
         */}
         <script
           dangerouslySetInnerHTML={{ __html: `
             if ('serviceWorker' in navigator) {
               window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js').catch(function(){});
+                navigator.serviceWorker.register('/sw.js').then(function(reg){
+                  try { reg.update(); } catch (e) {}
+                }).catch(function(){});
+                // When the new SW takes control (or explicitly
+                // tells us it just activated) reload the page
+                // exactly once so Chrome picks up the fresh
+                // manifest / shell / icons.
+                var reloadOnce = function() {
+                  try {
+                    if (sessionStorage.getItem('__sw_reloaded__')) return;
+                    sessionStorage.setItem('__sw_reloaded__', '1');
+                    window.location.reload();
+                  } catch (e) { /* private mode etc — skip */ }
+                };
+                navigator.serviceWorker.addEventListener('message', function(ev){
+                  if (ev && ev.data && ev.data.type === 'SW_ACTIVATED') reloadOnce();
+                });
+                var reloaded = false;
+                navigator.serviceWorker.addEventListener('controllerchange', function(){
+                  if (reloaded) return;
+                  reloaded = true;
+                  reloadOnce();
+                });
               });
             }
           ` }}
