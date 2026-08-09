@@ -28,27 +28,23 @@ import { siteConfig } from '@/lib/site';
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: siteConfig.name,
-    short_name: siteConfig.shortName,
+    // Chrome uses `short_name` for the home-screen icon label and
+    // for the label under the launch splash screen. Kept short so
+    // the fallback OS-font rendering (which Chrome uses BEFORE
+    // our own splash overlay takes over post-hydration) stays
+    // visually minimal. `name` is what accessibility tools /
+    // installer flow see — full brand name is still there.
+    name: siteConfig.name,          // «بعثت مردم»
+    short_name: 'بعثت',            // shorter, tighter under-icon label
     description: siteConfig.description,
     start_url: '/',
-    // display_override lets modern Chrome show a chrome-less
-    // launch experience while gracefully falling back to
-    // standalone on older browsers. `window-controls-overlay`
-    // in particular tells desktop PWAs to draw over the title
-    // bar area — irrelevant on Android but harmless.
     display: 'standalone',
     display_override: ['standalone', 'minimal-ui'],
-    // categories help app-store crawlers and Chrome's app menu
-    // classify the PWA correctly under "Social" / "Utilities".
     categories: ['social', 'utilities', 'news'],
-    // scope keeps the PWA from navigating out to arbitrary URLs
-    // after install — clicks that leave `/` open in the system
-    // browser as expected.
     scope: '/',
-    // WHITE, not the previous brand teal: matches the maskable
-    // icon's white safe-zone ground so the launch splash reads
-    // as a single continuous card behind the logo.
+    // WHITE, matching the maskable icon's white ground so
+    // Chrome's native splash (icon + name text below) reads as
+    // one continuous white card behind our own overlay.
     background_color: '#FFFFFF',
     theme_color: siteConfig.themeColor,
     orientation: 'portrait',
@@ -56,12 +52,10 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: 'fa-IR',
     icons: [
       { src: '/favicon.ico',     sizes: '48x48',   type: 'image/x-icon',  purpose: 'any' },
-      // "any" — used for browser tabs / bookmarks / notifications.
       { src: '/favicon-192.png', sizes: '192x192', type: 'image/png',     purpose: 'any' },
       { src: '/favicon-512.png', sizes: '512x512', type: 'image/png',     purpose: 'any' },
-      // "maskable" — the launcher will CROP these to its native
-      // shape, so they carry a white safe-zone ground and place
-      // the logo in the central 65% square.
+      // Maskable icons carry a WHITE safe-zone ground so
+      // launcher masks never paint transparent pixels black.
       { src: '/favicon-maskable-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
       { src: '/favicon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
       { src: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png', purpose: 'any' },
