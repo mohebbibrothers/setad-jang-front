@@ -100,16 +100,16 @@ export const metadata: Metadata = {
     // then crisp PNGs for modern browsers at 16/32/192/512, and
     // apple-touch-icon for iOS home-screen.
     icon: [
-      // `?v=2` cache-busts users who already visited the old placeholder
+      // `?v=4` cache-busts users who already visited the old placeholder
       // favicon — browsers aggressively pin favicons for weeks otherwise.
-      { url: '/favicon.ico?v=2', sizes: 'any', type: 'image/x-icon' },
-      { url: '/favicon-16.png?v=2',  sizes: '16x16',   type: 'image/png' },
-      { url: '/favicon-32.png?v=2',  sizes: '32x32',   type: 'image/png' },
-      { url: '/favicon-192.png?v=2', sizes: '192x192', type: 'image/png' },
-      { url: '/favicon-512.png?v=2', sizes: '512x512', type: 'image/png' },
+      { url: '/favicon.ico?v=4', sizes: 'any', type: 'image/x-icon' },
+      { url: '/favicon-16.png?v=4',  sizes: '16x16',   type: 'image/png' },
+      { url: '/favicon-32.png?v=4',  sizes: '32x32',   type: 'image/png' },
+      { url: '/favicon-192.png?v=4', sizes: '192x192', type: 'image/png' },
+      { url: '/favicon-512.png?v=4', sizes: '512x512', type: 'image/png' },
     ],
-    shortcut: [{ url: '/favicon.ico?v=2' }],
-    apple: [{ url: '/apple-touch-icon.png?v=2', sizes: '180x180', type: 'image/png' }],
+    shortcut: [{ url: '/favicon.ico?v=4' }],
+    apple: [{ url: '/apple-touch-icon.png?v=4', sizes: '180x180', type: 'image/png' }],
   },
   manifest: '/manifest.webmanifest',
   appleWebApp: {
@@ -332,7 +332,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
         <div id="app-splash" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/favicon-maskable-512.png?v=3" alt="" width={128} height={128} />
+          <img src="/favicon-maskable-512.png?v=4" alt="" width={128} height={128} />
           <div className="lbl">
             <div className="n">بعثت مردم</div>
             <div className="s">همراه با مردم ایران</div>
@@ -352,6 +352,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             if(document.readyState==='complete')requestAnimationFrame(function(){setTimeout(done,150)});
             else window.addEventListener('load',function(){requestAnimationFrame(function(){setTimeout(done,150)})},{once:true});
             setTimeout(done,1600);})();
+          ` }}
+        />
+        {/*
+          Service worker — registered ONLY to bulldoze Chrome's
+          PWA cache after a deploy. The SW itself has no fetch
+          handler (see /sw.js) so it can't ever serve stale
+          content; on every activate it wipes every cache
+          namespace and claims all open clients. This is what
+          finally makes the "old screen flashes first" bug go
+          away for existing PWA installs — Chrome had been
+          serving the old shell HTML/icons from its install-time
+          cache, and there was no user-visible way to force it
+          to refresh. With the SW in place, opening the app once
+          after a deploy purges the cache in the background;
+          the NEXT open shows the fresh brand splash straight
+          away, no reinstall needed.
+        */}
+        <script
+          dangerouslySetInnerHTML={{ __html: `
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').catch(function(){});
+              });
+            }
           ` }}
         />
 
