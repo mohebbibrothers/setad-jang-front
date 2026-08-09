@@ -247,23 +247,48 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
    *  land under سایر).
    */
   /*
-   * `isTextItem` mirrors the loader's mediaType-assignment rule
-   * exactly: a row belongs to سایر if it has neither an image
-   * attachment nor a video attachment. The loader already collapses
-   * that condition into `mediaType === 'other'`, so checking that
-   * one flag is both correct and cheap. Any check on coverUrl /
-   * videoUrl here would double-filter — an image row without a
-   * public-hosted cover (variant='quote') would incorrectly leak
-   * into سایر even though its attachments show it's clearly an
-   * image row. Keep the source of truth in ONE place.
+   * ── "سایر" tab membership + emptiness guard ──────────────────
+   *
+   *  An item counts as "سایر" ONLY when:
+   *    1. It's typed as `other` by the loader (no image AND no
+   *       video attachment — matches backend ?media_type semantics),
+   *    2. AND it has SOMETHING to actually render — a summary
+   *       (description) or a title. Rows whose only content is a
+   *       broken/empty attachment produce a hollow quote card with
+   *       no text inside, which the client explicitly asked us to
+   *       hide.
+   *
+   *  `hasReadableText` collapses whitespace-only strings to empty
+   *  so a row with ` \n \t ` in the description still counts as
+   *  empty and gets filtered out.
    */
-  const isTextItem = (i: TabyinItem) => i.mediaType === 'other';
+  const hasReadableText = (i: TabyinItem) => {
+    const summary = (i.summary ?? '').trim();
+    const title = (i.title ?? '').trim();
+    return summary.length > 0 || title.length > 0;
+  };
+  const isTextItem = (i: TabyinItem) => i.mediaType === 'other' && hasReadableText(i);
 
+  /*
+   * Badge counts. For the "سایر" tab specifically we IGNORE the
+   * backend-supplied count and always compute it locally from the
+   * filtered corpus, because:
+   *   • The backend count = `all − image − video` counts rows that
+   *     have no image/video attachment REGARDLESS of whether they
+   *     have any readable text — so hollow rows would inflate the
+   *     badge above what the tab actually renders (the "35 in the
+   *     badge but 38/33 tiles on screen" mismatch users kept
+   *     reporting).
+   *   • Computing locally guarantees badge count == tile count.
+   * The other three tabs (all / image / video) continue to prefer
+   * the authoritative backend counts since they represent much
+   * larger corpora that we only sample locally.
+   */
   const counts = useMemo(() => ({
     all:   backendCounts?.all   ?? items.length,
     image: backendCounts?.image ?? items.filter((i) => (i.mediaType ?? 'image') === 'image').length,
     video: backendCounts?.video ?? items.filter((i) => i.mediaType === 'video').length,
-    text:  backendCounts?.text  ?? items.filter(isTextItem).length,
+    text:  items.filter(isTextItem).length,
   }), [items, backendCounts]);
 
   const filtered = useMemo(
