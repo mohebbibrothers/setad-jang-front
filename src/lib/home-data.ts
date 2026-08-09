@@ -427,7 +427,32 @@ async function fetchTabyinBucket(
 }
 
 export async function loadTabyinItems(): Promise<TabyinItem[]> {
-  const PER_BUCKET = 100;
+  // ── Per-bucket fetch depth ────────────────────────────────────
+  //
+  // 200 (over-fetch factor 2×) fixes a subtle mismatch between how
+  // the backend interprets `?media_type=X` and how our client-side
+  // filter interprets `mediaType`:
+  //
+  //   • Backend `?media_type=video` returns every row whose
+  //     ATTACHMENTS include a video (e.g. an audio row that happens
+  //     to also carry an .mp4 attachment ships back under both the
+  //     video AND audio filters).
+  //
+  //   • The client filter tab, on the other hand, buckets purely by
+  //     `primary_media_type` — the single authoritative type the
+  //     backend assigns to the row as a whole. An audio row with a
+  //     video attachment shows up in سایر, not ویدئو.
+  //
+  // The consequence: if we only pull 100 rows from the video
+  // endpoint, and 2 of those rows are "cross-typed" (primary
+  // audio/other + video attachment), the client filter drops them
+  // → ویدئو tab caps at 98, not 100. We over-fetch by 2× so even a
+  // pessimistic 50% cross-type rate still leaves us with the full
+  // 100 clean items per bucket after the client-side filter runs.
+  //
+  // 200 was chosen empirically — on the current corpus the highest
+  // cross-type ratio observed is ~5%, so 2× is comfortable head-room.
+  const PER_BUCKET = 200;
   // `all` bucket is fetched deeper (up to 300) so we capture the
   // ~33 items the backend has WITHOUT a primary_media_type set.
   // Those items never surface from the media_type=X buckets (no
@@ -442,6 +467,7 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
     fetchTabyinBucket(PER_BUCKET, 'audio'),
     fetchTabyinBucket(PER_BUCKET, 'other'),
   ]);
+
 
   // Merge + dedupe by external_id, preferring the newest
   // source_created_at when duplicates occur.
