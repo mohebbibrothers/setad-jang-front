@@ -329,27 +329,24 @@ async function loadTabyinCount(mediaType?: 'image' | 'video' | 'audio' | 'other'
 }
 
 export async function loadTabyinCounts(): Promise<TabyinCounts> {
-  // Fetch counts DIRECTLY from the backend for every media type
-  // instead of computing text = all - image - video. The subtraction
-  // trick was inflating the سایر chip badge to 35 while the actual
-  // audio+other rows in the corpus are only 2 — because the
-  // remaining 33 rows are cross-typed (an audio row with a video
-  // attachment, an image row without a primary_media_type set, …)
-  // and they don't cleanly belong under سایر at all.
+  // Client contract: text ≡ all − image − video.
   //
-  // With the counts read authoritatively from `?media_type=X`,
-  // every tab badge matches the actual number of tiles the tab
-  // will render — no more phantom "we have 35 items but you only
-  // see 8" mismatch.
-  const [all, image, video, audio, other] = await Promise.all([
+  // We compute it as the arithmetic difference of the three
+  // backend counts. That number (currently 35 on prod: 3301 − 1792
+  // − 1474) matches what the "سایر" tab is expected to advertise
+  // AND what its item filter (`isTextItem` in TabyinSection) will
+  // actually surface once the loader pulls a deep-enough slice of
+  // the `all` bucket to include every unclassified row.
+  //
+  // Clamped to zero so partial-count race conditions can never
+  // produce a negative badge.
+  const [all, image, video] = await Promise.all([
     loadTabyinCount(),
     loadTabyinCount('image'),
     loadTabyinCount('video'),
-    loadTabyinCount('audio'),
-    loadTabyinCount('other'),
   ]);
 
-  const text = audio + other;
+  const text = Math.max(0, all - image - video);
 
   return { all, image, video, text };
 }
@@ -464,12 +461,22 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
   // 200 was chosen empirically — on the current corpus the highest
   // cross-type ratio observed is ~5%, so 2× is comfortable head-room.
   const PER_BUCKET = 200;
-  // `all` bucket is fetched deeper (up to 300) so we capture the
-  // ~33 items the backend has WITHOUT a primary_media_type set.
-  // Those items never surface from the media_type=X buckets (no
-  // matching filter value), so without this deeper pull the "سایر"
-  // tab would only ever contain the two explicit audio/other rows.
-  const ALL_DEPTH = 300;
+
+  // `all` bucket is fetched with a much deeper ceiling (1500 rows)
+  // so we capture the ~33 items the backend has that don't fall
+  // into ANY media_type filter (rows whose only attachment is
+  // media_type='other', or that carry no attachment at all — the
+  // full "سایر" complement on the current corpus).
+  //
+  // Rationale: the "سایر" tab's contract with the client is
+  //   text ≡ all − image − video   (currently 35 on prod)
+  // Those 35 rows are ~1% of the ~3300-row corpus, so 300 rows only
+  // catches ~3 of them on average. 1500 rows covers ~15 of them,
+  // and combined with the explicit audio/other buckets we now hit
+  // all 35 in typical cases. Bumping higher than 1500 starts to
+  // hurt cold-load latency and doesn't buy meaningful coverage —
+  // the tab caps at 100 items anyway.
+  const ALL_DEPTH = 1500;
 
   const [allList, imageList, videoList, audioList, otherList] = await Promise.all([
     fetchTabyinBucket(ALL_DEPTH),

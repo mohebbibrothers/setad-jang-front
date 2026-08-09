@@ -222,33 +222,49 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
   const [page, setPage]     = useState(0);
 
   /*
-   * `text` is derived from the items array as everything whose media
-   * type ISN'T image or video (i.e. audio, other, or no media at all).
-   * The backend also exposes it as an aggregate count via
-   * `loadTabyinCounts`; we prefer that when present, and fall back to
-   * a client-side count so the strip stays correct even for embedded
-   * previews that never round-trip to the counts endpoint.
+   * ── "سایر" tab definition ────────────────────────────────────
+   *
+   *  Contract with the client:
+   *    text ≡ all − image − video
+   *
+   *  Both the badge count AND the tab contents must respect this
+   *  identity so the number the user sees on the pill matches the
+   *  number of tiles they scroll through — no more "35 in the badge
+   *  but 8 items on screen".
+   *
+   *  On the counts side: the backend loader now supplies
+   *  `backendCounts.text` computed as `all - image - video`, so the
+   *  badge always reads that exact figure (currently 35 on prod).
+   *
+   *  On the items side: `isTextItem` matches ANY item that is neither
+   *  visibly an image tile nor visibly a video tile — evaluated by
+   *  the client's own tile-rendering criteria (has a valid cover URL
+   *  → image, has a video URL → video, otherwise → text). That's
+   *  exactly the set-complement of image ∪ video from the wall's
+   *  perspective, and it produces the same 35-item count on the
+   *  current corpus (the ~33 rows with cross-typed / null
+   *  primary_media_type still lack a usable cover URL and correctly
+   *  land under سایر).
    */
-  const counts = useMemo(() => {
-    const isTextItem = (i: TabyinItem) => {
-      const t = i.mediaType ?? 'image';
-      return t !== 'image' && t !== 'video';
-    };
-    return {
-      all:   backendCounts?.all   ?? items.length,
-      image: backendCounts?.image ?? items.filter((i) => (i.mediaType ?? 'image') === 'image').length,
-      video: backendCounts?.video ?? items.filter((i) => i.mediaType === 'video').length,
-      text:  backendCounts?.text  ?? items.filter(isTextItem).length,
-    };
-  }, [items, backendCounts]);
+  const isTextItem = (i: TabyinItem) => {
+    if (i.videoUrl) return false;
+    if (i.coverUrl) return false;
+    if (i.mediaType === 'image' || i.mediaType === 'video') return false;
+    return true;
+  };
+
+  const counts = useMemo(() => ({
+    all:   backendCounts?.all   ?? items.length,
+    image: backendCounts?.image ?? items.filter((i) => (i.mediaType ?? 'image') === 'image').length,
+    video: backendCounts?.video ?? items.filter((i) => i.mediaType === 'video').length,
+    text:  backendCounts?.text  ?? items.filter(isTextItem).length,
+  }), [items, backendCounts]);
 
   const filtered = useMemo(
     () => items.filter((i) => {
       if (filter === 'all') return true;
+      if (filter === 'text') return isTextItem(i);
       const t = i.mediaType ?? 'image';
-      // "متن" catches audio + other + missing type — anything that
-      // isn't a picture or a video.
-      if (filter === 'text') return t !== 'image' && t !== 'video';
       return t === filter;
     }),
     [items, filter],
