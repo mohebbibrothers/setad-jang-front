@@ -247,63 +247,62 @@ export function TabyinSection({ items, counts: backendCounts }: { items: TabyinI
    *  land under سایر).
    */
   /*
-   * ── "سایر" tab membership + emptiness guard ──────────────────
+   * ── Content sanity helpers ──────────────────────────────────
    *
-   *  An item counts as "سایر" ONLY when:
-   *    1. It's typed as `other` by the loader (no image AND no
-   *       video attachment — matches backend ?media_type semantics),
-   *    2. AND it has SOMETHING to actually render — a description
-   *       or a title. Rows whose only content is a broken/empty
-   *       attachment produce a hollow quote card with no text
-   *       inside, which the client explicitly asked us to hide.
+   *  `hasReadableText` normalises Persian zero-width joiner
+   *  (ZWNJ, U+200C), no-break space, BOM and other invisible-
+   *  glyph whitespace BEFORE the length check, so a description
+   *  that is technically non-empty ("‌" or "   ") still counts as
+   *  empty and gets filtered out.
    *
-   *  `hasReadableText` normalises Persian zero-width joiner (ZWNJ,
-   *  U+200C), no-break space (U+00A0), and other whitespace-like
-   *  invisibles before checking, so a description that is
-   *  technically non-empty ("‌" alone, or "   " with only spaces
-   *  and joiners) STILL counts as empty and gets filtered out.
+   *  `hasRenderableContent` is the universal "should we show this
+   *  tile at all?" predicate. A tile is renderable when it has
+   *  EITHER something to display in a media slot (cover / video
+   *  URL) OR readable text for the quote-card fallback. Rows that
+   *  fail both checks are hollow — they'd render as a blank card
+   *  regardless of tab — and are excluded from every filter,
+   *  including "همه", so the four badge numbers add up cleanly.
    */
   const hasReadableText = (i: TabyinItem) => {
     const clean = (s: string | undefined) =>
       (s ?? '')
-        // strip ZWNJ / ZWJ / BOM / RTL/LTR marks / no-break space /
-        // any other whitespace-like invisibles
         .replace(/[\u200B-\u200F\u202A-\u202E\u2060\u00A0\uFEFF]/g, '')
         .trim();
     return clean(i.summary).length > 0 || clean(i.title).length > 0;
   };
+  const hasRenderableContent = (i: TabyinItem) =>
+    Boolean(i.coverUrl) || Boolean(i.videoUrl) || hasReadableText(i);
+
   const isTextItem = (i: TabyinItem) => i.mediaType === 'other' && hasReadableText(i);
 
   /*
-   * Badge counts. For the "سایر" tab specifically we IGNORE the
-   * backend-supplied count and always compute it locally from the
-   * filtered corpus, because:
-   *   • The backend count = `all − image − video` counts rows that
-   *     have no image/video attachment REGARDLESS of whether they
-   *     have any readable text — so hollow rows would inflate the
-   *     badge above what the tab actually renders (the "35 in the
-   *     badge but 38/33 tiles on screen" mismatch users kept
-   *     reporting).
-   *   • Computing locally guarantees badge count == tile count.
-   * The other three tabs (all / image / video) continue to prefer
-   * the authoritative backend counts since they represent much
-   * larger corpora that we only sample locally.
+   * ── Renderable corpus ───────────────────────────────────────
+   *  All badge counts AND the paginated slice are computed from
+   *  the SAME filtered array: items minus the hollow ones. That
+   *  guarantees the four badge numbers add up:
+   *      همه = تصویر + ویدئو + سایر
+   *  and every tab's tile count matches its badge exactly.
    */
+  const renderableItems = useMemo(
+    () => items.filter(hasRenderableContent),
+    [items],
+  );
+
   const counts = useMemo(() => ({
-    all:   backendCounts?.all   ?? items.length,
-    image: backendCounts?.image ?? items.filter((i) => (i.mediaType ?? 'image') === 'image').length,
-    video: backendCounts?.video ?? items.filter((i) => i.mediaType === 'video').length,
-    text:  items.filter(isTextItem).length,
-  }), [items, backendCounts]);
+    all:   renderableItems.length,
+    image: renderableItems.filter((i) => i.mediaType === 'image').length,
+    video: renderableItems.filter((i) => i.mediaType === 'video').length,
+    text:  renderableItems.filter(isTextItem).length,
+  }), [renderableItems]);
 
   const filtered = useMemo(
-    () => items.filter((i) => {
+    () => renderableItems.filter((i) => {
       if (filter === 'all') return true;
       if (filter === 'text') return isTextItem(i);
       const t = i.mediaType ?? 'image';
       return t === filter;
     }),
-    [items, filter],
+    [renderableItems, filter],
   );
 
   // 10 tiles per page tile a perfect rectangle at EVERY breakpoint when the
