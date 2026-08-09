@@ -369,39 +369,55 @@ export async function loadTabyinCounts(): Promise<TabyinCounts> {
  * but the union is what the "سایر" tab shows on the wall, so we
  * fetch both `audio` and `other` and merge, taking the newest 100.
  */
+/**
+ * Fetch UP TO `target` items from a Tabyin bucket, following the
+ * pagination cursor as many hops as needed. Defensive against
+ * backend `max_page_size` limits that could silently cap our
+ * single-call fetch below the 100-item ceiling we advertise.
+ */
+async function fetchTabyinBucket(
+  target: number,
+  mediaType?: 'image' | 'video' | 'audio' | 'other',
+): Promise<ApiTabyin[]> {
+  const collected: ApiTabyin[] = [];
+  let page = 1;
+  // Cap the loop at 10 hops so a misbehaving pagination endpoint
+  // can never spin forever.
+  for (let i = 0; i < 10 && collected.length < target; i++) {
+    const suffix = mediaType ? `&media_type=${mediaType}` : '';
+    const data = await safeApiFetch<Paginated<ApiTabyin>>(
+      `/tabyin/contents/?page_size=${target}&page=${page}&ordering=-source_created_at${suffix}`,
+      { revalidate: 180, tags: ['tabyin', 'homepage'] },
+    );
+    if (!data) break;
+    const batch = unwrap(data);
+    if (batch.length === 0) break;
+    collected.push(...batch);
+    // If the batch came back smaller than we asked for, the bucket
+    // is drained — no more pages exist. Otherwise, ask for the next
+    // page and keep merging until we hit `target` or run out.
+    if (batch.length < target) break;
+    page += 1;
+  }
+  return collected.slice(0, target);
+}
+
 export async function loadTabyinItems(): Promise<TabyinItem[]> {
   const PER_BUCKET = 100;
-  const params = `page_size=${PER_BUCKET}&ordering=-source_created_at`;
 
-  const [allData, imageData, videoData, audioData, otherData] = await Promise.all([
-    safeApiFetch<Paginated<ApiTabyin>>(
-      `/tabyin/contents/?${params}`,
-      { revalidate: 180, tags: ['tabyin', 'homepage'] },
-    ),
-    safeApiFetch<Paginated<ApiTabyin>>(
-      `/tabyin/contents/?${params}&media_type=image`,
-      { revalidate: 180, tags: ['tabyin', 'homepage'] },
-    ),
-    safeApiFetch<Paginated<ApiTabyin>>(
-      `/tabyin/contents/?${params}&media_type=video`,
-      { revalidate: 180, tags: ['tabyin', 'homepage'] },
-    ),
-    safeApiFetch<Paginated<ApiTabyin>>(
-      `/tabyin/contents/?${params}&media_type=audio`,
-      { revalidate: 180, tags: ['tabyin', 'homepage'] },
-    ),
-    safeApiFetch<Paginated<ApiTabyin>>(
-      `/tabyin/contents/?${params}&media_type=other`,
-      { revalidate: 180, tags: ['tabyin', 'homepage'] },
-    ),
+  const [allList, imageList, videoList, audioList, otherList] = await Promise.all([
+    fetchTabyinBucket(PER_BUCKET),
+    fetchTabyinBucket(PER_BUCKET, 'image'),
+    fetchTabyinBucket(PER_BUCKET, 'video'),
+    fetchTabyinBucket(PER_BUCKET, 'audio'),
+    fetchTabyinBucket(PER_BUCKET, 'other'),
   ]);
 
   // Merge + dedupe by external_id, preferring the newest
   // source_created_at when duplicates occur.
   const byId = new Map<string, ApiTabyin>();
-  for (const bucket of [allData, imageData, videoData, audioData, otherData]) {
-    const list = unwrap(bucket);
-    for (const t of list) {
+  for (const bucket of [allList, imageList, videoList, audioList, otherList]) {
+    for (const t of bucket) {
       if (!t?.external_id) continue;
       const prev = byId.get(t.external_id);
       if (!prev) { byId.set(t.external_id, t); continue; }
