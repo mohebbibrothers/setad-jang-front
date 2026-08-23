@@ -1,163 +1,76 @@
-# Production Deployment — Frontend (Next.js 15)
+# Deploy — besat.me frontend
 
-> **Audience**: Ops / DevOps deploying the homepage to `https://setadjang.ir`.
-> Backend deploy lives in a separate playbook (Django + Postgres + Redis).
+## Requirements
 
----
+- Node.js 22 (minimum supported by Next.js: 20.9)
+- npm 10+
+- Running backend routed on the same public origin under `/api/v1/`
 
-## 1. What is shipped
-
-A pre-built Next.js 15 (App Router) site that renders the full
-home page server-side and hydrates a handful of interactive islands
-(album lightbox, participate modal, slide-to-verify, hero animations).
-
-**Every domain section is backend-faithful:**
-
-| Section            | API endpoint(s)                                           |
-| ------------------ | --------------------------------------------------------- |
-| WarFund            | `GET /api/v1/madadkar/campaigns/`<br>`GET /api/v1/madadkar/campaigns/<slug>/` (album)<br>`POST /api/v1/madadkar/campaigns/<slug>/participate/` |
-| Justice (R4J)      | `GET /api/v1/r4j/criminals/`<br>`GET /api/v1/r4j/criminals/<slug>/` (album) |
-| Education (LMS)    | `GET /api/v1/lms/categories/`<br>`GET /api/v1/lms/courses/` |
-| Kindness Wall      | `GET /api/v1/kindness-wall/listings/`<br>`GET /api/v1/kindness-wall/listings/<slug>/` (album) |
-| Tabyin             | `GET /api/v1/tabyin/contents/`                            |
-| Public Reports     | `GET /api/v1/public-reports/subjects/`<br>`POST /api/v1/public-reports/reports/` |
-
-Loaders live in `src/lib/home-data.ts` and return ONLY real data.
-Empty arrays render the dedicated empty state (no demo seed ever
-leaks to production).
-
----
-
-## 2. Environment
-
-Create `frontend/.env.production` from `.env.production.example`:
+## Environment
 
 ```bash
-NEXT_PUBLIC_SITE_URL=https://setadjang.ir
-NEXT_PUBLIC_API_URL=https://api.setadjang.ir
+cp .env.production.example .env.production
 ```
 
-Both keys are public — they end up in the client bundle.
+Required public values:
 
----
+```env
+NEXT_PUBLIC_SITE_URL=https://besat.me
+NEXT_PUBLIC_API_URL=https://besat.me
+```
 
-## 3. Build
+Server-only values should be injected by the process manager/secret store:
+
+```env
+REVALIDATE_SECRET=<strong-random-secret>
+INDEXNOW_SECRET=<strong-random-secret>
+```
+
+## Quality gate and build
 
 ```bash
-cd frontend
 npm ci
-npm run build              # → .next/
+npm run verify
 ```
 
-Output is a hybrid app: static for everything that can be pre-rendered,
-SSR for the homepage (so every page paint already has live data).
+`npm run verify` runs ESLint, TypeScript, tests and a production build. Run coverage and `npm audit --audit-level=high` as additional release gates.
 
----
-
-## 4. Run
-
-### a) Long-running Node server (recommended)
+## Run
 
 ```bash
-npm run start              # listens on $PORT (default 3000)
+HOSTNAME=0.0.0.0 PORT=3000 npm start
 ```
 
-Run behind your reverse proxy (Nginx / Caddy / Traefik) terminating
-TLS at the edge:
+Recommended systemd/PM2 deployment must run from the repository directory so `.env.production` is loaded.
+
+## Reverse proxy contract
+
+Route Next pages/assets to port 3000 and backend paths directly to Django/Gunicorn:
 
 ```nginx
-server {
-  listen 443 ssl http2;
-  server_name setadjang.ir;
-
-  location / {
-    proxy_pass         http://127.0.0.1:3000;
-    proxy_set_header   Host              $host;
-    proxy_set_header   X-Real-IP         $remote_addr;
-    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
-    proxy_set_header   X-Forwarded-Proto $scheme;
-  }
-}
+location /api/v1/ { proxy_pass http://127.0.0.1:8000; }
+location /api/docs/ { proxy_pass http://127.0.0.1:8000; }
+location /api/schema/ { proxy_pass http://127.0.0.1:8000; }
+location /admin/ { proxy_pass http://127.0.0.1:8000; }
+location /media/ { proxy_pass http://127.0.0.1:8000; }
+location / { proxy_pass http://127.0.0.1:3000; }
 ```
 
-### b) Containerised
+Forward `Host`, `X-Real-IP`, `X-Forwarded-For` and `X-Forwarded-Proto` on every proxy location.
 
-A multi-stage Dockerfile is straightforward:
+## Smoke tests
 
-```Dockerfile
-FROM node:20-alpine AS deps
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-
-FROM node:20-alpine AS build
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
-
-FROM node:20-alpine AS run
-WORKDIR /app
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-COPY --from=build /app/.next ./.next
-COPY --from=build /app/public ./public
-COPY --from=build /app/package*.json ./
-RUN npm ci --omit=dev
-EXPOSE 3000
-CMD ["npm", "run", "start"]
+```bash
+curl -fsS https://besat.me/api/v1/health/
+curl -fsS https://besat.me/api/v1/health/ready/
+curl -I https://besat.me/
+curl -I https://besat.me/auth/login
+curl -I https://besat.me/r4j/<published-slug>
+curl -I https://besat.me/sitemap.xml
 ```
 
----
+Then manually test login, an authenticated route guard, public report submission and one detail page.
 
-## 5. Cache + revalidation
+## Rollback
 
-Each loader sets a Next.js `revalidate` window matching the data churn:
-
-| Loader              | revalidate |
-| ------------------- | ---------- |
-| `loadCampaigns`     | 300 s      |
-| `loadCriminals`     | 600 s      |
-| `loadLmsCategories` | 600 s      |
-| `loadCourses`       | 300 s      |
-| `loadKindnessListings` | 240 s   |
-| `loadTabyinItems`   | 180 s      |
-| `loadReportSubjects` | 600 s     |
-
-If you ever need to bust the cache early (e.g. after a publishing
-push), call Next's `revalidateTag('campaigns')` etc. from a webhook
-endpoint.
-
----
-
-## 6. Security headers
-
-Already wired in `next.config.mjs`:
-
-* `X-Frame-Options: SAMEORIGIN`
-* `X-Content-Type-Options: nosniff`
-* `Referrer-Policy: strict-origin-when-cross-origin`
-* `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
-* `Permissions-Policy: camera=(), microphone=(), geolocation=(self)`
-
-If you sit behind Nginx / Cloudflare, you can also add a strict
-`Content-Security-Policy` at the edge — the bundle only needs
-`self`, `'unsafe-inline'` for Next's runtime styles, and the API
-origin (`https://api.setadjang.ir`).
-
----
-
-## 7. Health checks
-
-* HTTP `GET /` should return 200 with `Content-Type: text/html`.
-* HTTP `GET /api/proxy/madadkar/campaigns/` exercises the rewrite to
-  Django — handy for smoke-testing the proxy.
-
----
-
-## 8. Rollback
-
-`npm run build` produces a deterministic `.next/` directory, so blue/
-green is just two builds + a load-balancer swap. No DB migration is
-ever required for a frontend-only rollback.
+Keep the previous commit/build, switch the application symlink or checkout, run `npm ci && npm run build`, and restart only the frontend process. Frontend rollback has no database migration.

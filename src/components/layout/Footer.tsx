@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Instagram, Twitter, Linkedin, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
+import { siteConfig } from '@/lib/site';
 import { BackToTop } from './BackToTop';
 
 /**
@@ -60,11 +61,8 @@ const COLS = [
 ];
 
 const SOCIALS = [
-  { Icon: Instagram, label: 'اینستاگرام', href: '#' },
-  { Icon: Twitter,   label: 'توییتر',     href: '#' },
-  { Icon: Linkedin,  label: 'لینکدین',    href: '#' },
-  { Icon: Send,      label: 'تلگرام',     href: '#' },
-];
+  { Icon: Send, label: 'ایتا', href: siteConfig.social.eitaa },
+].filter((item) => Boolean(item.href));
 
 export function Footer() {
   return (
@@ -181,6 +179,8 @@ export function Footer() {
               <Link
                 key={label}
                 href={href}
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label={label}
                 className="group relative w-10 h-10 rounded-full bg-white text-ink-500
                            border border-ink-200

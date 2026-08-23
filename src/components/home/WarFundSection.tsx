@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { SmartImage } from '@/components/ui/SmartImage';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SectionTitle } from './SectionTitle';
@@ -11,6 +12,7 @@ import { apiFetch } from '@/lib/api';
 import { CampaignAlbum, type AlbumImage } from './CampaignAlbum';
 import { CampaignParticipateModal } from './CampaignParticipateModal';
 import { EmptyState } from './EmptyState';
+import { useAuth } from '@/lib/use-auth';
 
 /**
  * ───────────────────────────────────────────────────────────────────────────
@@ -122,7 +124,6 @@ function MetaPill({
       {/* Sponsor avatar (optional) — square 22px, ring for definition */}
       {avatarUrl && (
         <span className="relative w-[22px] h-[22px] rounded-md overflow-hidden bg-ink-50 ring-1 ring-ink-100 shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={avatarUrl}
             alt=""
@@ -233,8 +234,9 @@ function Card({
   // has_deadline + deadline countdown (only when the backend says the
   // campaign actually HAS a deadline — otherwise we don't guess).
   const deadlineMs = c.hasDeadline && c.deadline ? Date.parse(c.deadline) : NaN;
+  const [renderedAt] = useState(Date.now);
   const daysLeft = Number.isFinite(deadlineMs)
-    ? Math.max(0, Math.ceil((deadlineMs - Date.now()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(0, Math.ceil((deadlineMs - renderedAt) / (1000 * 60 * 60 * 24)))
     : null;
 
   return (
@@ -467,6 +469,8 @@ type ApiCampaignDetail = {
 };
 
 export function WarFundSection({ campaigns }: { campaigns: CampaignCard[] }) {
+  const router = useRouter();
+  const auth = useAuth();
   // 4 cards per page (2×2 on desktop); extra pages reached via the pager.
   const PAGE_SIZE = 4;
   const totalPages = Math.max(1, Math.ceil(campaigns.length / PAGE_SIZE));
@@ -503,10 +507,14 @@ export function WarFundSection({ campaigns }: { campaigns: CampaignCard[] }) {
   // ─── Participate modal state ─────────────────────────────────────────
   const [participateOpen, setParticipateOpen] = useState(false);
   const [participateCampaign, setParticipateCampaign] = useState<CampaignCard | null>(null);
-  const openParticipate = useCallback((c: CampaignCard) => {
-    setParticipateCampaign(c);
+  const openParticipate = useCallback((campaign: CampaignCard) => {
+    if (!auth.isAuthenticated) {
+      router.push(`/auth/login?next=${encodeURIComponent('/#warfund')}`);
+      return;
+    }
+    setParticipateCampaign(campaign);
     setParticipateOpen(true);
-  }, []);
+  }, [auth.isAuthenticated, router]);
   const closeParticipate = useCallback(() => setParticipateOpen(false), []);
 
   const buildImages = useCallback(

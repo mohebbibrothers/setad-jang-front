@@ -25,7 +25,6 @@
  * ───────────────────────────────────────────────────────────────────────────
  */
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -359,7 +358,7 @@ export function GlobalSearch({
     const out: Record<SearchSource, number> = {
       madadkar: 0, r4j: 0, lms: 0, kindness: 0, tabyin: 0,
     };
-    data?.groups.forEach((g) => { out[g.source] = g.hits.length; });
+    data?.groups.forEach((group) => { out[group.source] = group.total; });
     return out;
   }, [data]);
   const total = data?.total ?? 0;
@@ -464,9 +463,6 @@ export function GlobalSearch({
           transition-[box-shadow,ring] duration-300
           flex items-center pl-1.5 pr-3 md:pr-5 py-1.5 gap-2
         `}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={listboxId}
       >
         <span className="shrink-0 w-9 h-9 md:w-10 md:h-10 rounded-full bg-brand-50 text-brand-600
                          flex items-center justify-center" aria-hidden="true">
@@ -482,8 +478,11 @@ export function GlobalSearch({
           onFocus={() => setOpen(true)}
           onKeyDown={onInputKey}
           placeholder="جست‌وجو در حرکت‌ها، آموزش‌ها، پرونده‌ها، روایت‌ها…"
+          role="combobox"
           aria-label="جست‌وجوی سراسری"
           aria-autocomplete="list"
+          aria-haspopup="listbox"
+          aria-expanded={open}
           aria-controls={listboxId}
           aria-activedescendant={active >= 0 ? `${listboxId}-opt-${active}` : undefined}
           dir="rtl"
@@ -655,7 +654,6 @@ export function GlobalSearch({
                     listboxId={listboxId}
                     setActive={setActive}
                     onPick={goToHit}
-                    facets={facets}
                   />
                 )}
               </div>
@@ -715,7 +713,7 @@ function SourceChip({
       {count > 0 && (
         <span className={`inline-flex items-center justify-center min-w-[20px] h-[20px] px-1
                           rounded-full text-[10.5px] font-extrabold
-                          ${active ? 'bg-white/25 text-white' : 'bg-white/70 text-ink-700'}`}>
+                          ${active ? 'bg-white/25 text-white' : 'bg-white/70 text-ink-600 ring-1 ring-black/5'}`}>
           {count.toLocaleString('fa-IR')}
         </span>
       )}
@@ -865,28 +863,22 @@ function NoResultsBody({ q }: { q: string }) {
 }
 
 function ResultsBody({
-  data, active, listboxId, setActive, onPick, facets,
+  data, active, listboxId, setActive, onPick,
 }: {
   data: SearchAggregate;
   active: number;
   listboxId: string;
   setActive: (i: number) => void;
   onPick: (h: SearchHit) => void;
-  facets: SearchFacets;
 }) {
-  let cursor = -1;
   return (
     <div className="py-2">
-      {data.groups.map((g) => {
+      {data.groups.map((g, groupIndex) => {
+        const groupOffset = data.groups
+          .slice(0, groupIndex)
+          .reduce((total, group) => total + group.hits.length, 0);
         const meta = SEARCH_SOURCES[g.source];
         const a = ACCENT[meta.accent];
-        const sourceFacets = facets[g.source] as Record<string, string> | undefined;
-        const seeAllFacets: Record<string, string> = {};
-        if (sourceFacets) {
-          Object.entries(sourceFacets).forEach(([k, v]) => {
-            if (v !== undefined && v !== '') seeAllFacets[k] = String(v);
-          });
-        }
         return (
           <div key={g.source} className="mb-1.5 last:mb-0">
             <div className="flex items-center justify-between px-4 pt-2.5 pb-1">
@@ -898,20 +890,19 @@ function ResultsBody({
                   {meta.label}
                 </span>
                 <span className="text-[10.5px] text-ink-400 font-bold">
-                  ({g.hits.length.toLocaleString('fa-IR')})
+                  ({g.total.toLocaleString('fa-IR')})
                 </span>
               </div>
               <Link
-                href={meta.seeAllHref(data.q, seeAllFacets)}
+                href={meta.seeAllHref(data.q)}
                 className="text-[11px] font-extrabold text-brand-700 hover:underline"
               >
                 مشاهده همه
               </Link>
             </div>
             <ul className="px-1.5">
-              {g.hits.map((h) => {
-                cursor += 1;
-                const idx = cursor;
+              {g.hits.map((h, hitIndex) => {
+                const idx = groupOffset + hitIndex;
                 const isActive = idx === active;
                 return (
                   <li key={h.id} role="option" aria-selected={isActive}
@@ -933,8 +924,7 @@ function ResultsBody({
                           <Glyph glyph={meta.glyph} className="w-5 h-5" />
                         </span>
                         {h.thumb && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                                      <img
                             src={h.thumb}
                             alt=""
                             loading="lazy"

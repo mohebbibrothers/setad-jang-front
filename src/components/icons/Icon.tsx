@@ -46,7 +46,7 @@ export function Icon({ name, className, label, strokeWidth = 2 }: Props) {
   );
 }
 
-const PATHS: Record<IconName, JSX.Element> = {
+const PATHS: Record<IconName, React.ReactElement> = {
   'search': (
     <>
       <circle cx="11" cy="11" r="7" />

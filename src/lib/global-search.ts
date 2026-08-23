@@ -89,7 +89,7 @@ export type SearchSourceMeta = {
   shortLabel: string;
   glyph: 'campaign' | 'gavel' | 'graduation' | 'heart' | 'megaphone';
   accent: 'brand' | 'rose' | 'amber' | 'mint' | 'violet';
-  seeAllHref: (q: string, facets?: Record<string, string>) => string;
+  seeAllHref: (q: string) => string;
 };
 
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -137,16 +137,11 @@ export type SearchFacets = {
 /*  Source registry                                                          */
 /* ───────────────────────────────────────────────────────────────────────── */
 
-function seeAllUrl(base: string, q: string, facets?: Record<string, string>): string {
+function seeAllUrl(source: SearchSource, query: string): string {
   const params = new URLSearchParams();
-  if (q) params.set('search', q);
-  if (facets) {
-    Object.entries(facets).forEach(([k, v]) => {
-      if (v !== undefined && v !== '') params.set(k, v);
-    });
-  }
-  const qs = params.toString();
-  return qs ? `${base}?${qs}` : base;
+  if (query) params.set('q', query);
+  params.set('source', source);
+  return `/search?${params.toString()}`;
 }
 
 export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
@@ -156,10 +151,7 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
     shortLabel: 'حرکت‌ها',
     glyph: 'campaign',
     accent: 'brand',
-    // Homepage-only milestone: dedicated /madadkar list route is
-    // not built yet, so 'مشاهده همه' returns the user to the
-    // corresponding homepage anchor instead of shipping a dead link.
-    seeAllHref: (q, f) => seeAllUrl('/#warfund', q, f),
+    seeAllHref: (query) => seeAllUrl('madadkar', query),
   },
   r4j: {
     key: 'r4j',
@@ -167,7 +159,7 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
     shortLabel: 'پرونده‌ها',
     glyph: 'gavel',
     accent: 'rose',
-    seeAllHref: (q, f) => seeAllUrl('/#justice', q, f),
+    seeAllHref: (query) => seeAllUrl('r4j', query),
   },
   lms: {
     key: 'lms',
@@ -175,7 +167,7 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
     shortLabel: 'دوره‌ها',
     glyph: 'graduation',
     accent: 'amber',
-    seeAllHref: (q, f) => seeAllUrl('/#education', q, f),
+    seeAllHref: (query) => seeAllUrl('lms', query),
   },
   kindness: {
     key: 'kindness',
@@ -183,7 +175,7 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
     shortLabel: 'آگهی‌ها',
     glyph: 'heart',
     accent: 'mint',
-    seeAllHref: (q, f) => seeAllUrl('/#kindness', q, f),
+    seeAllHref: (query) => seeAllUrl('kindness', query),
   },
   tabyin: {
     key: 'tabyin',
@@ -191,7 +183,7 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
     shortLabel: 'محتواها',
     glyph: 'megaphone',
     accent: 'violet',
-    seeAllHref: (q, f) => seeAllUrl('/tabyin', q, f),
+    seeAllHref: (query) => seeAllUrl('tabyin', query),
   },
 };
 
@@ -260,19 +252,42 @@ function formatDuration(seconds?: number): string {
 /* ───────────────────────────────────────────────────────────────────────── */
 
 type Paginated<T> = { results?: T[]; count?: number } | T[];
+type SearchSourceResult = { hits: SearchHit[]; total: number };
 
-function unwrap<T>(p: Paginated<T> | null | undefined): T[] {
-  if (!p) return [];
-  if (Array.isArray(p)) return p;
-  return p.results ?? [];
+function unwrap<T>(page: Paginated<T> | null | undefined): T[] {
+  if (!page) return [];
+  if (Array.isArray(page)) return page;
+  return page.results ?? [];
 }
 
-const PER_SOURCE_LIMIT = 5;
+function mapSourcePage<T>(
+  page: Paginated<T>,
+  limit: number,
+  mapper: (item: T) => SearchHit,
+): SearchSourceResult {
+  const rows = unwrap(page).slice(0, limit);
+  return {
+    hits: rows.map(mapper),
+    total: Array.isArray(page) ? page.length : (page.count ?? rows.length),
+  };
+}
 
-function buildQueryString(q: string, extra?: Record<string, string | boolean | undefined>): string {
+const DEFAULT_SOURCE_LIMIT = 5;
+const MAX_SOURCE_LIMIT = 50;
+
+function normalizeLimit(value: number | undefined): number {
+  if (!Number.isFinite(value)) return DEFAULT_SOURCE_LIMIT;
+  return Math.max(1, Math.min(MAX_SOURCE_LIMIT, Math.floor(value as number)));
+}
+
+function buildQueryString(
+  q: string,
+  pageSize: number,
+  extra?: Record<string, string | boolean | undefined>,
+): string {
   const params = new URLSearchParams();
   params.set('search', q);
-  params.set('page_size', String(PER_SOURCE_LIMIT));
+  params.set('page_size', String(pageSize));
   if (extra) {
     Object.entries(extra).forEach(([k, v]) => {
       // NOTE — we DO want to send `false` (django BooleanFilter reads it
@@ -288,8 +303,9 @@ function buildQueryString(q: string, extra?: Record<string, string | boolean | u
 async function fetchMadadkar(
   q: string,
   facets: SearchFacets['madadkar'] | undefined,
+  limit = DEFAULT_SOURCE_LIMIT,
   signal?: AbortSignal,
-): Promise<SearchHit[]> {
+): Promise<SearchSourceResult> {
   type C = {
     slug: string; title: string;
     sponsor?: { name?: string; slug?: string };
@@ -301,7 +317,7 @@ async function fetchMadadkar(
     participant_count?: number;
     total_amount?: number;
   };
-  const qs = buildQueryString(q, {
+  const qs = buildQueryString(q, limit, {
     status:          facets?.status,
     has_deadline:    facets?.has_deadline,
     is_fully_funded: facets?.is_fully_funded,
@@ -310,9 +326,9 @@ async function fetchMadadkar(
   });
   const data = await apiFetch<Paginated<C>>(
     `/madadkar/campaigns/?${qs}`,
-    { signal, revalidate: 30, skipAuth: true } as never,
+    { signal, revalidate: 30, skipAuth: true },
   );
-  return unwrap(data).slice(0, PER_SOURCE_LIMIT).map((c) => {
+  return mapSourcePage(data, limit, (c) => {
     const sponsorName = clean(c.sponsor?.name);
     const progress = typeof c.progress_percent === 'number' ? Math.round(c.progress_percent) : null;
     const subtitle = sponsorName ? `مددکار: ${sponsorName}` : undefined;
@@ -327,10 +343,7 @@ async function fetchMadadkar(
       title:    clean(c.title) || 'حرکت بدون عنوان',
       subtitle,
       thumb:    absoluteMediaUrl(c.cover_image),
-      // /madadkar/[slug] detail route is not built yet. Route hits
-      // back to the homepage warfund anchor so clicks always land on
-      // a valid page.
-      href:     `/#warfund`,
+      href:     `/madadkar/${encodeURIComponent(c.slug)}`,
       badge,
       pill:     statusPill,
     };
@@ -340,8 +353,9 @@ async function fetchMadadkar(
 async function fetchR4J(
   q: string,
   facets: SearchFacets['r4j'] | undefined,
+  limit = DEFAULT_SOURCE_LIMIT,
   signal?: AbortSignal,
-): Promise<SearchHit[]> {
+): Promise<SearchSourceResult> {
   type P = {
     slug: string;
     first_name?: string;
@@ -353,7 +367,7 @@ async function fetchR4J(
     total_bounty_toman?: number;
     bounties_count?: number;
   };
-  const qs = buildQueryString(q, {
+  const qs = buildQueryString(q, limit, {
     country:  facets?.country,
     province: facets?.province,
     city:     facets?.city,
@@ -362,9 +376,9 @@ async function fetchR4J(
   });
   const data = await apiFetch<Paginated<P>>(
     `/r4j/criminals/?${qs}`,
-    { signal, revalidate: 60, skipAuth: true } as never,
+    { signal, revalidate: 60, skipAuth: true },
   );
-  return unwrap(data).slice(0, PER_SOURCE_LIMIT).map((p) => {
+  return mapSourcePage(data, limit, (p) => {
     const fullName = clean(`${p.first_name ?? ''} ${p.last_name ?? ''}`) || p.slug;
     const loc = [p.city, p.province, p.country].filter(Boolean).join('، ');
     return {
@@ -373,8 +387,7 @@ async function fetchR4J(
       title:    fullName,
       subtitle: loc || undefined,
       thumb:    absoluteMediaUrl(p.primary_photo?.image ?? null),
-      // See note above — R4J detail route TBD, fall back to anchor.
-      href:     `/#justice`,
+      href:     `/r4j/${encodeURIComponent(p.slug)}`,
       badge:    p.total_bounty_toman ? formatToman(p.total_bounty_toman) : undefined,
       pill:     p.bounties_count ? `${fa(p.bounties_count)} جایزه` : undefined,
     };
@@ -384,8 +397,9 @@ async function fetchR4J(
 async function fetchLms(
   q: string,
   facets: SearchFacets['lms'] | undefined,
+  limit = DEFAULT_SOURCE_LIMIT,
   signal?: AbortSignal,
-): Promise<SearchHit[]> {
+): Promise<SearchSourceResult> {
   type Co = {
     slug: string; title: string;
     subtitle?: string;
@@ -397,16 +411,16 @@ async function fetchLms(
     estimated_duration_seconds?: number;
     enrollments_count?: number;
   };
-  const qs = buildQueryString(q, {
+  const qs = buildQueryString(q, limit, {
     category: facets?.category,
     level:    facets?.level,
     ordering: '-published_at',
   });
   const data = await apiFetch<Paginated<Co>>(
     `/lms/courses/?${qs}`,
-    { signal, revalidate: 30, skipAuth: true } as never,
+    { signal, revalidate: 30, skipAuth: true },
   );
-  return unwrap(data).slice(0, PER_SOURCE_LIMIT).map((c) => {
+  return mapSourcePage(data, limit, (c) => {
     const instructor = clean(c.instructor_name);
     const dur        = formatDuration(c.estimated_duration_seconds);
     const parts: string[] = [];
@@ -419,8 +433,7 @@ async function fetchLms(
       title:    clean(c.title),
       subtitle: parts.length ? parts.join(' · ') : clean(c.short_description),
       thumb:    absoluteMediaUrl(c.cover_image),
-      // See note above — LMS course detail route TBD.
-      href:     `/#education`,
+      href:     `/lms/courses/${encodeURIComponent(c.slug)}`,
       badge:    c.enrollments_count ? `${fa(c.enrollments_count)} یادگیرنده` : undefined,
       pill:     c.level ? LEVEL_LABEL[c.level] ?? c.level : undefined,
     };
@@ -430,8 +443,9 @@ async function fetchLms(
 async function fetchKindness(
   q: string,
   facets: SearchFacets['kindness'] | undefined,
+  limit = DEFAULT_SOURCE_LIMIT,
   signal?: AbortSignal,
-): Promise<SearchHit[]> {
+): Promise<SearchSourceResult> {
   type L = {
     slug: string; title: string;
     listing_type?: 'need_help' | 'offer_help' | string;
@@ -440,7 +454,7 @@ async function fetchKindness(
     cover_image?: string;
     view_count?: number;
   };
-  const qs = buildQueryString(q, {
+  const qs = buildQueryString(q, limit, {
     listing_type: facets?.listing_type,
     category:     facets?.category,
     province:     facets?.province,
@@ -449,9 +463,9 @@ async function fetchKindness(
   });
   const data = await apiFetch<Paginated<L>>(
     `/kindness-wall/listings/?${qs}`,
-    { signal, revalidate: 30, skipAuth: true } as never,
+    { signal, revalidate: 30, skipAuth: true },
   );
-  return unwrap(data).slice(0, PER_SOURCE_LIMIT).map((l) => {
+  return mapSourcePage(data, limit, (l) => {
     const loc = [l.city, l.province].filter(Boolean).join('، ');
     const catTitle = clean(l.category?.title);
     return {
@@ -460,8 +474,7 @@ async function fetchKindness(
       title:    clean(l.title),
       subtitle: [catTitle, loc].filter(Boolean).join(' · ') || undefined,
       thumb:    absoluteMediaUrl(l.cover_image),
-      // See note above — Kindness listing detail route TBD.
-      href:     `/#kindness`,
+      href:     `/kindness-wall/${encodeURIComponent(l.slug)}`,
       badge:    l.view_count ? `${fa(l.view_count)} بازدید` : undefined,
       pill:
         l.listing_type === 'need_help'  ? 'نیازمند کمک'
@@ -474,8 +487,9 @@ async function fetchKindness(
 async function fetchTabyin(
   q: string,
   facets: SearchFacets['tabyin'] | undefined,
+  limit = DEFAULT_SOURCE_LIMIT,
   signal?: AbortSignal,
-): Promise<SearchHit[]> {
+): Promise<SearchSourceResult> {
   type T = {
     external_id: string;
     title?: string;
@@ -485,16 +499,16 @@ async function fetchTabyin(
     attachments?: { url?: string; media_type?: string }[];
     origin?: string;
   };
-  const qs = buildQueryString(q, {
+  const qs = buildQueryString(q, limit, {
     media_type: facets?.media_type,
     author:     facets?.author,
     ordering:   '-source_created_at',
   });
   const data = await apiFetch<Paginated<T>>(
     `/tabyin/contents/?${qs}`,
-    { signal, revalidate: 30, skipAuth: true } as never,
+    { signal, revalidate: 30, skipAuth: true },
   );
-  return unwrap(data).slice(0, PER_SOURCE_LIMIT).map((t) => {
+  return mapSourcePage(data, limit, (t) => {
     const image = t.attachments?.find((a) => a.media_type === 'image')?.url
                 ?? t.attachments?.[0]?.url;
     const title = clean(t.title)
@@ -516,8 +530,9 @@ const FETCHERS: {
   [K in SearchSource]: (
     q: string,
     facets: SearchFacets[K] | undefined,
+    limit?: number,
     signal?: AbortSignal,
-  ) => Promise<SearchHit[]>;
+  ) => Promise<SearchSourceResult>;
 } = {
   madadkar: fetchMadadkar,
   r4j:      fetchR4J,
@@ -532,7 +547,8 @@ const FETCHERS: {
 
 export type SearchAggregate = {
   q: string;
-  groups: { source: SearchSource; hits: SearchHit[] }[];
+  groups: { source: SearchSource; hits: SearchHit[]; total: number }[];
+  /** Sum of backend result counts, not merely the preview cards loaded. */
   total: number;
   errored: SearchSource[];
 };
@@ -543,6 +559,8 @@ export async function searchAll(
     sources?: SearchSource[];
     facets?: SearchFacets;
     signal?: AbortSignal;
+    /** Number of preview rows fetched per source (1..50, default 5). */
+    limit?: number;
   },
 ): Promise<SearchAggregate> {
   const cleaned = (q ?? '').trim();
@@ -550,15 +568,17 @@ export async function searchAll(
   if (!cleaned || cleaned.length < 2) return empty;
 
   const wanted = opts?.sources ?? SEARCH_SOURCE_ORDER;
+  const limit = normalizeLimit(opts?.limit);
+  type SearchFetcher = (
+    query: string,
+    facets: SearchFacets[SearchSource] | undefined,
+    limit: number,
+    signal?: AbortSignal,
+  ) => Promise<SearchSourceResult>;
   const settled = await Promise.allSettled(
-    wanted.map((src) => {
-      const fn = FETCHERS[src];
-      const facets = opts?.facets?.[src];
-      // TypeScript can't correlate the per-source facet type through the
-      // discriminant here — the mapped type on FETCHERS already enforces
-      // it at each fetcher's declaration site, so this cast is safe.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (fn as any)(cleaned, facets, opts?.signal);
+    wanted.map((source) => {
+      const fetcher = FETCHERS[source] as unknown as SearchFetcher;
+      return fetcher(cleaned, opts?.facets?.[source], limit, opts?.signal);
     }),
   );
 
@@ -568,9 +588,9 @@ export async function searchAll(
   settled.forEach((result, idx) => {
     const src = wanted[idx];
     if (result.status === 'fulfilled') {
-      if (result.value.length) {
-        groups.push({ source: src, hits: result.value });
-        total += result.value.length;
+      if (result.value.hits.length) {
+        groups.push({ source: src, hits: result.value.hits, total: result.value.total });
+        total += result.value.total;
       }
     } else {
       const reason = result.reason as { name?: string } | undefined;

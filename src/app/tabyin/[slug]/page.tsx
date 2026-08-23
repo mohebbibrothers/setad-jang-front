@@ -60,7 +60,6 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
             {hero?.media_type === 'video' && hero.url ? (
               <video src={hero.url} poster={videoThumb(hero.url)} controls playsInline preload="metadata" className="mx-auto max-h-[72vh] w-full bg-black object-contain" />
             ) : hero?.media_type === 'image' && hero.url ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img src={hero.url} alt={item.title || 'محتوای تبیین'} className="mx-auto max-h-[72vh] w-full object-contain" />
             ) : (
               <div className="flex min-h-[280px] items-center justify-center bg-gradient-to-br from-brand-600 to-brand-900 text-white"><span className="text-2xl font-black">جهاد تبیین</span></div>

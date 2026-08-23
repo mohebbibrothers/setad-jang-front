@@ -300,16 +300,7 @@ type ApiTabyin = {
   attachments?: ApiTabyinAttachment[];
 };
 
-/**
- * Tabyin filter counts.
- *
- * The strip on the homepage has 4 tabs: همه / تصویر / ویدئو / متن.
- * "متن" is the union bucket for everything that isn't a picture or a
- * video (audio, other, no-media). Backend has no dedicated count
- * endpoint for "text" — we compute it as `all - image - video` so
- * every content type is accounted for exactly once and audio/other
- * items surface under the متن tab.
- */
+/** Aggregate counts displayed by the four homepage media tabs. */
 export type TabyinCounts = {
   all: number;
   image: number;
@@ -317,248 +308,70 @@ export type TabyinCounts = {
   text: number;
 };
 
-async function loadTabyinCount(mediaType?: 'image' | 'video' | 'audio' | 'other'): Promise<number> {
-  const suffix = mediaType ? '&media_type=' + mediaType : '';
-  // Revalidate every 60 s (was 180 s) so the badge numbers on the
-  // Tabyin filter strip refresh quickly when the upstream crawler
-  // ingests new items — the strip is the first thing users glance
-  // at on the section and a stale count for 3 minutes is visually
-  // noisy on a wall that otherwise animates in real time.
+type TabyinMediaType = 'image' | 'video' | 'audio' | 'other';
+type TabyinHomePage = { items: ApiTabyin[]; count: number };
+
+const TABYIN_HOME_LIMIT = 100;
+const TABYIN_REVALIDATE_SECONDS = 180;
+
+/**
+ * Fetch exactly one bounded backend page. The previous implementation pulled
+ * the complete 3k+ corpus (30–50 HTTP requests per homepage regeneration) just
+ * to calculate badges, then rendered at most 100 records. Five bounded bucket
+ * requests provide the same homepage UX while keeping SSR cost constant as the
+ * corpus grows. `loadTabyinCounts` requests these exact URLs as well, allowing
+ * Next's fetch cache to deduplicate concurrent calls.
+ */
+async function fetchTabyinHomePage(mediaType?: TabyinMediaType): Promise<TabyinHomePage> {
+  const media = mediaType ? `&media_type=${mediaType}` : '';
   const data = await safeApiFetch<Paginated<ApiTabyin>>(
-    '/tabyin/contents/?page_size=1&ordering=-source_created_at' + suffix,
-    { revalidate: 60, tags: ['tabyin', 'homepage'] },
+    `/tabyin/contents/?page_size=${TABYIN_HOME_LIMIT}&page=1&ordering=-source_created_at${media}`,
+    {
+      revalidate: TABYIN_REVALIDATE_SECONDS,
+      tags: ['tabyin', 'homepage'],
+      timeoutMs: 10_000,
+    },
   );
 
-  if (!data || Array.isArray(data)) return 0;
-  return data.count ?? 0;
+  if (!data) return { items: [], count: 0 };
+  if (Array.isArray(data)) return { items: data.slice(0, TABYIN_HOME_LIMIT), count: data.length };
+  return {
+    items: (data.results ?? []).slice(0, TABYIN_HOME_LIMIT),
+    count: data.count ?? data.results?.length ?? 0,
+  };
 }
 
 export async function loadTabyinCounts(): Promise<TabyinCounts> {
-  // Client contract: text ≡ all − image − video.
-  //
-  // We compute it as the arithmetic difference of the three
-  // backend counts. That number (currently 35 on prod: 3301 − 1792
-  // − 1474) matches what the "سایر" tab is expected to advertise
-  // AND what its item filter (`isTextItem` in TabyinSection) will
-  // actually surface once the loader pulls a deep-enough slice of
-  // the `all` bucket to include every unclassified row.
-  //
-  // Clamped to zero so partial-count race conditions can never
-  // produce a negative badge.
   const [all, image, video] = await Promise.all([
-    loadTabyinCount(),
-    loadTabyinCount('image'),
-    loadTabyinCount('video'),
+    fetchTabyinHomePage(),
+    fetchTabyinHomePage('image'),
+    fetchTabyinHomePage('video'),
   ]);
 
-  const text = Math.max(0, all - image - video);
-
-  return { all, image, video, text };
-}
-
-/**
- * Load Tabyin items across every filter bucket so the homepage strip
- * has a full page-of-10-tiles-times-10-pages ceiling for EACH tab —
- * not just for the "همه" mixed feed.
- *
- * ── Why the fan-out ──
- * The previous single call was `?page_size=100&ordering=-...` which
- * fetched the 100 most recent items across ALL media types. If those
- * 100 happened to skew heavily to one bucket (say, 92 images + 6
- * videos + 2 text posts) then the "تصویر" tab only had 9 pages and
- * "سایر" only had 1 — even though the backend has thousands more of
- * each. The client-side counts endpoint (loadTabyinCounts) confirmed
- * the imbalance, and users noticed the empty pager arrows on the
- * smaller tabs.
- *
- * Fix: fetch UP TO 100 items PER bucket (image / video / text / other)
- * in parallel, then merge into a single deduplicated list. Every tab
- * now surfaces its own 100 latest items → 10 tiles × 10 pages ceiling
- * per tab, capped only by how many items actually exist upstream.
- *
- * "text" here means the union of everything that isn't an image or a
- * video (audio + other + no-media). We collapse it into a single
- * "text" fetch on the client — the backend has no dedicated flag,
- * but the union is what the "سایر" tab shows on the wall, so we
- * fetch both `audio` and `other` and merge, taking the newest 100.
- */
-/**
- * Fetch UP TO `target` items from a Tabyin bucket, following the
- * pagination cursor as many hops as needed. Defensive against
- * backend `max_page_size` limits that could silently cap our
- * single-call fetch below the 100-item ceiling we advertise.
- */
-/**
- * Fetch UP TO `target` items from a Tabyin bucket, following the
- * pagination cursor as many hops as needed. Defensive against
- * backend `max_page_size` limits that could silently cap our
- * single-call fetch below the target ceiling.
- *
- *  Implementation notes
- *  ────────────────────
- *   • `PAGE_SIZE` is fixed at 100 (a value the backend definitely
- *     honours — verified with a live probe). Using a variable
- *     `page_size=target` caused a subtle bug: when target > 100,
- *     the backend silently capped the response at 100 and then the
- *     drain-detection check (`batch.length < target`) fired FALSELY,
- *     breaking the loop after page 1. That's why the "سایر" tab
- *     showed only 8 items instead of the backend-advertised 35, and
- *     the ویدئو tab short-changed the last page.
- *
- *   • Drain detection now compares against `PAGE_SIZE`, not `target`:
- *     if the batch came back with FEWER than PAGE_SIZE items the
- *     bucket is genuinely drained. Otherwise we keep paginating.
- *
- *   • Loop cap raised to 20 iterations so `target=300` (the deep
- *     `all` pull) can complete in three 100-item pages with room
- *     to spare, and no realistic backend response can hang us.
- */
-async function fetchTabyinBucket(
-  target: number,
-  mediaType?: 'image' | 'video' | 'audio' | 'other',
-): Promise<ApiTabyin[]> {
-  const PAGE_SIZE = 100;
-  const collected: ApiTabyin[] = [];
-  let page = 1;
-  for (let i = 0; i < 40 && collected.length < target; i++) {
-    const suffix = mediaType ? `&media_type=${mediaType}` : '';
-    const data = await safeApiFetch<Paginated<ApiTabyin>>(
-      `/tabyin/contents/?page_size=${PAGE_SIZE}&page=${page}&ordering=-source_created_at${suffix}`,
-      { revalidate: 180, tags: ['tabyin', 'homepage'] },
-    );
-    if (!data) break;
-    const batch = unwrap(data);
-    if (batch.length === 0) break;
-    collected.push(...batch);
-    // Genuine drain: fewer items than a full page came back → no
-    // more pages exist upstream. Any other case (full page) means
-    // there might be more, so keep going.
-    if (batch.length < PAGE_SIZE) break;
-    page += 1;
-  }
-  return collected.slice(0, target);
-}
-
-/**
- * Fetch the ENTIRE Tabyin corpus (subject only to `hardCap`) with a
- * two-step scatter/gather strategy:
- *
- *   1. Hit page 1 first — the paginated envelope tells us `count`
- *      (total row count upstream).
- *   2. Compute how many more 100-item pages are needed to cover the
- *      full count, then fire ALL of those requests in parallel.
- *
- * Trade-offs:
- *   • Sequential pagination would take `count / 100` round-trips
- *     serially (~34 round-trips at the current corpus size). Even
- *     with a fast backend, that's 3-4 seconds of Time-To-First-Byte.
- *   • Parallel fetch lands the whole corpus in ~1 round-trip's worth
- *     of latency plus a small per-request compute overhead. On the
- *     current corpus (~3300 rows) the whole 34-page pull completes
- *     in ~500-800 ms cold, and from cache in <50 ms.
- *
- * Purpose: this is what the "سایر" tab needs. سایر contains items
- * that are the set-complement of image∪video, and those items can
- * live ANYWHERE in the chronological corpus — the newest 1500 rows
- * simply don't guarantee we've seen every eligible سایر row. A
- * whole-corpus pull is the only way to be provably complete.
- */
-async function fetchTabyinAllComplete(hardCap = 5000): Promise<ApiTabyin[]> {
-  const PAGE_SIZE = 100;
-  // Slightly tighter revalidation (was 180 s) so that after a fresh
-  // deploy the "سایر" tab picks up new/removed rows within a minute
-  // rather than waiting three. The tab is the most-scrutinised part
-  // of the Tabyin section right now and this makes the corpus feel
-  // "live" while still being cheap (Next.js dedupes concurrent
-  // fetches to the same URL).
-  const REVAL = 60;
-
-  // Step 1 — page 1 alone; also tells us the total `count`.
-  const firstPage = await safeApiFetch<Paginated<ApiTabyin>>(
-    `/tabyin/contents/?page_size=${PAGE_SIZE}&page=1&ordering=-source_created_at`,
-    { revalidate: REVAL, tags: ['tabyin', 'homepage'] },
-  );
-  if (!firstPage) return [];
-  const firstBatch = unwrap(firstPage);
-  const total = Array.isArray(firstPage) ? firstBatch.length : (firstPage.count ?? firstBatch.length);
-  const effectiveTotal = Math.min(total, hardCap);
-  const totalPages = Math.ceil(effectiveTotal / PAGE_SIZE);
-
-  if (totalPages <= 1) return firstBatch.slice(0, effectiveTotal);
-
-  // Step 2 — pages 2..N in parallel.
-  const pagePromises: Promise<Paginated<ApiTabyin> | ApiTabyin[] | null>[] = [];
-  for (let p = 2; p <= totalPages; p++) {
-    pagePromises.push(
-      safeApiFetch<Paginated<ApiTabyin>>(
-        `/tabyin/contents/?page_size=${PAGE_SIZE}&page=${p}&ordering=-source_created_at`,
-        { revalidate: REVAL, tags: ['tabyin', 'homepage'] },
-      ),
-    );
-  }
-  const restResults = await Promise.all(pagePromises);
-  const collected = [...firstBatch];
-  for (const r of restResults) {
-    if (!r) continue;
-    collected.push(...unwrap(r));
-  }
-  return collected.slice(0, effectiveTotal);
+  // The current backend has no complement/stats endpoint. Keep the public
+  // corpus identity used by production (`all − image − video`) and clamp it
+  // defensively because attachment-based media filters may overlap.
+  return {
+    all: all.count,
+    image: image.count,
+    video: video.count,
+    text: Math.max(0, all.count - image.count - video.count),
+  };
 }
 
 export async function loadTabyinItems(): Promise<TabyinItem[]> {
-  // ── Per-bucket fetch depth ────────────────────────────────────
-  //
-  // 200 (over-fetch factor 2×) fixes a subtle mismatch between how
-  // the backend interprets `?media_type=X` and how our client-side
-  // filter interprets `mediaType`:
-  //
-  //   • Backend `?media_type=video` returns every row whose
-  //     ATTACHMENTS include a video (e.g. an audio row that happens
-  //     to also carry an .mp4 attachment ships back under both the
-  //     video AND audio filters).
-  //
-  //   • The client filter tab, on the other hand, buckets purely by
-  //     `primary_media_type` — the single authoritative type the
-  //     backend assigns to the row as a whole. An audio row with a
-  //     video attachment shows up in سایر, not ویدئو.
-  //
-  // The consequence: if we only pull 100 rows from the video
-  // endpoint, and 2 of those rows are "cross-typed" (primary
-  // audio/other + video attachment), the client filter drops them
-  // → ویدئو tab caps at 98, not 100. We over-fetch by 2× so even a
-  // pessimistic 50% cross-type rate still leaves us with the full
-  // 100 clean items per bucket after the client-side filter runs.
-  //
-  // 200 was chosen empirically — on the current corpus the highest
-  // cross-type ratio observed is ~5%, so 2× is comfortable head-room.
-  const PER_BUCKET = 200;
-
-  // `all` bucket is fetched with a much deeper ceiling (1500 rows)
-  // so we capture the ~33 items the backend has that don't fall
-  // into ANY media_type filter (rows whose only attachment is
-  // media_type='other', or that carry no attachment at all — the
-  // full "سایر" complement on the current corpus).
-  //
-  // The "سایر" tab's contract with the client is
-  //   text ≡ all − image − video   (currently 35 on prod)
-  //
-  // Those 35 rows are ~1% of the ~3300-row corpus AND they can live
-  // anywhere in the chronological ordering — the newest N rows
-  // simply don't guarantee coverage. To be provably complete we
-  // pull the WHOLE `all` bucket via a scatter/gather fetch (page 1
-  // reveals the total count, pages 2..N are then fired in parallel).
-  // On the current corpus that's ~34 requests but they complete in
-  // <1 s cold and <50 ms warm thanks to Next.js fetch caching.
-  //
-  // Hard cap at 5000 items so a runaway corpus growth can never
-  // brown out the loader — well above the current ~3300 total.
-  const [allList, imageList, videoList, audioList, otherList] = await Promise.all([
-    fetchTabyinAllComplete(5000),
-    fetchTabyinBucket(PER_BUCKET, 'image'),
-    fetchTabyinBucket(PER_BUCKET, 'video'),
-    fetchTabyinBucket(PER_BUCKET, 'audio'),
-    fetchTabyinBucket(PER_BUCKET, 'other'),
+  const [all, image, video, audio, other] = await Promise.all([
+    fetchTabyinHomePage(),
+    fetchTabyinHomePage('image'),
+    fetchTabyinHomePage('video'),
+    fetchTabyinHomePage('audio'),
+    fetchTabyinHomePage('other'),
   ]);
+  const allList = all.items;
+  const imageList = image.items;
+  const videoList = video.items;
+  const audioList = audio.items;
+  const otherList = other.items;
 
 
   // Merge + dedupe by external_id, preferring the newest

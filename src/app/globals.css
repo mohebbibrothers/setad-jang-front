@@ -2,10 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================================
-   Vazirmatn — variable font, self-hosted via CSS import
-   ============================================================ */
-@import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
+/* Vazirmatn is loaded once from the root layout's preconnected stylesheet. */
 
 :root {
   --font-vazir: 'Vazirmatn', 'Tahoma', sans-serif;
@@ -143,7 +140,10 @@
   }
   .btn-sm { @apply h-9 px-4 text-sm; }
   .btn-md { @apply h-11 px-5 text-[15px]; }
-  .btn-lg { @apply h-13 px-7 text-base; }
+  .btn-lg {
+    @apply px-7 text-base;
+    height: 3.25rem;
+  }
 
   /* Card */
   .card {

@@ -75,7 +75,7 @@ async function submit(urls: string[]) {
 export async function GET() {
   // Default: notify the homepage + Tabyin index + Tabyin new form.
   // Anyone can hit this once after deploy — engines dedupe.
-  const result = await submit(['/', '/tabyin', '/tabyin/new']);
+  const result = await submit(['/', '/about-besat', '/tabyin']);
   return NextResponse.json({ success: result.ok, ...result });
 }
 
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
 
   const urls = Array.isArray(payload.urls) && payload.urls.length
     ? payload.urls
-    : ['/', '/tabyin', '/tabyin/new'];
+    : ['/', '/about-besat', '/tabyin'];
 
   const result = await submit(urls);
   return NextResponse.json({ success: result.ok, ...result });

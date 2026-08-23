@@ -1,3 +1,5 @@
+> **Historical document:** this file describes the original homepage-only v1.0 release. For the current besat.me deployment, routes and integration status use `README.md`, `DEPLOY.md`, and `INTEGRATION_STATUS.md`.
+
 # بعثت مردم — Frontend Release v1.0 (Homepage GA)
 
 > **Tag**: `v1.0.0-homepage`

@@ -392,9 +392,8 @@ function SlideToVerify({
                       ? 'bg-gradient-to-l from-emerald-500 via-emerald-500 to-brand-500 ring-emerald-300/40'
                       : 'bg-gradient-to-br from-white via-white to-ink-50 ring-black/[0.06]'}`}
         style={{ touchAction: 'pan-y' }}
-        role="button"
-        aria-label="برای تأیید بکشید"
-        aria-pressed={verified}
+        role="group"
+        aria-label="تأیید ادامه فرایند"
       >
         {/* Fill */}
         <div
@@ -420,7 +419,7 @@ function SlideToVerify({
                               transition-colors duration-200 truncate
                               ${pctNum > 30 ? 'text-white' : 'text-ink-600'}`}>
               <Icon name="shield" className="w-4 h-4 shrink-0" />
-              <span className="truncate">برای تأیید انسان بودن، بکشید ←</span>
+              <span className="truncate">برای تأیید و ادامه، بکشید ←</span>
             </span>
           )}
         </div>
@@ -448,9 +447,16 @@ function SlideToVerify({
         {/* Draggable thumb */}
         <motion.button
           type="button"
-          aria-label={verified ? 'تأیید شد' : 'برای تأیید بکشید'}
+          aria-label={verified ? 'تأیید شد' : 'برای تأیید بکشید؛ با Enter یا Space نیز قابل انجام است'}
           aria-pressed={verified}
           disabled={verified}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              setX(maxX);
+              onVerify();
+            }
+          }}
           onMouseDown={(e) => beginDrag(e.clientX)}
           onTouchStart={(e) => beginDrag(e.touches[0].clientX)}
           animate={{ right: thumbRight }}
@@ -497,6 +503,7 @@ export function PublicReportSection({
   const [verified, setVerified]     = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted]   = useState(false);
+  const [submissionId, setSubmissionId] = useState<number | null>(null);
   const [errorMsg, setErrorMsg]     = useState<string | null>(null);
   const [cooldown, setCooldown]     = useState(0);
   const fileInputRef                = useRef<HTMLInputElement>(null);
@@ -529,7 +536,6 @@ export function PublicReportSection({
         return [];
       });
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -593,8 +599,12 @@ export function PublicReportSection({
       fd.append('description', form.description.trim());
       files.forEach((f) => fd.append('attachments', f));
 
-      await apiFetch('/public-reports/reports/', { method: 'POST', body: fd });
+      const created = await apiFetch<{ id: number }>('/public-reports/reports/', {
+        method: 'POST',
+        body: fd,
+      });
 
+      setSubmissionId(created.id);
       setSubmitted(true);
       setForm(INITIAL);
       setFiles([]);
@@ -616,7 +626,7 @@ export function PublicReportSection({
       <div className="container-edge">
         <SectionTitle
           title="گزارش‌های مردمی"
-          description="چشم‌های شما، تیزترین چشم‌هاست. هر سرنخ، هر فساد و هر ناهنجاری را با ما در میان بگذارید — هویتتان محرمانه می‌ماند و هر گزارش با کد رهگیری قابل پیگیری است."
+          description="چشم‌های شما، تیزترین چشم‌هاست. هر سرنخ، هر فساد و هر ناهنجاری را با ما در میان بگذارید — اطلاعات تماس اختیاری است و گزارش شما مستقیماً برای بررسی ثبت می‌شود."
         />
 
         <motion.form
@@ -799,7 +809,12 @@ export function PublicReportSection({
                   <Icon name="check" className="w-4 h-4" strokeWidth={3} />
                 </span>
                 <div className="flex-1 text-[13px] leading-7 font-bold">
-                  گزارش شما با موفقیت دریافت شد. کارشناسان ما در اولین فرصت پیگیری خواهند کرد.
+                  گزارش شما با موفقیت دریافت شد.
+                  {submissionId !== null && (
+                    <span className="mr-1 whitespace-nowrap">
+                      شناسه ثبت: <bdi className="tabular-nums">#{submissionId.toLocaleString('fa-IR')}</bdi>
+                    </span>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -825,7 +840,7 @@ export function PublicReportSection({
           {/* ── Privacy reassurance ────────────────────────────────────── */}
           <p className="relative mt-4 text-center text-[11.5px] text-white/80 font-medium">
             <Icon name="shield" className="w-3 h-3 inline-block -mt-0.5 ml-1" />
-            هویت گزارش‌دهنده محرمانه است · داده‌ها رمزنگاری شده ارسال می‌شوند
+            اطلاعات تماس اختیاری است · ارتباط با سرور از مسیر امن HTTPS انجام می‌شود
           </p>
         </motion.form>
       </div>
@@ -844,7 +859,7 @@ function Dropzone({
   previews: Preview[];
   onAdd: (f: FileList | File[]) => void;
   onRemove: (i: number) => void;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   max: number;
 }) {
   const [hover, setHover] = useState(false);
@@ -901,8 +916,7 @@ function Dropzone({
               className="relative aspect-square rounded-xl overflow-hidden bg-white/10
                          ring-1 ring-white/20 group"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.url} alt={p.name} className="w-full h-full object-cover" />
+                  <img src={p.url} alt={p.name} className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <button
                 type="button"

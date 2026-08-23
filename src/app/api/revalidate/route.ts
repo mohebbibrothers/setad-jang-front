@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  for (const tag of tags) revalidateTag(tag);
+  for (const tag of tags) revalidateTag(tag, 'max');
   for (const path of paths) revalidatePath(path);
 
   return NextResponse.json({ success: true, revalidated: { tags, paths } });

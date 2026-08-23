@@ -1,45 +1,16 @@
-/**
- * ───────────────────────────────────────────────────────────────────────────
- *  JWT token store — client-only.
- *
- *  The Setad-Jang backend issues short-lived access tokens + long-lived
- *  refresh tokens (SimpleJWT). This module owns their in-browser
- *  persistence and exposes the primitives that `api.ts` needs to inject
- *  `Authorization: Bearer <access>` on every call and to transparently
- *  refresh on 401.
- *
- *  Storage
- *  ────────
- *   - `sessionStorage` when the user chooses "این دستگاه امن نیست"
- *   - `localStorage`   for the default "remember me" behaviour
- *
- *  The token values are NEVER logged and never sent anywhere except in
- *  the `Authorization` header of api.setadjang.ir calls.
- *
- *  Refresh single-flight
- *  ─────────────────────
- *  Multiple in-flight 401s share a single refresh promise so we only
- *  hit `/auth/token/refresh/` once per token-expiry event, even under
- *  concurrent parallel loaders (home page kicks 6 loaders in parallel).
- * ───────────────────────────────────────────────────────────────────────────
- */
+/** Browser-only JWT storage with refresh single-flight semantics. */
 
-import { siteConfig } from './site';
+import { resolveApiUrl } from "./api-url";
 
-const KEY_ACCESS  = 'sj.auth.access';
-const KEY_REFRESH = 'sj.auth.refresh';
-const KEY_PERSIST = 'sj.auth.persist';
+const KEY_ACCESS = "sj.auth.access";
+const KEY_REFRESH = "sj.auth.refresh";
+const KEY_PERSIST = "sj.auth.persist";
 
 export type TokenPair = {
   access: string;
   refresh: string;
-  /** When true, tokens persist across browser restarts (localStorage). */
   persist?: boolean;
 };
-
-/* ───────────────────────────────────────────────────────────────────────── */
-/*  Storage abstraction                                                       */
-/* ───────────────────────────────────────────────────────────────────────── */
 
 function safeGet(store: Storage | null, key: string): string | null {
   if (!store) return null;
@@ -55,7 +26,7 @@ function safeSet(store: Storage | null, key: string, value: string): void {
   try {
     store.setItem(key, value);
   } catch {
-    /* quota / private mode — silently drop */
+    /* private mode/quota */
   }
 }
 
@@ -69,47 +40,41 @@ function safeRemove(store: Storage | null, key: string): void {
 }
 
 function pickStore(persist: boolean): Storage | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
   return persist ? window.localStorage : window.sessionStorage;
 }
 
 function currentPersist(): boolean {
-  if (typeof window === 'undefined') return false;
-  return safeGet(window.localStorage, KEY_PERSIST) === '1';
+  if (typeof window === "undefined") return false;
+  return safeGet(window.localStorage, KEY_PERSIST) === "1";
 }
 
-/* ───────────────────────────────────────────────────────────────────────── */
-/*  Public API                                                                */
-/* ───────────────────────────────────────────────────────────────────────── */
-
 export function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  const persist = currentPersist();
-  return safeGet(pickStore(persist), KEY_ACCESS);
+  if (typeof window === "undefined") return null;
+  return safeGet(pickStore(currentPersist()), KEY_ACCESS);
 }
 
 export function getRefreshToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  const persist = currentPersist();
-  return safeGet(pickStore(persist), KEY_REFRESH);
+  if (typeof window === "undefined") return null;
+  return safeGet(pickStore(currentPersist()), KEY_REFRESH);
 }
 
 export function setTokens(pair: TokenPair): void {
-  if (typeof window === 'undefined') return;
-  const persist = pair.persist !== false;
+  if (typeof window === "undefined") return;
+  const persist = pair.persist === true;
   const store = pickStore(persist);
   safeSet(store, KEY_ACCESS, pair.access);
   safeSet(store, KEY_REFRESH, pair.refresh);
-  safeSet(window.localStorage, KEY_PERSIST, persist ? '1' : '0');
-  // Clear the opposite store so a stale token can't shadow the fresh one
-  const otherStore = pickStore(!persist);
-  safeRemove(otherStore, KEY_ACCESS);
-  safeRemove(otherStore, KEY_REFRESH);
+  safeSet(window.localStorage, KEY_PERSIST, persist ? "1" : "0");
+
+  const other = pickStore(!persist);
+  safeRemove(other, KEY_ACCESS);
+  safeRemove(other, KEY_REFRESH);
   notifyListeners();
 }
 
 export function clearTokens(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   for (const store of [window.localStorage, window.sessionStorage]) {
     safeRemove(store, KEY_ACCESS);
     safeRemove(store, KEY_REFRESH);
@@ -119,51 +84,41 @@ export function clearTokens(): void {
 }
 
 export function hasSession(): boolean {
-  return getAccessToken() !== null;
+  return Boolean(getAccessToken() || getRefreshToken());
 }
-
-/* ───────────────────────────────────────────────────────────────────────── */
-/*  Refresh — single-flight                                                   */
-/* ───────────────────────────────────────────────────────────────────────── */
 
 let inFlight: Promise<string | null> | null = null;
 
-/**
- * Attempt to exchange the stored refresh token for a fresh access token.
- * Returns the new access token on success, or `null` if the refresh
- * fails (which should trigger a logout/redirect at the call site).
- */
 export async function refreshAccessToken(): Promise<string | null> {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
   if (inFlight) return inFlight;
 
   const refresh = getRefreshToken();
   if (!refresh) return null;
 
   inFlight = (async () => {
-    const url = `${siteConfig.apiUrl.replace(/\/+$/, '')}/api/v1/auth/token/refresh/`;
     try {
-      const res = await fetch(url, {
-        method: 'POST',
+      const response = await fetch(resolveApiUrl("/auth/token/refresh/"), {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'Accept-Language': 'fa-IR',
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "Accept-Language": "fa-IR",
         },
         body: JSON.stringify({ refresh }),
+        cache: "no-store",
       });
-      if (!res.ok) return null;
-      const envelope = await res.json().catch(() => null);
-      const data = envelope?.data ?? envelope;
-      const newAccess: string | undefined = data?.access;
-      const newRefresh: string = data?.refresh ?? refresh;
-      if (!newAccess) return null;
-      setTokens({
-        access: newAccess,
-        refresh: newRefresh,
-        persist: currentPersist(),
-      });
-      return newAccess;
+      if (!response.ok) return null;
+
+      const payload = await response.json().catch(() => null);
+      const data = payload?.data ?? payload;
+      const access = typeof data?.access === "string" ? data.access : null;
+      const rotatedRefresh =
+        typeof data?.refresh === "string" ? data.refresh : refresh;
+      if (!access) return null;
+
+      setTokens({ access, refresh: rotatedRefresh, persist: currentPersist() });
+      return access;
     } catch {
       return null;
     }
@@ -176,36 +131,30 @@ export async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
-/* ───────────────────────────────────────────────────────────────────────── */
-/*  Cross-tab / cross-component notification                                  */
-/*                                                                            */
-/*  React hooks (useAuth, useSession, etc.) subscribe via `onAuthChange`     */
-/*  so any window that mutates the token store (login / logout / refresh)    */
-/*  broadcasts to every other tab and every listener in the current tab.    */
-/* ───────────────────────────────────────────────────────────────────────── */
-
 type Listener = () => void;
 const listeners = new Set<Listener>();
 
-function notifyListeners() {
-  listeners.forEach((fn) => {
-    try { fn(); } catch { /* isolate one bad listener from the others */ }
+function notifyListeners(): void {
+  listeners.forEach((listener) => {
+    try {
+      listener();
+    } catch {
+      /* isolate subscribers */
+    }
   });
 }
 
-export function onAuthChange(fn: Listener): () => void {
-  listeners.add(fn);
-  // Cross-tab: storage events fire in OTHER tabs when localStorage changes
-  const storageHandler = (e: StorageEvent) => {
-    if (e.key === KEY_ACCESS || e.key === KEY_REFRESH || e.key === KEY_PERSIST) fn();
+export function onAuthChange(listener: Listener): () => void {
+  listeners.add(listener);
+  const storageHandler = (event: StorageEvent) => {
+    if ([KEY_ACCESS, KEY_REFRESH, KEY_PERSIST].includes(event.key || ""))
+      listener();
   };
-  if (typeof window !== 'undefined') {
-    window.addEventListener('storage', storageHandler);
-  }
+  if (typeof window !== "undefined")
+    window.addEventListener("storage", storageHandler);
   return () => {
-    listeners.delete(fn);
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('storage', storageHandler);
-    }
+    listeners.delete(listener);
+    if (typeof window !== "undefined")
+      window.removeEventListener("storage", storageHandler);
   };
 }

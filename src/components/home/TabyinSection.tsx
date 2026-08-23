@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { SmartImage } from '@/components/ui/SmartImage';
 import Link from 'next/link';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SectionTitle } from './SectionTitle';
 import { Icon } from '@/components/icons/Icon';
@@ -204,13 +204,27 @@ const FILTERS = [
 ] as const;
 type FilterKey = (typeof FILTERS)[number]['key'];
 
+function hasReadableTabyinText(item: TabyinItem): boolean {
+  const clean = (value: string | undefined) =>
+    (value ?? '')
+      .replace(/[\u200B-\u200F\u202A-\u202E\u2060\u00A0\uFEFF]/g, '')
+      .trim();
+  return clean(item.summary).length > 0 || clean(item.title).length > 0;
+}
+
+function hasRenderableTabyinContent(item: TabyinItem): boolean {
+  return Boolean(item.coverUrl) || Boolean(item.videoUrl) || hasReadableTabyinText(item);
+}
+
+function isOtherTabyinItem(item: TabyinItem): boolean {
+  return item.mediaType === 'other' && hasReadableTabyinText(item);
+}
+
 export type TabyinCounts = {
   all: number;
   image: number;
   video: number;
-  /** Everything else (audio / other / no-media). Optional so older
-   *  loaders that don't populate it still typecheck. */
-  text?: number;
+  text: number;
 };
 
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -218,108 +232,57 @@ export type TabyinCounts = {
 /* ───────────────────────────────────────────────────────────────────────── */
 
 /**
- * ── TabyinSection ──────────────────────────────────────────────
- *
- *  The `counts` prop is DELIBERATELY IGNORED here — every badge
- *  number is derived locally from the `items` array via the
- *  `renderableItems` corpus. Rationale: the backend-supplied
- *  counts (all / image / video / text) don't know which rows the
- *  client is going to filter out as hollow (no cover, no video
- *  URL, no readable text). If we rendered a backend count while
- *  the tab actually showed a smaller filtered set, the badge and
- *  the tile count would disagree — exactly the "همه = 3301 but
- *  تصویر+ویدئو+سایر = 3297" mismatch users kept reporting.
- *
- *  We accept `counts` in the signature so `page.tsx` can keep
- *  passing it without a compile error, but we shadow it with an
- *  underscore-prefixed unused binding so future readers of this
- *  file understand at a glance that it's intentionally dead.
+ * The backend totals describe the complete corpus while `items` is a bounded,
+ * constant-cost homepage sample. When totals are unavailable we fall back to
+ * counts from the renderable sample, so an API outage never leaves `NaN` badges.
  */
-export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]; counts?: TabyinCounts }) {
-  void _ignored;
+export function TabyinSection({
+  items,
+  counts: backendCounts,
+}: {
+  items: TabyinItem[];
+  counts?: TabyinCounts;
+}) {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [page, setPage]     = useState(0);
 
   /*
-   * ── "سایر" tab definition ────────────────────────────────────
-   *
-   *  Contract with the client:
-   *    text ≡ all − image − video
-   *
-   *  Both the badge count AND the tab contents must respect this
-   *  identity so the number the user sees on the pill matches the
-   *  number of tiles they scroll through — no more "35 in the badge
-   *  but 8 items on screen".
-   *
-   *  On the counts side: the backend loader now supplies
-   *  `backendCounts.text` computed as `all - image - video`, so the
-   *  badge always reads that exact figure (currently 35 on prod).
-   *
-   *  On the items side: `isTextItem` matches ANY item that is neither
-   *  visibly an image tile nor visibly a video tile — evaluated by
-   *  the client's own tile-rendering criteria (has a valid cover URL
-   *  → image, has a video URL → video, otherwise → text). That's
-   *  exactly the set-complement of image ∪ video from the wall's
-   *  perspective, and it produces the same 35-item count on the
-   *  current corpus (the ~33 rows with cross-typed / null
-   *  primary_media_type still lack a usable cover URL and correctly
-   *  land under سایر).
+   * "سایر" is the readable audio/other sample on the homepage. The backend
+   * currently exposes attachment filters rather than a mutually-exclusive
+   * aggregate endpoint, so its total badge remains the defensive
+   * `all - image - video` value while rendered cards use their resolved type.
+   * Invisible-only rows are omitted from the local sample.
    */
-  /*
-   * ── Content sanity helpers ──────────────────────────────────
-   *
-   *  `hasReadableText` normalises Persian zero-width joiner
-   *  (ZWNJ, U+200C), no-break space, BOM and other invisible-
-   *  glyph whitespace BEFORE the length check, so a description
-   *  that is technically non-empty ("‌" or "   ") still counts as
-   *  empty and gets filtered out.
-   *
-   *  `hasRenderableContent` is the universal "should we show this
-   *  tile at all?" predicate. A tile is renderable when it has
-   *  EITHER something to display in a media slot (cover / video
-   *  URL) OR readable text for the quote-card fallback. Rows that
-   *  fail both checks are hollow — they'd render as a blank card
-   *  regardless of tab — and are excluded from every filter,
-   *  including "همه", so the four badge numbers add up cleanly.
-   */
-  const hasReadableText = (i: TabyinItem) => {
-    const clean = (s: string | undefined) =>
-      (s ?? '')
-        .replace(/[\u200B-\u200F\u202A-\u202E\u2060\u00A0\uFEFF]/g, '')
-        .trim();
-    return clean(i.summary).length > 0 || clean(i.title).length > 0;
-  };
-  const hasRenderableContent = (i: TabyinItem) =>
-    Boolean(i.coverUrl) || Boolean(i.videoUrl) || hasReadableText(i);
-
-  const isTextItem = (i: TabyinItem) => i.mediaType === 'other' && hasReadableText(i);
-
   /*
    * ── Renderable corpus ───────────────────────────────────────
-   *  All badge counts AND the paginated slice are computed from
-   *  the SAME filtered array: items minus the hollow ones. That
-   *  guarantees the four badge numbers add up:
-   *      همه = تصویر + ویدئو + سایر
-   *  and every tab's tile count matches its badge exactly.
+   * Every local fallback count and every paginated slice uses the same
+   * hollow-item filter. Backend totals, when supplied, are handled below as
+   * corpus totals rather than pretending the homepage loaded every record.
    */
   const renderableItems = useMemo(
-    () => items.filter(hasRenderableContent),
+    () => items.filter(hasRenderableTabyinContent),
     [items],
   );
 
-  const counts = useMemo(() => ({
-    all:   renderableItems.length,
-    image: renderableItems.filter((i) => i.mediaType === 'image').length,
-    video: renderableItems.filter((i) => i.mediaType === 'video').length,
-    text:  renderableItems.filter(isTextItem).length,
+  const localCounts = useMemo(() => ({
+    all: renderableItems.length,
+    image: renderableItems.filter((item) => item.mediaType === 'image').length,
+    video: renderableItems.filter((item) => item.mediaType === 'video').length,
+    text: renderableItems.filter(isOtherTabyinItem).length,
   }), [renderableItems]);
 
+  const counts = {
+    all: backendCounts?.all ?? localCounts.all,
+    image: backendCounts?.image ?? localCounts.image,
+    video: backendCounts?.video ?? localCounts.video,
+    text: backendCounts?.text ?? localCounts.text,
+  };
+
   const filtered = useMemo(
-    () => renderableItems.filter((i) => {
+    () => renderableItems.filter((item) => {
       if (filter === 'all') return true;
-      if (filter === 'text') return isTextItem(i);
-      const t = i.mediaType ?? 'image';
-      return t === filter;
+      if (filter === 'text') return isOtherTabyinItem(item);
+      return (item.mediaType ?? 'image') === filter;
     }),
     [renderableItems, filter],
   );

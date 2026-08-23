@@ -14,7 +14,7 @@ export type HealthCheck = {
   status: 'ok' | string;
   latency_ms?: number;
   backend?: string;
-  error?: string;
+  detail?: string;
 };
 
 export type HealthReport = {
@@ -25,7 +25,7 @@ export type HealthReport = {
 
 export async function checkLiveness(): Promise<HealthReport | null> {
   try {
-    return await apiFetch<HealthReport>('/health/', { skipAuth: true, revalidate: 0 } as never);
+    return await apiFetch<HealthReport>('/health/', { skipAuth: true, revalidate: 0 });
   } catch {
     return null;
   }
@@ -33,7 +33,7 @@ export async function checkLiveness(): Promise<HealthReport | null> {
 
 export async function checkReadiness(): Promise<HealthReport | null> {
   try {
-    return await apiFetch<HealthReport>('/health/ready/', { skipAuth: true, revalidate: 0 } as never);
+    return await apiFetch<HealthReport>('/health/ready/', { skipAuth: true, revalidate: 0 });
   } catch {
     return null;
   }

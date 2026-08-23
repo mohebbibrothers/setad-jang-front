@@ -147,26 +147,6 @@ function PlusIcon({ className = 'w-4 h-4' }: { className?: string }) {
   );
 }
 
-/** Chevron-down for the split-action trigger */
-function ChevronDownIcon({ className = 'w-3 h-3' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
-
-/** Tiny left-chevron used inside menu items */
-function ChevronLeftIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  );
-}
-
 /* ───────────────────────────────────────────────────────────────────────── */
 /*  Helpers                                                                  */
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -673,7 +653,19 @@ function ListingCard({
   onOpenAlbum: (l: KindListing) => void;
 }) {
   const isNeed = l.type === 'need';
+  const [copied, setCopied] = useState(false);
   const daysLeft = daysUntilExpiry(l.expiresAt);
+  const shareListing = async () => {
+    const url = `${window.location.origin}/kindness-wall/${encodeURIComponent(l.slug)}`;
+    try {
+      if (navigator.share) await navigator.share({ title: l.title, url });
+      else await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // User cancellation is intentionally silent.
+    }
+  };
   const thumbUrl = l.coverImage ?? l.gallery?.[0]?.url;
   const galleryHint = l.gallery?.length ?? (l.coverImage ? 1 : 0);
 
@@ -850,23 +842,25 @@ function ListingCard({
             <span>مشاهده آگهی</span>
             <Icon name="arrow-left" className="w-3.5 h-3.5" />
           </Link>
-          <button
-            type="button"
-            aria-label="نشان‌گذاری"
+          <Link
+            href={`/kindness-wall/${l.slug}#listing-actions`}
+            aria-label="رفتن به بخش ذخیره آگهی"
             className="w-10 h-10 rounded-xl border border-ink-200 text-ink-500 bg-white
                        hover:border-rose-300 hover:text-rose-500 transition-colors
                        inline-flex items-center justify-center"
           >
             <Icon name="heart" className="w-4 h-4" />
-          </button>
+          </Link>
           <button
             type="button"
-            aria-label="اشتراک‌گذاری"
+            onClick={shareListing}
+            aria-label={copied ? 'پیوند کپی شد' : 'اشتراک‌گذاری'}
+            title={copied ? 'پیوند کپی شد' : 'اشتراک‌گذاری'}
             className="w-10 h-10 rounded-xl border border-ink-200 text-ink-500 bg-white
                        hover:border-brand-300 hover:text-brand-600 transition-colors
                        inline-flex items-center justify-center"
           >
-            <Icon name="link" className="w-4 h-4" />
+            <Icon name={copied ? 'check' : 'link'} className="w-4 h-4" />
           </button>
         </div>
       </div>

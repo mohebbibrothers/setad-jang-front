@@ -32,18 +32,28 @@ function apiHostPattern() {
 }
 
 const dynamicApiPattern = apiHostPattern();
+const defaultApiUrl = process.env.NODE_ENV === 'production'
+  ? 'https://besat.me'
+  : 'http://localhost:8000';
 
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  // Django/DRF routes are slash-sensitive. Preserve the caller's trailing
+  // slash so /api/proxy/* rewrites do not incur a Next 16 canonical redirect
+  // that strips it before the request reaches Django.
+  skipTrailingSlashRedirect: true,
   images: {
     formats: ['image/avif', 'image/webp'],
     // A `dangerouslyAllowSVG` is intentionally NOT enabled — user-uploaded
     // media on the platform is limited to jpg / jpeg / png / webp by the
     // backend validators (apps.core.validators::validate_image_extension).
     remotePatterns: [
-      // Production domains (any subdomain of setadjang.ir over HTTPS)
+      // Current production origin (frontend + API share besat.me)
+      { protocol: 'https', hostname: 'besat.me',        pathname: '/**' },
+      { protocol: 'https', hostname: 'www.besat.me',    pathname: '/**' },
+      // Legacy production domains retained for rollback compatibility
       { protocol: 'https', hostname: 'setadjang.ir',    pathname: '/**' },
       { protocol: 'https', hostname: 'www.setadjang.ir', pathname: '/**' },
       { protocol: 'https', hostname: 'api.setadjang.ir', pathname: '/**' },
@@ -80,34 +90,20 @@ const nextConfig = {
           { key: 'Referrer-Policy',          value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy',       value: 'camera=(), microphone=(), geolocation=(self)' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          { key: 'Content-Security-Policy',   value: "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'" },
         ],
       },
     ];
   },
   async rewrites() {
-    // Same-origin proxy — browser calls /api/proxy/xxx, Next server
-    // forwards to <NEXT_PUBLIC_API_URL>/api/v1/xxx. Bypasses CORS and
-    // gives the client a stable path even if the backend host changes.
-    //
-    // ─── The double-slash 404 bug (fixed here) ─────────────────────
-    // Django requires a trailing slash on every registered route.
-    // The old rewrite hard-coded that trailing slash INSIDE the
-    // destination template (`/api/v1/:path*/`), while Next.js with
-    // `trailingSlash: false` (our default) keeps whatever slash the
-    // caller sent INSIDE `:path*`. Because every one of our client
-    // paths already ends in `/`, the two slashes stacked into
-    // `.../reports//` — which Nginx on besat.me rejects as 404.
-    // The client-reported "Public Reports section broken" bug is
-    // exactly this.
-    //
-    // Fix — the destination no longer appends its own trailing slash.
-    // Every caller in src/lib/api.ts already sends a path ending in
-    // `/` (that's the frontend contract), so the resulting URL is
-    // exactly `.../<path>/` end-of-string. No double slash, no 404.
+    // Cross-origin browser fallback. Next 16 normalizes the wildcard capture
+    // without its terminal slash even when the incoming URL contains one, so
+    // the destination restores exactly one slash for Django/DRF's APPEND_SLASH
+    // contract. skipTrailingSlashRedirect prevents an avoidable client 308.
     return [
       {
         source: '/api/proxy/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/:path*`,
+        destination: `${process.env.NEXT_PUBLIC_API_URL || defaultApiUrl}/api/v1/:path*/`,
       },
     ];
   },

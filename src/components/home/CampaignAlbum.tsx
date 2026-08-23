@@ -1278,8 +1278,7 @@ export function CampaignAlbum({
                             // via a smoothstep-ish quadratic so the
                             // drift decelerates naturally, matching the
                             // Framer feel it replaces.
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                                          <img
                               key={`img-kb-${index}`}
                               src={img.url}
                               alt={img.alt || title}
@@ -1313,8 +1312,7 @@ export function CampaignAlbum({
                               })()}
                             />
                           ) : (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                                          <img
                               key={isCenter ? `img-center-${index}` : `img-side-${i}`}
                               src={img.url}
                               alt={img.alt || title}
@@ -1595,8 +1593,7 @@ export function CampaignAlbum({
                                         : 'ring-1 ring-white/15 hover:ring-mint-300 hover:scale-[1.03] opacity-70 hover:opacity-100'}`}
                           style={{ width: 72, height: 54, scrollSnapAlign: 'center' }}
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                                          <img
                             src={img.url} alt="" loading="lazy"
                             className="w-full h-full object-cover"
                           />

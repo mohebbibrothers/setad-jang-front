@@ -315,6 +315,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               layout so styles apply from paint #1 — no FOUC
               between the raw HTML and the eventual Tailwind pass.
         */}
+        <script
+          dangerouslySetInnerHTML={{ __html: `
+            (function(){
+              var standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+              var iosStandalone = window.navigator && window.navigator.standalone === true;
+              if (standalone || iosStandalone) document.documentElement.classList.add('pwa-standalone');
+            })();
+          ` }}
+        />
         <style
           id="app-splash-boot"
           dangerouslySetInnerHTML={{ __html: `
@@ -335,7 +344,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   keeps its exact vertical centre regardless of
                   whether the label has rendered yet.
             */
-            #app-splash{position:fixed;inset:0;z-index:2147483647;background:#fff;display:flex;align-items:center;justify-content:center;font-family:'Vazirmatn',Tahoma,sans-serif;direction:rtl;pointer-events:none;transition:opacity .35s ease-out}
+            #app-splash{display:none;position:fixed;inset:0;z-index:2147483647;background:#fff;align-items:center;justify-content:center;font-family:'Vazirmatn',Tahoma,sans-serif;direction:rtl;pointer-events:none;transition:opacity .35s ease-out}
+            html.pwa-standalone #app-splash{display:flex}
             #app-splash .ic{width:128px;height:128px;display:block;animation:appSplashPop .5s cubic-bezier(.2,.7,.2,1) both}
             #app-splash .lbl{position:absolute;left:0;right:0;top:calc(50% + 92px);display:flex;flex-direction:column;align-items:center;gap:6px;animation:appSplashFadeUp .5s .35s cubic-bezier(.2,.7,.2,1) both;opacity:0}
             #app-splash .n{font-size:22px;font-weight:800;letter-spacing:.5px;color:#0B3530}
@@ -348,7 +358,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           ` }}
         />
         <div id="app-splash" aria-hidden="true">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="ic" src="/favicon-maskable-512.png?v=4" alt="" width={128} height={128} />
           <div className="lbl">
             <div className="n">بعثت مردم</div>
@@ -364,7 +373,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         */}
         <script
           dangerouslySetInnerHTML={{ __html: `
-            (function(){var h=document.documentElement;h.classList.add('app-splash-lock');
+            (function(){var h=document.documentElement;var splash=document.getElementById('app-splash');
+            if(!h.classList.contains('pwa-standalone')){if(splash&&splash.parentNode)splash.parentNode.removeChild(splash);return;}
+            h.classList.add('app-splash-lock');
             /*
               MIN_HOLD_MS = 1100. The overlay stays up for at
               least this long so the "بعثت مردم / همراه با مردم
@@ -416,7 +427,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         */}
         <script
           dangerouslySetInnerHTML={{ __html: `
-            if ('serviceWorker' in navigator) {
+            if ('serviceWorker' in navigator && document.documentElement.classList.contains('pwa-standalone')) {
               window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js').then(function(reg){
                   try { reg.update(); } catch (e) {}

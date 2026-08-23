@@ -4,7 +4,6 @@ import {
   useState, useEffect, useCallback, useRef, useMemo,
 } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
 import { SmartImage } from '@/components/ui/SmartImage';
 import { formatPersianNumber } from '@/lib/utils';
 import { apiFetch, ApiError } from '@/lib/api';

@@ -56,7 +56,7 @@ export default async function SearchPage({
     : undefined;
 
   const data = q.length >= 2
-    ? await searchAll(q, { sources })
+    ? await searchAll(q, { sources, limit: 24 })
     : { q, groups: [], total: 0, errored: [] as SearchSource[] };
 
   return (
@@ -96,7 +96,7 @@ export default async function SearchPage({
                     <h2 className="text-[15px] md:text-[16px] font-extrabold text-ink-900">
                       {meta.label}
                       <span className="text-ink-400 font-bold mr-2">
-                        ({g.hits.length.toLocaleString('fa-IR')})
+                        ({g.total.toLocaleString('fa-IR')})
                       </span>
                     </h2>
                     <Link
