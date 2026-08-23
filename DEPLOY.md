@@ -1,9 +1,43 @@
 # Deploy — besat.me frontend
 
+## One-command deploy
+
+After the target branch is merged, deployment is:
+
+```bash
+./deploy.sh
+```
+
+The script builds in an isolated Git worktree, runs lint/typecheck/coverage/audit/build, performs a fast artifact switch, auto-detects PM2 or systemd, verifies local/public health, and rolls back code, `.next`, and changed dependencies automatically on failure.
+
+Defaults:
+
+```text
+branch         main
+remote         origin
+PM2 app        setadjang-front
+systemd unit   setadjang-front.service
+local health   http://127.0.0.1:3000/
+public health  https://besat.me/
+```
+
+Common overrides:
+
+```bash
+PROCESS_MANAGER=pm2 APP_NAME=setadjang-front ./deploy.sh
+PROCESS_MANAGER=systemd SERVICE_NAME=setadjang-front ./deploy.sh
+DEPLOY_RESTART_COMMAND='sudo systemctl restart my-front' ./deploy.sh
+./deploy.sh --dry-run
+```
+
+Deployment state and one rollback artifact are kept under ignored `.deploy/`.
+
 ## Requirements
 
 - Node.js 22 (minimum supported by Next.js: 20.9)
 - npm 10+
+- `git`, `curl`, and `flock`
+- PM2 or a systemd service (or `DEPLOY_RESTART_COMMAND`)
 - Running backend routed on the same public origin under `/api/v1/`
 
 ## Environment

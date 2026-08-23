@@ -60,6 +60,16 @@ NEXT_PUBLIC_SITE_URL=https://besat.me
 NEXT_PUBLIC_API_URL=https://besat.me
 ```
 
+## Production update
+
+After merging frontend changes, the normal server update is one command:
+
+```bash
+./deploy.sh
+```
+
+See `DEPLOY.md` for PM2/systemd overrides, isolated build details, health checks, and automatic rollback behavior.
+
 ## Quality commands
 
 ```bash
