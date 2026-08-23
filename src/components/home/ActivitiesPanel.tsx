@@ -31,11 +31,31 @@ type Activity = { href: string; label: string; icon: string; iconAlt: string };
 // in-page anchor so clicking smooth-scrolls to that section instead of
 // navigating away.
 const ACTIVITIES: Activity[] = [
-  { href: '#warfund',  label: 'پشتیبانی مالی جنگ',  icon: '/brand/icon-warfund.png',  iconAlt: 'پشتیبانی مالی جنگ' },
-  { href: '#justice',  label: 'جایزه برای عدالت',   icon: '/brand/icon-r4j.png',      iconAlt: 'جایزه برای عدالت' },
-  { href: '#education', label: 'قرارگاه آموزشی',    icon: '/brand/icon-lms.png',      iconAlt: 'قرارگاه آموزشی' },
-  { href: '#kindness', label: 'دیوار مهربانی',      icon: '/brand/icon-kindness.png', iconAlt: 'دیوار مهربانی' },
-  { href: '#tabyin',   label: 'جهاد تبیین',         icon: '/brand/icon-tabyin.png',   iconAlt: 'جهاد تبیین' },
+  {
+    href: '#warfund',
+    label: 'پشتیبانی مالی جنگ',
+    icon: '/brand/icon-warfund.png',
+    iconAlt: 'پشتیبانی مالی جنگ',
+  },
+  {
+    href: '#justice',
+    label: 'جایزه برای عدالت',
+    icon: '/brand/icon-r4j.png',
+    iconAlt: 'جایزه برای عدالت',
+  },
+  {
+    href: '#education',
+    label: 'قرارگاه آموزشی',
+    icon: '/brand/icon-lms.png',
+    iconAlt: 'قرارگاه آموزشی',
+  },
+  {
+    href: '#kindness',
+    label: 'دیوار مهربانی',
+    icon: '/brand/icon-kindness.png',
+    iconAlt: 'دیوار مهربانی',
+  },
+  { href: '#tabyin', label: 'جهاد تبیین', icon: '/brand/icon-tabyin.png', iconAlt: 'جهاد تبیین' },
 ];
 
 /**
@@ -76,8 +96,7 @@ export function ActivitiesPanel() {
        *   tablets (md)    : −36 px
        *   desktops (lg)   : −40 px
        */
-      className="relative -mt-[24px] md:-mt-[36px] lg:-mt-[40px]
-                 pt-16 md:pt-20 lg:pt-24 pb-20 md:pb-24"
+      className="relative -mt-[24px] pb-20 pt-16 md:-mt-[36px] md:pb-24 md:pt-20 lg:-mt-[40px] lg:pt-24"
       aria-labelledby="activities-title"
     >
       {/* ── Ambient soft-white halo above the green panel ─────────────
@@ -106,24 +125,21 @@ export function ActivitiesPanel() {
        * intercepts clicks / hover. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 z-0
-                   -top-[80px]  h-[220px]
-                   md:-top-[100px] md:h-[260px]
-                   lg:-top-[120px] lg:h-[300px]"
+        className="pointer-events-none absolute inset-x-0 -top-[80px] z-0 h-[220px] md:-top-[100px] md:h-[260px] lg:-top-[120px] lg:h-[300px]"
         style={{
           background:
             /* Layer 1 — luminous halo that dissolves the cutout edge */
             'radial-gradient(ellipse 90% 70% at 50% 90%,' +
-              ' rgba(255,255,255,0.95) 0%,' +
-              ' rgba(255,255,255,0.75) 20%,' +
-              ' rgba(255,255,255,0.40) 45%,' +
-              ' rgba(255,255,255,0.14) 70%,' +
-              ' rgba(255,255,255,0)    100%),' +
+            ' rgba(255,255,255,0.95) 0%,' +
+            ' rgba(255,255,255,0.75) 20%,' +
+            ' rgba(255,255,255,0.40) 45%,' +
+            ' rgba(255,255,255,0.14) 70%,' +
+            ' rgba(255,255,255,0)    100%),' +
             /* Layer 2 — subtle downward wash toward the panel */
             'linear-gradient(to bottom,' +
-              ' rgba(255,255,255,0)    0%,' +
-              ' rgba(255,255,255,0.20) 55%,' +
-              ' rgba(255,255,255,0.65) 100%)',
+            ' rgba(255,255,255,0)    0%,' +
+            ' rgba(255,255,255,0.20) 55%,' +
+            ' rgba(255,255,255,0.65) 100%)',
           filter: 'blur(24px)',
         }}
       />
@@ -134,16 +150,13 @@ export function ActivitiesPanel() {
        * radius so the eye reads it as depth, not colour. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 z-0
-                   -top-[40px]  h-[120px]
-                   md:-top-[50px] md:h-[150px]
-                   lg:-top-[60px] lg:h-[180px]"
+        className="pointer-events-none absolute inset-x-0 -top-[40px] z-0 h-[120px] md:-top-[50px] md:h-[150px] lg:-top-[60px] lg:h-[180px]"
         style={{
           background:
             'radial-gradient(ellipse 65% 100% at 50% 100%,' +
-              ' rgba(13,128,116,0.10) 0%,' +
-              ' rgba(13,128,116,0.05) 45%,' +
-              ' rgba(13,128,116,0)    100%)',
+            ' rgba(13,128,116,0.10) 0%,' +
+            ' rgba(13,128,116,0.05) 45%,' +
+            ' rgba(13,128,116,0)    100%)',
           filter: 'blur(30px)',
         }}
       />
@@ -174,8 +187,7 @@ export function ActivitiesPanel() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="relative text-center font-extrabold text-white
-                         drop-shadow-[0_2px_8px_rgba(0,0,0,0.20)]"
+              className="relative text-center font-extrabold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.20)]"
               style={{
                 marginTop: 'clamp(0.75rem, 2vw, 1.5rem)',
                 fontSize: 'clamp(1.05rem, 2.4vw, 1.5rem)',
@@ -206,21 +218,12 @@ export function ActivitiesPanel() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.06 }}
-                className="min-w-0
-                           w-[calc((100%-clamp(0.5rem,1.4vw,1.125rem))/2)]
-                           min-[480px]:w-[calc((100%-2*clamp(0.5rem,1.4vw,1.125rem))/3)]
-                           min-[760px]:w-[calc((100%-4*clamp(0.5rem,1.4vw,1.125rem))/5)]"
+                className="w-[calc((100%-clamp(0.5rem,1.4vw,1.125rem))/2)] min-w-0 min-[480px]:w-[calc((100%-2*clamp(0.5rem,1.4vw,1.125rem))/3)] min-[760px]:w-[calc((100%-4*clamp(0.5rem,1.4vw,1.125rem))/5)]"
               >
                 <a
                   href={a.href}
                   onClick={(e) => scrollToAnchor(e, a.href)}
-                  className="group flex flex-col items-center justify-between
-                             aspect-square w-full min-w-0 max-w-full overflow-hidden
-                             bg-white text-ink-700
-                             border-brand-500 hover:border-brand-600
-                             shadow-[0_14px_28px_-16px_rgba(0,0,0,0.30)]
-                             hover:-translate-y-1 hover:shadow-[0_22px_42px_-16px_rgba(0,0,0,0.35)]
-                             transition-all duration-300"
+                  className="group flex aspect-square w-full min-w-0 max-w-full flex-col items-center justify-between overflow-hidden border-brand-500 bg-white text-ink-700 shadow-[0_14px_28px_-16px_rgba(0,0,0,0.30)] transition-all duration-300 hover:-translate-y-1 hover:border-brand-600 hover:shadow-[0_22px_42px_-16px_rgba(0,0,0,0.35)]"
                   style={{
                     borderWidth: 'clamp(2px, 0.35vw, 3px)',
                     borderStyle: 'solid',
@@ -230,7 +233,7 @@ export function ActivitiesPanel() {
                   }}
                 >
                   <div
-                    className="flex-shrink-0 flex items-center justify-center group-hover:scale-110 transition-transform"
+                    className="flex flex-shrink-0 items-center justify-center transition-transform group-hover:scale-110"
                     style={{
                       width: '55%',
                       maxWidth: '64px',
@@ -243,12 +246,11 @@ export function ActivitiesPanel() {
                       alt={a.iconAlt}
                       width={64}
                       height={64}
-                      className="w-full h-full object-contain"
+                      className="h-full w-full object-contain"
                     />
                   </div>
                   <p
-                    className="font-semibold text-ink-700 text-center w-full
-                               truncate min-[760px]:whitespace-normal min-[760px]:overflow-visible"
+                    className="w-full truncate text-center font-semibold text-ink-700 min-[760px]:overflow-visible min-[760px]:whitespace-normal"
                     style={{
                       marginTop: 'auto',
                       fontSize: 'clamp(10px, 1.35vw, 14.5px)',

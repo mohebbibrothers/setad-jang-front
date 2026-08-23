@@ -64,139 +64,138 @@ export function AboutBesat() {
     <section
       id="about-besat"
       aria-labelledby="about-besat-title"
-      className="relative bg-white pt-14 md:pt-20 pb-16 md:pb-24"
+      className="relative bg-white pb-16 pt-14 md:pb-24 md:pt-20"
     >
-      <div className="container-edge max-w-4xl mx-auto">
+      <div className="container-edge mx-auto max-w-4xl">
         {/* ── Editorial header ─────────────────────────────────────── */}
-        <div className="text-center mb-10 md:mb-14">
-          <span
-            className="inline-block px-3 py-1 rounded-full text-[11.5px] font-bold
-                       bg-brand-50 text-brand-700 tracking-wide mb-4"
-          >
+        <div className="mb-10 text-center md:mb-14">
+          <span className="mb-4 inline-block rounded-full bg-brand-50 px-3 py-1 text-[11.5px] font-bold tracking-wide text-brand-700">
             درباره بعثت
           </span>
           <h2
             id="about-besat-title"
-            className="text-2xl md:text-[32px] font-extrabold text-ink-900 leading-tight"
+            className="text-2xl font-extrabold leading-tight text-ink-900 md:text-[32px]"
           >
             <strong>بعثت مردم</strong> — سامانه‌ی یکپارچه‌ی جهاد تبیین و همبستگی
           </h2>
           <span
             aria-hidden="true"
-            className="block mx-auto mt-4 h-[3px] w-14 rounded-full
-                       bg-gradient-to-l from-brand-500 to-mint-500"
+            className="mx-auto mt-4 block h-[3px] w-14 rounded-full bg-gradient-to-l from-brand-500 to-mint-500"
           />
         </div>
 
         {/* ── Body copy ────────────────────────────────────────────── */}
-        <div className="prose prose-lg max-w-none text-ink-700 leading-9 space-y-6
-                        text-justify text-[15.5px] md:text-[16.5px]">
+        <div className="prose prose-lg max-w-none space-y-6 text-justify text-[15.5px] leading-9 text-ink-700 md:text-[16.5px]">
           <p>
-            <strong>بعثت مردم</strong> یک سامانه‌ی مردمی، غیرانتفاعی و کاملاً شفاف است
-            که به نشانی <Link href="https://besat.me" className="text-brand-700 font-bold hover:underline">besat.me</Link>{' '}
-            راه‌اندازی شده تا مردم ایران را در شش حوزه‌ی راهبردی به یکدیگر متصل کند:
-            جهاد تبیین، مددکاری، آموزش جهادی، دیوار مهربانی، پشتیبانی مالی جبهه، و
-            پیگیری پرونده‌های مجازات مجرمان جهانی. هدف <strong>بعثت</strong> ساختن یک
-            بستر واحد است که در آن هر شهروند بتواند بدون واسطه، در نبردهای فرهنگی،
-            اجتماعی و انسانی روزگار خودش نقش داشته باشد.
+            <strong>بعثت مردم</strong> یک سامانه‌ی مردمی، غیرانتفاعی و کاملاً شفاف است که به نشانی{' '}
+            <Link href="https://besat.me" className="font-bold text-brand-700 hover:underline">
+              besat.me
+            </Link>{' '}
+            راه‌اندازی شده تا مردم ایران را در شش حوزه‌ی راهبردی به یکدیگر متصل کند: جهاد تبیین،
+            مددکاری، آموزش جهادی، دیوار مهربانی، پشتیبانی مالی جبهه، و پیگیری پرونده‌های مجازات
+            مجرمان جهانی. هدف <strong>بعثت</strong> ساختن یک بستر واحد است که در آن هر شهروند بتواند
+            بدون واسطه، در نبردهای فرهنگی، اجتماعی و انسانی روزگار خودش نقش داشته باشد.
           </p>
 
           <p>
-            آنچه <strong>بعثت مردم</strong> را از سایر سکوهای مشابه متمایز می‌کند،
-            تلفیق شش خدمت کلیدی در یک تجربه‌ی کاربری واحد است. کاربر با یک بار ورود
-            به سایت <strong>بعثت</strong> می‌تواند گزارش مردمی خود را ثبت کند، در یک
-            کمپین پشتیبانی مالی جبهه شریک شود، در دوره‌های قرارگاه آموزشی نام‌نویسی
-            کند، در دیوار مهربانی به هم‌وطن نیازمندش کمک برساند، محتوای جهاد تبیین
-            منتشر کند و پرونده‌های مجرمان بین‌المللی را دنبال نماید — همه در یک نشانی:
-            besat.me.
+            آنچه <strong>بعثت مردم</strong> را از سایر سکوهای مشابه متمایز می‌کند، تلفیق شش خدمت
+            کلیدی در یک تجربه‌ی کاربری واحد است. کاربر با یک بار ورود به سایت <strong>بعثت</strong>{' '}
+            می‌تواند گزارش مردمی خود را ثبت کند، در یک کمپین پشتیبانی مالی جبهه شریک شود، در
+            دوره‌های قرارگاه آموزشی نام‌نویسی کند، در دیوار مهربانی به هم‌وطن نیازمندش کمک برساند،
+            محتوای جهاد تبیین منتشر کند و پرونده‌های مجرمان بین‌المللی را دنبال نماید — همه در یک
+            نشانی: besat.me.
           </p>
 
           {/* ── Pillars grid — internal-linking gold ─────────────── */}
-          <h3 className="text-xl font-extrabold text-ink-900 mt-10 mb-4">
+          <h3 className="mb-4 mt-10 text-xl font-extrabold text-ink-900">
             حوزه‌های فعالیت <strong>بعثت مردم</strong>
           </h3>
 
-          <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 list-none pl-0 not-prose">
+          <ul className="not-prose grid list-none grid-cols-1 gap-x-8 gap-y-3 pl-0 md:grid-cols-2">
             {[
-              { href: '/#reports',   label: 'گزارش‌های مردمی بعثت',       desc: 'ثبت و پیگیری شفاف گزارش‌های شهروندی' },
-              { href: '/#warfund',   label: 'پشتیبانی مالی جبهه',          desc: 'کمپین‌های مالی جهاد اقتصادی و رسانه‌ای' },
-              { href: '/#justice',   label: 'جایزه‌ای برای عدالت (R4J)',   desc: 'پیگیری پرونده‌های مجرمان جهانی' },
-              { href: '/#education', label: 'قرارگاه آموزشی بعثت',         desc: 'دوره‌های تخصصی و جهادی' },
-              { href: '/#kindness',  label: 'دیوار مهربانی',                desc: 'اتصال داوطلبانه نیازمندان و کمک‌کنندگان' },
-              { href: '/tabyin',     label: 'جهاد تبیین',                   desc: 'انتشار محتوای رسانه‌ای مردمی' },
+              {
+                href: '/#reports',
+                label: 'گزارش‌های مردمی بعثت',
+                desc: 'ثبت و پیگیری شفاف گزارش‌های شهروندی',
+              },
+              {
+                href: '/#warfund',
+                label: 'پشتیبانی مالی جبهه',
+                desc: 'کمپین‌های مالی جهاد اقتصادی و رسانه‌ای',
+              },
+              {
+                href: '/#justice',
+                label: 'جایزه‌ای برای عدالت (R4J)',
+                desc: 'پیگیری پرونده‌های مجرمان جهانی',
+              },
+              { href: '/#education', label: 'قرارگاه آموزشی بعثت', desc: 'دوره‌های تخصصی و جهادی' },
+              {
+                href: '/#kindness',
+                label: 'دیوار مهربانی',
+                desc: 'اتصال داوطلبانه نیازمندان و کمک‌کنندگان',
+              },
+              { href: '/tabyin', label: 'جهاد تبیین', desc: 'انتشار محتوای رسانه‌ای مردمی' },
             ].map((p) => (
               <li key={p.href} className="flex items-start gap-3">
-                <span className="mt-2 shrink-0 w-1.5 h-1.5 rounded-full bg-brand-500" />
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
                 <div>
                   <Link
                     href={p.href}
-                    className="font-bold text-ink-900 hover:text-brand-700 transition-colors"
+                    className="font-bold text-ink-900 transition-colors hover:text-brand-700"
                   >
                     {p.label}
                   </Link>
-                  <p className="text-sm text-ink-500 leading-6 mt-0.5">{p.desc}</p>
+                  <p className="mt-0.5 text-sm leading-6 text-ink-500">{p.desc}</p>
                 </div>
               </li>
             ))}
           </ul>
 
-          <h3 className="text-xl font-extrabold text-ink-900 mt-10 mb-4">
+          <h3 className="mb-4 mt-10 text-xl font-extrabold text-ink-900">
             چرا <strong>بعثت</strong>؟
           </h3>
           <p>
-            نام <strong>بعثت</strong> برای این سامانه انتخابی نمادین است: بعثت
-            یادآور آغاز یک حرکت بزرگ مردمی است که با تکیه بر ایمان، آگاهی و همبستگی،
-            توانست مسیر یک تمدن را دگرگون کند. <strong>بعثت مردم</strong> نیز با
-            همین روحیه، تلاش می‌کند بستر یک حرکت مدنی نوین را برای نسل امروز ایران
-            فراهم آورد؛ حرکتی که در آن مردم عادی — نه ساختارهای بوروکراتیک — هستند
-            که کارها را پیش می‌برند، پرونده‌ها را باز می‌کنند، گزارش‌ها را ثبت می‌کنند
-            و دست هم‌وطنشان را می‌گیرند.
+            نام <strong>بعثت</strong> برای این سامانه انتخابی نمادین است: بعثت یادآور آغاز یک حرکت
+            بزرگ مردمی است که با تکیه بر ایمان، آگاهی و همبستگی، توانست مسیر یک تمدن را دگرگون کند.{' '}
+            <strong>بعثت مردم</strong> نیز با همین روحیه، تلاش می‌کند بستر یک حرکت مدنی نوین را برای
+            نسل امروز ایران فراهم آورد؛ حرکتی که در آن مردم عادی — نه ساختارهای بوروکراتیک — هستند
+            که کارها را پیش می‌برند، پرونده‌ها را باز می‌کنند، گزارش‌ها را ثبت می‌کنند و دست
+            هم‌وطنشان را می‌گیرند.
           </p>
         </div>
 
         {/* ── FAQ card ─────────────────────────────────────────────── */}
         <div className="mt-14 md:mt-20">
-          <div className="text-center mb-8">
-            <h3 className="text-xl md:text-2xl font-extrabold text-ink-900">
+          <div className="mb-8 text-center">
+            <h3 className="text-xl font-extrabold text-ink-900 md:text-2xl">
               پرسش‌های پرتکرار درباره <strong>بعثت مردم</strong>
             </h3>
             <span
               aria-hidden="true"
-              className="block mx-auto mt-3 h-[3px] w-10 rounded-full
-                         bg-gradient-to-l from-brand-500 to-mint-500"
+              className="mx-auto mt-3 block h-[3px] w-10 rounded-full bg-gradient-to-l from-brand-500 to-mint-500"
             />
           </div>
 
-          <div className="rounded-2xl bg-gradient-to-br from-brand-50/60 to-mint-50/40
-                          border border-brand-100/70 overflow-hidden">
+          <div className="overflow-hidden rounded-2xl border border-brand-100/70 bg-gradient-to-br from-brand-50/60 to-mint-50/40">
             {FAQ_ITEMS.map((item, i) => (
               <details
                 key={i}
                 className="group border-b border-brand-100/60 last:border-b-0"
                 {...(i === 0 ? { open: true } : {})}
               >
-                <summary
-                  className="cursor-pointer list-none px-5 md:px-7 py-4 md:py-5
-                             flex items-center justify-between gap-4
-                             text-[14.5px] md:text-[15.5px] font-bold text-ink-900
-                             hover:bg-white/60 transition-colors"
-                >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[14.5px] font-bold text-ink-900 transition-colors hover:bg-white/60 md:px-7 md:py-5 md:text-[15.5px]">
                   <span className="flex items-start gap-3">
-                    <span className="shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-brand-500" />
+                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
                     {item.q}
                   </span>
                   <span
                     aria-hidden="true"
-                    className="shrink-0 w-6 h-6 rounded-full bg-white text-brand-700
-                               border border-brand-200 flex items-center justify-center
-                               font-black text-[13px] transition-transform
-                               group-open:rotate-45"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-brand-200 bg-white text-[13px] font-black text-brand-700 transition-transform group-open:rotate-45"
                   >
                     +
                   </span>
                 </summary>
-                <div className="px-5 md:px-7 pb-5 md:pb-6 pt-1
-                                text-[14px] md:text-[14.5px] text-ink-600 leading-8">
+                <div className="px-5 pb-5 pt-1 text-[14px] leading-8 text-ink-600 md:px-7 md:pb-6 md:text-[14.5px]">
                   {item.a}
                 </div>
               </details>
@@ -249,8 +248,13 @@ export function AboutBesat() {
                 '@type': 'BreadcrumbList',
                 '@id': `${siteConfig.url}/about-besat#breadcrumbs`,
                 itemListElement: [
-                  { '@type': 'ListItem', position: 1, name: 'خانه',       item: siteConfig.url },
-                  { '@type': 'ListItem', position: 2, name: 'درباره بعثت', item: `${siteConfig.url}/about-besat` },
+                  { '@type': 'ListItem', position: 1, name: 'خانه', item: siteConfig.url },
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: 'درباره بعثت',
+                    item: `${siteConfig.url}/about-besat`,
+                  },
                 ],
               },
               {
@@ -267,8 +271,7 @@ export function AboutBesat() {
                   'آموزش جهادی',
                   'گزارش‌های مردمی',
                 ],
-                keywords:
-                  'بعثت, بعثت مردم, besat, besat.me, جهاد تبیین, دیوار مهربانی',
+                keywords: 'بعثت, بعثت مردم, besat, besat.me, جهاد تبیین, دیوار مهربانی',
                 author: { '@id': `${siteConfig.url}#organization` },
                 publisher: { '@id': `${siteConfig.url}#organization` },
                 mainEntityOfPage: { '@id': `${siteConfig.url}/about-besat#aboutpage` },

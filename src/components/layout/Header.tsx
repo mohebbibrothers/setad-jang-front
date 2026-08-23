@@ -25,13 +25,13 @@ type NavItem = { label: string; href: string };
  * page. Add it back the moment src/app/contact/page.tsx exists.
  */
 const NAV: NavItem[] = [
-  { label: 'خانه',                href: '/' },
-  { label: 'پشتیبانی مالی جنگ',   href: '/#warfund' },
+  { label: 'خانه', href: '/' },
+  { label: 'پشتیبانی مالی جنگ', href: '/#warfund' },
   { label: 'جایزه‌ای برای عدالت', href: '/#justice' },
-  { label: 'قرارگاه آموزشی',      href: '/#education' },
-  { label: 'دیوار مهربانی',       href: '/#kindness' },
-  { label: 'جهاد تبیین',          href: '/#tabyin' },
-  { label: 'گزارش‌های مردمی',    href: '/#reports' },
+  { label: 'قرارگاه آموزشی', href: '/#education' },
+  { label: 'دیوار مهربانی', href: '/#kindness' },
+  { label: 'جهاد تبیین', href: '/#tabyin' },
+  { label: 'گزارش‌های مردمی', href: '/#reports' },
 ];
 
 /** Smooth-scroll to the anchor when the user is already on '/'. Falls
@@ -61,7 +61,9 @@ export function Header() {
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [open]);
 
   return (
@@ -70,26 +72,29 @@ export function Header() {
         <TopBar />
         <header
           className={cn(
-            'bg-white border-b border-ink-100 transition-shadow',
+            'border-b border-ink-100 bg-white transition-shadow',
             scrolled ? 'shadow-soft' : '',
           )}
           role="banner"
         >
-          <div className="container-edge h-16 lg:h-20 flex items-center gap-4">
+          <div className="container-edge flex h-16 items-center gap-4 lg:h-20">
             {/* Logo (RTL: visually right) */}
-            <Link href="/" className="flex items-center shrink-0" aria-label="بعثت مردم — صفحه اصلی">
+            <Link
+              href="/"
+              className="flex shrink-0 items-center"
+              aria-label="بعثت مردم — صفحه اصلی"
+            >
               <Logo width={120} priority />
             </Link>
 
             {/* Desktop nav (centered) */}
-            <nav className="hidden lg:flex items-center gap-1 mx-auto" aria-label="ناوبری اصلی">
+            <nav className="mx-auto hidden items-center gap-1 lg:flex" aria-label="ناوبری اصلی">
               {NAV.map((item) => (
                 <a
                   key={item.href + item.label}
                   href={item.href}
                   onClick={(e) => onNavClick(e, item.href)}
-                  className="px-3.5 py-2 text-[14.5px] font-medium text-ink-700 rounded-lg
-                             hover:text-brand-600 hover:bg-brand-50/60 transition-colors whitespace-nowrap"
+                  className="whitespace-nowrap rounded-lg px-3.5 py-2 text-[14.5px] font-medium text-ink-700 transition-colors hover:bg-brand-50/60 hover:text-brand-600"
                 >
                   {item.label}
                 </a>
@@ -103,13 +108,12 @@ export function Header() {
             <div className="mr-auto flex items-center gap-2">
               <button
                 type="button"
-                className="lg:hidden w-11 h-11 inline-flex items-center justify-center rounded-xl
-                           text-ink-800 hover:bg-ink-100 transition-colors"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-ink-800 transition-colors hover:bg-ink-100 lg:hidden"
                 aria-label={open ? 'بستن منو' : 'باز کردن منو'}
                 aria-expanded={open}
                 onClick={() => setOpen((v) => !v)}
               >
-                {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
             </div>
           </div>
@@ -119,8 +123,8 @@ export function Header() {
       {/* Mobile sheet */}
       <div
         className={cn(
-          'fixed inset-0 z-[60] lg:hidden transition-opacity duration-300',
-          open ? 'opacity-100 visible' : 'opacity-0 invisible',
+          'fixed inset-0 z-[60] transition-opacity duration-300 lg:hidden',
+          open ? 'visible opacity-100' : 'invisible opacity-0',
         )}
         aria-hidden={!open}
       >
@@ -131,32 +135,37 @@ export function Header() {
         />
         <aside
           className={cn(
-            'absolute top-0 right-0 h-full w-[88%] max-w-sm bg-white shadow-float',
-            'transition-transform duration-300 ease-out flex flex-col',
+            'absolute right-0 top-0 h-full w-[88%] max-w-sm bg-white shadow-float',
+            'flex flex-col transition-transform duration-300 ease-out',
             open ? 'translate-x-0' : 'translate-x-full',
           )}
         >
-          <div className="h-16 flex items-center justify-between px-4 border-b border-ink-100">
+          <div className="flex h-16 items-center justify-between border-b border-ink-100 px-4">
             <Link href="/" onClick={() => setOpen(false)} aria-label="بعثت مردم — صفحه اصلی">
               <Logo width={100} />
             </Link>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="w-10 h-10 inline-flex items-center justify-center rounded-lg hover:bg-ink-100"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg hover:bg-ink-100"
               aria-label="بستن"
             >
-              <X className="w-5 h-5" />
+              <X className="h-5 w-5" />
             </button>
           </div>
-          <nav className="flex-1 overflow-y-auto p-4 flex flex-col gap-1" aria-label="ناوبری موبایل">
+          <nav
+            className="flex flex-1 flex-col gap-1 overflow-y-auto p-4"
+            aria-label="ناوبری موبایل"
+          >
             {NAV.map((item) => (
               <a
                 key={item.href + item.label}
                 href={item.href}
-                onClick={(e) => { onNavClick(e, item.href); setOpen(false); }}
-                className="px-4 py-3 rounded-xl text-ink-800 hover:bg-brand-50 hover:text-brand-700
-                           font-medium transition-colors"
+                onClick={(e) => {
+                  onNavClick(e, item.href);
+                  setOpen(false);
+                }}
+                className="rounded-xl px-4 py-3 font-medium text-ink-800 transition-colors hover:bg-brand-50 hover:text-brand-700"
               >
                 {item.label}
               </a>

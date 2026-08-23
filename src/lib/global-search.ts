@@ -62,12 +62,7 @@ import { absoluteMediaUrl } from './utils';
 /*  Public types                                                              */
 /* ───────────────────────────────────────────────────────────────────────── */
 
-export type SearchSource =
-  | 'madadkar'
-  | 'r4j'
-  | 'lms'
-  | 'kindness'
-  | 'tabyin';
+export type SearchSource = 'madadkar' | 'r4j' | 'lms' | 'kindness' | 'tabyin';
 
 export type SearchHit = {
   source: SearchSource;
@@ -106,30 +101,30 @@ export type SearchFacets = {
     // Backend CampaignStatus values are stored as lowercase strings
     // (draft / published / completed / closed). The public filter only
     // exposes the three PUBLIC ones.
-    status?:           'published' | 'completed' | 'closed';
-    has_deadline?:     boolean;
-    is_fully_funded?:  boolean;
-    sponsor_slug?:     string;
+    status?: 'published' | 'completed' | 'closed';
+    has_deadline?: boolean;
+    is_fully_funded?: boolean;
+    sponsor_slug?: string;
   };
   r4j?: {
-    country?:  string;
+    country?: string;
     province?: string;
-    city?:     string;
-    gender?:   'male' | 'female' | 'unknown';
+    city?: string;
+    gender?: 'male' | 'female' | 'unknown';
   };
   lms?: {
     category?: string; // category slug (iexact)
-    level?:    'beginner' | 'intermediate' | 'advanced' | 'professional';
+    level?: 'beginner' | 'intermediate' | 'advanced' | 'professional';
   };
   kindness?: {
     listing_type?: 'need_help' | 'offer_help';
-    category?:     string; // category slug
-    province?:     string;
-    city?:         string;
+    category?: string; // category slug
+    province?: string;
+    city?: string;
   };
   tabyin?: {
     media_type?: 'image' | 'video' | 'audio' | 'other';
-    author?:     string; // icontains
+    author?: string; // icontains
   };
 };
 
@@ -195,18 +190,16 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
   },
 };
 
-export const SEARCH_SOURCE_ORDER: SearchSource[] = [
-  'madadkar', 'r4j', 'lms', 'kindness', 'tabyin',
-];
+export const SEARCH_SOURCE_ORDER: SearchSource[] = ['madadkar', 'r4j', 'lms', 'kindness', 'tabyin'];
 
 /* ───────────────────────────────────────────────────────────────────────── */
 /*  Formatting helpers                                                        */
 /* ───────────────────────────────────────────────────────────────────────── */
 
 const LEVEL_LABEL: Record<string, string> = {
-  beginner:     'مقدماتی',
+  beginner: 'مقدماتی',
   intermediate: 'متوسط',
-  advanced:     'پیشرفته',
+  advanced: 'پیشرفته',
   professional: 'حرفه‌ای',
 };
 
@@ -222,11 +215,11 @@ const CAMPAIGN_STATUS_LABEL: Record<string, string> = {
   // Keep both casings mapped defensively.
   published: 'در حال اجرا',
   completed: 'تکمیل شد',
-  closed:    'بسته شد',
-  draft:     'پیش‌نویس',
+  closed: 'بسته شد',
+  draft: 'پیش‌نویس',
   PUBLISHED: 'در حال اجرا',
   COMPLETED: 'تکمیل شد',
-  CLOSED:    'بسته شد',
+  CLOSED: 'بسته شد',
 };
 
 function fa(n: number | undefined | null): string {
@@ -240,9 +233,10 @@ function clean(s: unknown): string {
 
 function formatToman(n: number | undefined | null): string {
   if (!n || n <= 0) return '';
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1).replace('.0', '')} میلیارد تومان`;
-  if (n >= 1_000_000)     return `${(n / 1_000_000).toFixed(1).replace('.0', '')} میلیون تومان`;
-  if (n >= 1_000)         return `${(n / 1_000).toFixed(0)} هزار تومان`;
+  if (n >= 1_000_000_000)
+    return `${(n / 1_000_000_000).toFixed(1).replace('.0', '')} میلیارد تومان`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.0', '')} میلیون تومان`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)} هزار تومان`;
   return `${fa(n)} تومان`;
 }
 
@@ -251,7 +245,7 @@ function formatDuration(seconds?: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.round((seconds % 3600) / 60);
   if (h > 0 && m > 0) return `${fa(h)}س ${fa(m)}د`;
-  if (h > 0)          return `${fa(h)} ساعت`;
+  if (h > 0) return `${fa(h)} ساعت`;
   return `${fa(m)} دقیقه`;
 }
 
@@ -291,7 +285,8 @@ async function fetchMadadkar(
   signal?: AbortSignal,
 ): Promise<SearchHit[]> {
   type C = {
-    slug: string; title: string;
+    slug: string;
+    title: string;
     sponsor?: { name?: string; slug?: string };
     progress_percent?: number;
     cover_image?: string;
@@ -302,39 +297,44 @@ async function fetchMadadkar(
     total_amount?: number;
   };
   const qs = buildQueryString(q, {
-    status:          facets?.status,
-    has_deadline:    facets?.has_deadline,
+    status: facets?.status,
+    has_deadline: facets?.has_deadline,
     is_fully_funded: facets?.is_fully_funded,
-    sponsor_slug:    facets?.sponsor_slug,
-    ordering:        '-published_at',
+    sponsor_slug: facets?.sponsor_slug,
+    ordering: '-published_at',
   });
-  const data = await apiFetch<Paginated<C>>(
-    `/madadkar/campaigns/?${qs}`,
-    { signal, revalidate: 30, skipAuth: true } as never,
-  );
-  return unwrap(data).slice(0, PER_SOURCE_LIMIT).map((c) => {
-    const sponsorName = clean(c.sponsor?.name);
-    const progress = typeof c.progress_percent === 'number' ? Math.round(c.progress_percent) : null;
-    const subtitle = sponsorName ? `مددکار: ${sponsorName}` : undefined;
-    const badge = progress !== null ? `${fa(progress)}٪ تأمین شد` : undefined;
-    const statusPill =
-      c.is_fully_funded ? 'تکمیل شد'
-        : c.status ? CAMPAIGN_STATUS_LABEL[c.status] ?? c.status_display
-        : c.status_display;
-    return {
-      source:   'madadkar',
-      id:       `madadkar:${c.slug}`,
-      title:    clean(c.title) || 'حرکت بدون عنوان',
-      subtitle,
-      thumb:    absoluteMediaUrl(c.cover_image),
-      // /madadkar/[slug] detail route is not built yet. Route hits
-      // back to the homepage warfund anchor so clicks always land on
-      // a valid page.
-      href:     `/#warfund`,
-      badge,
-      pill:     statusPill,
-    };
-  });
+  const data = await apiFetch<Paginated<C>>(`/madadkar/campaigns/?${qs}`, {
+    signal,
+    revalidate: 30,
+    skipAuth: true,
+  } as never);
+  return unwrap(data)
+    .slice(0, PER_SOURCE_LIMIT)
+    .map((c) => {
+      const sponsorName = clean(c.sponsor?.name);
+      const progress =
+        typeof c.progress_percent === 'number' ? Math.round(c.progress_percent) : null;
+      const subtitle = sponsorName ? `مددکار: ${sponsorName}` : undefined;
+      const badge = progress !== null ? `${fa(progress)}٪ تأمین شد` : undefined;
+      const statusPill = c.is_fully_funded
+        ? 'تکمیل شد'
+        : c.status
+          ? (CAMPAIGN_STATUS_LABEL[c.status] ?? c.status_display)
+          : c.status_display;
+      return {
+        source: 'madadkar',
+        id: `madadkar:${c.slug}`,
+        title: clean(c.title) || 'حرکت بدون عنوان',
+        subtitle,
+        thumb: absoluteMediaUrl(c.cover_image),
+        // /madadkar/[slug] detail route is not built yet. Route hits
+        // back to the homepage warfund anchor so clicks always land on
+        // a valid page.
+        href: `/#warfund`,
+        badge,
+        pill: statusPill,
+      };
+    });
 }
 
 async function fetchR4J(
@@ -354,31 +354,34 @@ async function fetchR4J(
     bounties_count?: number;
   };
   const qs = buildQueryString(q, {
-    country:  facets?.country,
+    country: facets?.country,
     province: facets?.province,
-    city:     facets?.city,
-    gender:   facets?.gender,
+    city: facets?.city,
+    gender: facets?.gender,
     ordering: '-total_bounty_toman',
   });
-  const data = await apiFetch<Paginated<P>>(
-    `/r4j/criminals/?${qs}`,
-    { signal, revalidate: 60, skipAuth: true } as never,
-  );
-  return unwrap(data).slice(0, PER_SOURCE_LIMIT).map((p) => {
-    const fullName = clean(`${p.first_name ?? ''} ${p.last_name ?? ''}`) || p.slug;
-    const loc = [p.city, p.province, p.country].filter(Boolean).join('، ');
-    return {
-      source:   'r4j',
-      id:       `r4j:${p.slug}`,
-      title:    fullName,
-      subtitle: loc || undefined,
-      thumb:    absoluteMediaUrl(p.primary_photo?.image ?? null),
-      // See note above — R4J detail route TBD, fall back to anchor.
-      href:     `/#justice`,
-      badge:    p.total_bounty_toman ? formatToman(p.total_bounty_toman) : undefined,
-      pill:     p.bounties_count ? `${fa(p.bounties_count)} جایزه` : undefined,
-    };
-  });
+  const data = await apiFetch<Paginated<P>>(`/r4j/criminals/?${qs}`, {
+    signal,
+    revalidate: 60,
+    skipAuth: true,
+  } as never);
+  return unwrap(data)
+    .slice(0, PER_SOURCE_LIMIT)
+    .map((p) => {
+      const fullName = clean(`${p.first_name ?? ''} ${p.last_name ?? ''}`) || p.slug;
+      const loc = [p.city, p.province, p.country].filter(Boolean).join('، ');
+      return {
+        source: 'r4j',
+        id: `r4j:${p.slug}`,
+        title: fullName,
+        subtitle: loc || undefined,
+        thumb: absoluteMediaUrl(p.primary_photo?.image ?? null),
+        // See note above — R4J detail route TBD, fall back to anchor.
+        href: `/#justice`,
+        badge: p.total_bounty_toman ? formatToman(p.total_bounty_toman) : undefined,
+        pill: p.bounties_count ? `${fa(p.bounties_count)} جایزه` : undefined,
+      };
+    });
 }
 
 async function fetchLms(
@@ -387,7 +390,8 @@ async function fetchLms(
   signal?: AbortSignal,
 ): Promise<SearchHit[]> {
   type Co = {
-    slug: string; title: string;
+    slug: string;
+    title: string;
     subtitle?: string;
     short_description?: string;
     instructor_name?: string;
@@ -399,32 +403,35 @@ async function fetchLms(
   };
   const qs = buildQueryString(q, {
     category: facets?.category,
-    level:    facets?.level,
+    level: facets?.level,
     ordering: '-published_at',
   });
-  const data = await apiFetch<Paginated<Co>>(
-    `/lms/courses/?${qs}`,
-    { signal, revalidate: 30, skipAuth: true } as never,
-  );
-  return unwrap(data).slice(0, PER_SOURCE_LIMIT).map((c) => {
-    const instructor = clean(c.instructor_name);
-    const dur        = formatDuration(c.estimated_duration_seconds);
-    const parts: string[] = [];
-    if (instructor) parts.push(`مدرس: ${instructor}`);
-    if (c.lessons_count) parts.push(`${fa(c.lessons_count)} درس`);
-    if (dur) parts.push(dur);
-    return {
-      source:   'lms',
-      id:       `lms:${c.slug}`,
-      title:    clean(c.title),
-      subtitle: parts.length ? parts.join(' · ') : clean(c.short_description),
-      thumb:    absoluteMediaUrl(c.cover_image),
-      // See note above — LMS course detail route TBD.
-      href:     `/#education`,
-      badge:    c.enrollments_count ? `${fa(c.enrollments_count)} یادگیرنده` : undefined,
-      pill:     c.level ? LEVEL_LABEL[c.level] ?? c.level : undefined,
-    };
-  });
+  const data = await apiFetch<Paginated<Co>>(`/lms/courses/?${qs}`, {
+    signal,
+    revalidate: 30,
+    skipAuth: true,
+  } as never);
+  return unwrap(data)
+    .slice(0, PER_SOURCE_LIMIT)
+    .map((c) => {
+      const instructor = clean(c.instructor_name);
+      const dur = formatDuration(c.estimated_duration_seconds);
+      const parts: string[] = [];
+      if (instructor) parts.push(`مدرس: ${instructor}`);
+      if (c.lessons_count) parts.push(`${fa(c.lessons_count)} درس`);
+      if (dur) parts.push(dur);
+      return {
+        source: 'lms',
+        id: `lms:${c.slug}`,
+        title: clean(c.title),
+        subtitle: parts.length ? parts.join(' · ') : clean(c.short_description),
+        thumb: absoluteMediaUrl(c.cover_image),
+        // See note above — LMS course detail route TBD.
+        href: `/#education`,
+        badge: c.enrollments_count ? `${fa(c.enrollments_count)} یادگیرنده` : undefined,
+        pill: c.level ? (LEVEL_LABEL[c.level] ?? c.level) : undefined,
+      };
+    });
 }
 
 async function fetchKindness(
@@ -433,42 +440,49 @@ async function fetchKindness(
   signal?: AbortSignal,
 ): Promise<SearchHit[]> {
   type L = {
-    slug: string; title: string;
+    slug: string;
+    title: string;
     listing_type?: 'need_help' | 'offer_help' | string;
     category?: { title?: string; slug?: string };
-    province?: string; city?: string;
+    province?: string;
+    city?: string;
     cover_image?: string;
     view_count?: number;
   };
   const qs = buildQueryString(q, {
     listing_type: facets?.listing_type,
-    category:     facets?.category,
-    province:     facets?.province,
-    city:         facets?.city,
-    ordering:     '-published_at',
+    category: facets?.category,
+    province: facets?.province,
+    city: facets?.city,
+    ordering: '-published_at',
   });
-  const data = await apiFetch<Paginated<L>>(
-    `/kindness-wall/listings/?${qs}`,
-    { signal, revalidate: 30, skipAuth: true } as never,
-  );
-  return unwrap(data).slice(0, PER_SOURCE_LIMIT).map((l) => {
-    const loc = [l.city, l.province].filter(Boolean).join('، ');
-    const catTitle = clean(l.category?.title);
-    return {
-      source:   'kindness',
-      id:       `kindness:${l.slug}`,
-      title:    clean(l.title),
-      subtitle: [catTitle, loc].filter(Boolean).join(' · ') || undefined,
-      thumb:    absoluteMediaUrl(l.cover_image),
-      // See note above — Kindness listing detail route TBD.
-      href:     `/#kindness`,
-      badge:    l.view_count ? `${fa(l.view_count)} بازدید` : undefined,
-      pill:
-        l.listing_type === 'need_help'  ? 'نیازمند کمک'
-          : l.listing_type === 'offer_help' ? 'پیشنهاد کمک'
-          : undefined,
-    };
-  });
+  const data = await apiFetch<Paginated<L>>(`/kindness-wall/listings/?${qs}`, {
+    signal,
+    revalidate: 30,
+    skipAuth: true,
+  } as never);
+  return unwrap(data)
+    .slice(0, PER_SOURCE_LIMIT)
+    .map((l) => {
+      const loc = [l.city, l.province].filter(Boolean).join('، ');
+      const catTitle = clean(l.category?.title);
+      return {
+        source: 'kindness',
+        id: `kindness:${l.slug}`,
+        title: clean(l.title),
+        subtitle: [catTitle, loc].filter(Boolean).join(' · ') || undefined,
+        thumb: absoluteMediaUrl(l.cover_image),
+        // See note above — Kindness listing detail route TBD.
+        href: `/#kindness`,
+        badge: l.view_count ? `${fa(l.view_count)} بازدید` : undefined,
+        pill:
+          l.listing_type === 'need_help'
+            ? 'نیازمند کمک'
+            : l.listing_type === 'offer_help'
+              ? 'پیشنهاد کمک'
+              : undefined,
+      };
+    });
 }
 
 async function fetchTabyin(
@@ -487,29 +501,35 @@ async function fetchTabyin(
   };
   const qs = buildQueryString(q, {
     media_type: facets?.media_type,
-    author:     facets?.author,
-    ordering:   '-source_created_at',
+    author: facets?.author,
+    ordering: '-source_created_at',
   });
-  const data = await apiFetch<Paginated<T>>(
-    `/tabyin/contents/?${qs}`,
-    { signal, revalidate: 30, skipAuth: true } as never,
-  );
-  return unwrap(data).slice(0, PER_SOURCE_LIMIT).map((t) => {
-    const image = t.attachments?.find((a) => a.media_type === 'image')?.url
-                ?? t.attachments?.[0]?.url;
-    const title = clean(t.title)
-                  || (t.description ? clean(t.description).slice(0, 60) + '…' : 'محتوای تبیینی');
-    return {
-      source:   'tabyin',
-      id:       `tabyin:${t.external_id}`,
-      title,
-      subtitle: t.author_username ? `@${clean(t.author_username)}` : undefined,
-      thumb:    absoluteMediaUrl(image),
-      href:     `/tabyin/${t.external_id}`,
-      pill:     t.primary_media_type ? MEDIA_LABEL[t.primary_media_type] ?? t.primary_media_type : undefined,
-      badge:    t.origin === 'user_submitted' ? 'مردمی' : undefined,
-    };
-  });
+  const data = await apiFetch<Paginated<T>>(`/tabyin/contents/?${qs}`, {
+    signal,
+    revalidate: 30,
+    skipAuth: true,
+  } as never);
+  return unwrap(data)
+    .slice(0, PER_SOURCE_LIMIT)
+    .map((t) => {
+      const image =
+        t.attachments?.find((a) => a.media_type === 'image')?.url ?? t.attachments?.[0]?.url;
+      const title =
+        clean(t.title) ||
+        (t.description ? clean(t.description).slice(0, 60) + '…' : 'محتوای تبیینی');
+      return {
+        source: 'tabyin',
+        id: `tabyin:${t.external_id}`,
+        title,
+        subtitle: t.author_username ? `@${clean(t.author_username)}` : undefined,
+        thumb: absoluteMediaUrl(image),
+        href: `/tabyin/${t.external_id}`,
+        pill: t.primary_media_type
+          ? (MEDIA_LABEL[t.primary_media_type] ?? t.primary_media_type)
+          : undefined,
+        badge: t.origin === 'user_submitted' ? 'مردمی' : undefined,
+      };
+    });
 }
 
 const FETCHERS: {
@@ -520,10 +540,10 @@ const FETCHERS: {
   ) => Promise<SearchHit[]>;
 } = {
   madadkar: fetchMadadkar,
-  r4j:      fetchR4J,
-  lms:      fetchLms,
+  r4j: fetchR4J,
+  lms: fetchLms,
   kindness: fetchKindness,
-  tabyin:   fetchTabyin,
+  tabyin: fetchTabyin,
 };
 
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -610,13 +630,21 @@ export function pushRecent(q: string): string[] {
   const cleaned = (q ?? '').trim();
   if (!cleaned) return loadRecent();
   const list = [cleaned, ...loadRecent().filter((x) => x !== cleaned)].slice(0, MAX_RECENT);
-  try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch { /* ignore */ }
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore */
+  }
   return list;
 }
 
 export function clearRecent(): void {
   if (typeof window === 'undefined') return;
-  try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -624,8 +652,8 @@ export function clearRecent(): void {
 /* ───────────────────────────────────────────────────────────────────────── */
 
 export const TRENDING_QUERIES: { label: string; q: string; source?: SearchSource }[] = [
-  { label: 'حرکت‌های فعال',   q: 'فعال',   source: 'madadkar' },
-  { label: 'دوره‌های امداد',  q: 'امداد',  source: 'lms' },
-  { label: 'نیازمند کمک',    q: 'نیازمند', source: 'kindness' },
-  { label: 'روایت‌های مردمی', q: 'مردمی',  source: 'tabyin' },
+  { label: 'حرکت‌های فعال', q: 'فعال', source: 'madadkar' },
+  { label: 'دوره‌های امداد', q: 'امداد', source: 'lms' },
+  { label: 'نیازمند کمک', q: 'نیازمند', source: 'kindness' },
+  { label: 'روایت‌های مردمی', q: 'مردمی', source: 'tabyin' },
 ];

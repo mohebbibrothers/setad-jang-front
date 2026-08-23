@@ -44,24 +44,24 @@ const nextConfig = {
     // backend validators (apps.core.validators::validate_image_extension).
     remotePatterns: [
       // Production domains (any subdomain of setadjang.ir over HTTPS)
-      { protocol: 'https', hostname: 'setadjang.ir',    pathname: '/**' },
+      { protocol: 'https', hostname: 'setadjang.ir', pathname: '/**' },
       { protocol: 'https', hostname: 'www.setadjang.ir', pathname: '/**' },
       { protocol: 'https', hostname: 'api.setadjang.ir', pathname: '/**' },
       // Local dev — cover the common ports both frontend + backend run on
-      { protocol: 'http',  hostname: 'localhost',   port: '',      pathname: '/**' },
-      { protocol: 'http',  hostname: 'localhost',   port: '8000',  pathname: '/**' },
-      { protocol: 'http',  hostname: 'localhost',   port: '3000',  pathname: '/**' },
-      { protocol: 'http',  hostname: '127.0.0.1',   port: '',      pathname: '/**' },
-      { protocol: 'http',  hostname: '127.0.0.1',   port: '8000',  pathname: '/**' },
-      { protocol: 'http',  hostname: '127.0.0.1',   port: '3000',  pathname: '/**' },
+      { protocol: 'http', hostname: 'localhost', port: '', pathname: '/**' },
+      { protocol: 'http', hostname: 'localhost', port: '8000', pathname: '/**' },
+      { protocol: 'http', hostname: 'localhost', port: '3000', pathname: '/**' },
+      { protocol: 'http', hostname: '127.0.0.1', port: '', pathname: '/**' },
+      { protocol: 'http', hostname: '127.0.0.1', port: '8000', pathname: '/**' },
+      { protocol: 'http', hostname: '127.0.0.1', port: '3000', pathname: '/**' },
       // Staging demo — backend runs on :18080, front on :3000
-      { protocol: 'http',  hostname: '188.253.2.86', port: '18080', pathname: '/**' },
-      { protocol: 'http',  hostname: '188.253.2.86', port: '3000',  pathname: '/**' },
-      { protocol: 'http',  hostname: '188.253.2.86', port: '',      pathname: '/**' },
+      { protocol: 'http', hostname: '188.253.2.86', port: '18080', pathname: '/**' },
+      { protocol: 'http', hostname: '188.253.2.86', port: '3000', pathname: '/**' },
+      { protocol: 'http', hostname: '188.253.2.86', port: '', pathname: '/**' },
       // External Tabyin / Mohtavanegar media hosts (some tabyin
       // attachments are hosted on the source CDN, not the platform)
       { protocol: 'https', hostname: 'app-service.armansky.ir', pathname: '/**' },
-      { protocol: 'https', hostname: 'app-media.armansky.ir',   pathname: '/**' },
+      { protocol: 'https', hostname: 'app-media.armansky.ir', pathname: '/**' },
       // Whatever host + port was injected via NEXT_PUBLIC_API_URL at
       // build time — keeps future environments zero-config.
       ...(dynamicApiPattern ? [dynamicApiPattern] : []),
@@ -75,11 +75,14 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
-          { key: 'X-Frame-Options',          value: 'SAMEORIGIN' },
-          { key: 'X-Content-Type-Options',   value: 'nosniff' },
-          { key: 'Referrer-Policy',          value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy',       value: 'camera=(), microphone=(), geolocation=(self)' },
-          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
         ],
       },
     ];

@@ -61,4 +61,3 @@ export function absoluteMediaUrl(url: string | null | undefined): string | undef
   const base = siteConfig.apiUrl.replace(/\/+$/, '');
   return `${base}/${trimmed.replace(/^\/+/, '')}`;
 }
-

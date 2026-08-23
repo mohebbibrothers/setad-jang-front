@@ -73,16 +73,32 @@ export type CriminalCard = {
 // version keeps bundle size in check.
 function ChevronLeftIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <polyline points="15 18 9 12 15 6" />
     </svg>
   );
 }
 function TrophyIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
       <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
       <path d="M4 22h16" />
@@ -94,8 +110,16 @@ function TrophyIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
 }
 function InfoIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
       <polyline points="14 2 14 8 20 8" />
       <line x1="9" y1="13" x2="15" y2="13" />
@@ -127,8 +151,8 @@ function HammerIcon({ className = 'w-4 h-4' }: { className?: string }) {
     <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
       {/* Anvil — the strike surface at the bottom */}
       <g data-hammer-anvil>
-        <rect x="7"  y="26" width="18" height="3"   rx="1.4" fill="currentColor" opacity=".55" />
-        <rect x="10" y="23" width="12" height="3"   rx="1"   fill="currentColor" opacity=".85" />
+        <rect x="7" y="26" width="18" height="3" rx="1.4" fill="currentColor" opacity=".55" />
+        <rect x="10" y="23" width="12" height="3" rx="1" fill="currentColor" opacity=".85" />
       </g>
       {/* Hammer — head (rectangle) + handle (rounded stick).
           Pivot for the swing is at the TAIL of the handle (top-right in
@@ -136,7 +160,11 @@ function HammerIcon({ className = 'w-4 h-4' }: { className?: string }) {
       <g data-hammer-head style={{ transformOrigin: '22px 6px' }}>
         {/* Handle */}
         <rect
-          x="9" y="5" width="14" height="3.2" rx="1.6"
+          x="9"
+          y="5"
+          width="14"
+          height="3.2"
+          rx="1.6"
           fill="currentColor"
           transform="rotate(-32 16 6.6)"
         />
@@ -200,7 +228,9 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Render portals only client-side (SSR-safe).
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   /*
    * ── DESKTOP hover polling — the final, bulletproof fix ─────────
@@ -231,7 +261,10 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
   useEffect(() => {
     if (!open) return;
     // Skip on touch — the tap-toggle model already handles those.
-    if (typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    if (
+      typeof window !== 'undefined' &&
+      !window.matchMedia('(hover: hover) and (pointer: fine)').matches
+    ) {
       return;
     }
     /**
@@ -315,9 +348,9 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
       //    their horizontal extents PLUS an extra `PAD` on top and
       //    bottom so a diagonal cursor path is caught cleanly even
       //    if it briefly exits both element rects.
-      const bridgeLeft   = Math.min(btn.left,  pop.left)   - PAD;
-      const bridgeRight  = Math.max(btn.right, pop.right)  + PAD;
-      const bridgeTop    = Math.min(btn.top,    pop.top)    - PAD;
+      const bridgeLeft = Math.min(btn.left, pop.left) - PAD;
+      const bridgeRight = Math.max(btn.right, pop.right) + PAD;
+      const bridgeTop = Math.min(btn.top, pop.top) - PAD;
       const bridgeBottom = Math.max(btn.bottom, pop.bottom) + PAD;
       if (inRect(x, y, bridgeLeft, bridgeTop, bridgeRight, bridgeBottom)) return;
 
@@ -337,7 +370,9 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
     document.addEventListener('pointerdown', onDown, { passive: true, capture: true });
     return () => {
       document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerdown', onDown, { capture: true } as EventListenerOptions);
+      document.removeEventListener('pointerdown', onDown, {
+        capture: true,
+      } as EventListenerOptions);
     };
   }, [open]);
 
@@ -367,7 +402,10 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') { setOpen(false); btnRef.current?.blur(); }
+      if (e.key === 'Escape') {
+        setOpen(false);
+        btnRef.current?.blur();
+      }
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -464,7 +502,10 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
   // and the popover — that path is immune to the missed-`mouseleave`
   // browser edge cases that used to leave the animation stuck on.
   const enter = () => {
-    if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; }
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
     setOpen(true);
   };
 
@@ -474,145 +515,127 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
    * cannot clip it. Same hover-grace behaviour: entering the popover
    * cancels the close timer, leaving it schedules another close.
    */
-  const popover = mounted && open ? createPortal(
-    <AnimatePresence>
-      <motion.div
-        key="hammer-popover"
-        ref={popRef}
-        // No onMouseLeave here — the pointer-polling effect above
-        // already handles the "cursor left both trigger and popover"
-        // condition with more reliable geometry, not the fragile
-        // synthetic React event.
-        onMouseEnter={enter}
-        initial={{ opacity: 0, y: 8, scale: 0.94 }}
-        animate={{ opacity: pos ? 1 : 0, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 6, scale: 0.96 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 26, mass: 0.55 }}
-        role="menu"
-        aria-label={`${fullName} — گزینه‌های مشارکت در مجازات`}
-        // `w-[min(260px,calc(100vw-20px))]` guarantees the popover
-        // never exceeds the viewport minus a 10 px gutter on either
-        // side, even on the narrowest phones. 260 px is the sweet
-        // spot for two touch-sized rows without feeling cramped.
-        // The bottom breathing gap («فاصله زیر گزارش اطلاعات») is now
-        // baked into the last Link's own `pb-2.5` instead of the
-        // popover container. Reason: the container-level padding
-        // created a white strip below the option that the hover
-        // tint couldn't reach — moving the padding INSIDE the Link
-        // means the whole area (row + gap) is part of the same
-        // hoverable surface, so `hover:bg-brand-500/[0.07]` flushes
-        // continuously from the divider all the way to the popover's
-        // rounded bottom edge, no pseudo-elements required.
-        className="fixed z-[80] w-[min(260px,calc(100vw-20px))]
-                   bg-white rounded-2xl overflow-hidden
-                   shadow-[0_24px_60px_-12px_rgba(0,0,0,.42),0_0_0_1px_rgba(217,222,229,.75)]"
-        style={{
-          direction: 'rtl',
-          top: pos?.top ?? -9999,
-          left: pos?.left ?? -9999,
-          // transformOrigin follows placement so the spring animation
-          // grows FROM the caret (which sits on the hammer side of the
-          // popover), not from the far edge.
-          transformOrigin: pos?.placement === 'bottom' ? 'top center' : 'bottom center',
-        }}
-      >
-        {/* ── Title strip ─────────────────────────────────────────
+  const popover =
+    mounted && open
+      ? createPortal(
+          <AnimatePresence>
+            <motion.div
+              key="hammer-popover"
+              ref={popRef}
+              // No onMouseLeave here — the pointer-polling effect above
+              // already handles the "cursor left both trigger and popover"
+              // condition with more reliable geometry, not the fragile
+              // synthetic React event.
+              onMouseEnter={enter}
+              initial={{ opacity: 0, y: 8, scale: 0.94 }}
+              animate={{ opacity: pos ? 1 : 0, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.96 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 26, mass: 0.55 }}
+              role="menu"
+              aria-label={`${fullName} — گزینه‌های مشارکت در مجازات`}
+              // `w-[min(260px,calc(100vw-20px))]` guarantees the popover
+              // never exceeds the viewport minus a 10 px gutter on either
+              // side, even on the narrowest phones. 260 px is the sweet
+              // spot for two touch-sized rows without feeling cramped.
+              // The bottom breathing gap («فاصله زیر گزارش اطلاعات») is now
+              // baked into the last Link's own `pb-2.5` instead of the
+              // popover container. Reason: the container-level padding
+              // created a white strip below the option that the hover
+              // tint couldn't reach — moving the padding INSIDE the Link
+              // means the whole area (row + gap) is part of the same
+              // hoverable surface, so `hover:bg-brand-500/[0.07]` flushes
+              // continuously from the divider all the way to the popover's
+              // rounded bottom edge, no pseudo-elements required.
+              className="fixed z-[80] w-[min(260px,calc(100vw-20px))] overflow-hidden rounded-2xl bg-white shadow-[0_24px_60px_-12px_rgba(0,0,0,.42),0_0_0_1px_rgba(217,222,229,.75)]"
+              style={{
+                direction: 'rtl',
+                top: pos?.top ?? -9999,
+                left: pos?.left ?? -9999,
+                // transformOrigin follows placement so the spring animation
+                // grows FROM the caret (which sits on the hammer side of the
+                // popover), not from the far edge.
+                transformOrigin: pos?.placement === 'bottom' ? 'top center' : 'bottom center',
+              }}
+            >
+              {/* ── Title strip ─────────────────────────────────────────
             Redesigned per client feedback: bigger, centred, brand-
             tinted surface so it reads as an intentional header, not
             a forgotten line of muted text. The lead-in gavel glyph
             was retired at the client's request — the title now
             stands on its own, cleaner and more legible. */}
-        <div className="relative flex items-center justify-center
-                        px-4 pt-3 pb-3 bg-gradient-to-b from-brand-50/70 to-white
-                        border-b border-brand-100/70">
-          <span className="text-[14px] font-extrabold text-ink-900 leading-none">
-            مشارکت در مجازات
-          </span>
-        </div>
+              <div className="relative flex items-center justify-center border-b border-brand-100/70 bg-gradient-to-b from-brand-50/70 to-white px-4 pb-3 pt-3">
+                <span className="text-[14px] font-extrabold leading-none text-ink-900">
+                  مشارکت در مجازات
+                </span>
+              </div>
 
-        {/* Option 1: ثبت جایزه */}
-        <Link
-          href={`/r4j/${slug}/bounty`}
-          role="menuitem"
-          onClick={() => { setOpen(false); btnRef.current?.blur(); }}
-          className="group/item relative flex items-center gap-2.5 px-3.5 h-11
-                     hover:bg-accent-500/[0.07] transition-colors duration-150"
-        >
-          <span
-            className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0
-                       bg-accent-500/[0.12] text-accent-600
-                       group-hover/item:bg-accent-500 group-hover/item:text-white
-                       group-hover/item:shadow-[0_6px_14px_-4px_rgba(229,82,20,.5)]
-                       transition-all duration-200"
-          >
-            <TrophyIcon className="w-3.5 h-3.5" />
-          </span>
-          <span className="flex-1 text-right text-[12.5px] font-extrabold text-ink-800
-                           group-hover/item:text-accent-700 transition-colors">
-            ثبت جایزه
-          </span>
-          <ChevronLeftIcon className="w-3.5 h-3.5 text-ink-400
-                                      group-hover/item:text-accent-600
-                                      group-hover/item:-translate-x-0.5
-                                      transition-all duration-200" />
-        </Link>
+              {/* Option 1: ثبت جایزه */}
+              <Link
+                href={`/r4j/${slug}/bounty`}
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  btnRef.current?.blur();
+                }}
+                className="group/item relative flex h-11 items-center gap-2.5 px-3.5 transition-colors duration-150 hover:bg-accent-500/[0.07]"
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-500/[0.12] text-accent-600 transition-all duration-200 group-hover/item:bg-accent-500 group-hover/item:text-white group-hover/item:shadow-[0_6px_14px_-4px_rgba(229,82,20,.5)]">
+                  <TrophyIcon className="h-3.5 w-3.5" />
+                </span>
+                <span className="flex-1 text-right text-[12.5px] font-extrabold text-ink-800 transition-colors group-hover/item:text-accent-700">
+                  ثبت جایزه
+                </span>
+                <ChevronLeftIcon className="h-3.5 w-3.5 text-ink-400 transition-all duration-200 group-hover/item:-translate-x-0.5 group-hover/item:text-accent-600" />
+              </Link>
 
-        <div className="mx-2 h-px bg-gradient-to-l from-transparent via-ink-100 to-transparent" />
+              <div className="mx-2 h-px bg-gradient-to-l from-transparent via-ink-100 to-transparent" />
 
-        {/* Option 2: گزارش اطلاعات
-         *
-         * The 10 px breathing gap that used to live on the popover
-         * container (`pb-2.5`) is now baked INTO this Link as
-         * `pb-[18px]` (8 px inner vertical-centre-pad + 10 px
-         * requested breathing). That way the whole area — row +
-         * gap — is part of ONE hover surface, so
-         * `hover:bg-brand-500/[0.07]` flushes continuously from the
-         * divider all the way down to the popover's rounded bottom
-         * edge. No white strip, no pseudo-element workaround. Row
-         * still reads as h-11 because the icon (28 px) + the 8 px
-         * top-pad = 36 px inner content aligned to the top-centre;
-         * text is `items-center` so it sits on the same baseline
-         * as the icon regardless of the added bottom-pad.
-         */}
-        <Link
-          href={`/r4j/${slug}/report`}
-          role="menuitem"
-          onClick={() => { setOpen(false); btnRef.current?.blur(); }}
-          // ─────────────────────────────────────────────────────────
-          //  ONE hover surface covers the whole option
-          // ─────────────────────────────────────────────────────────
-          //  block + pb-2.5 → the 10 px breathing gap is INSIDE the
-          //  Link, so hover paints it as part of the same fill. The
-          //  inner <div> reproduces the original h-11 row so nothing
-          //  visually shifts. Hover tint bumped from /[0.07] to
-          //  /[0.1] (matching the same-weight brand row on Option 1
-          //  when the palette accumulates ring+icon+text) so the
-          //  fill is unambiguously visible even in the thin gutter.
-          className="group/item relative block pb-2.5
-                     hover:bg-brand-500/[0.1] transition-colors duration-150"
-        >
-          <div className="flex items-center gap-2.5 px-3.5 h-11 bg-transparent">
-            <span
-              className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0
-                         bg-brand-500/[0.12] text-brand-600
-                         group-hover/item:bg-brand-500 group-hover/item:text-white
-                         group-hover/item:shadow-[0_6px_14px_-4px_rgba(13,128,116,.5)]
-                         transition-all duration-200"
-            >
-              <InfoIcon className="w-3.5 h-3.5" />
-            </span>
-            <span className="flex-1 text-right text-[12.5px] font-extrabold text-ink-800
-                             group-hover/item:text-brand-700 transition-colors">
-              گزارش اطلاعات
-            </span>
-            <ChevronLeftIcon className="w-3.5 h-3.5 text-ink-400
-                                        group-hover/item:text-brand-600
-                                        group-hover/item:-translate-x-0.5
-                                        transition-all duration-200" />
-          </div>
-        </Link>
+              {/* Option 2: گزارش اطلاعات
+               *
+               * The 10 px breathing gap that used to live on the popover
+               * container (`pb-2.5`) is now baked INTO this Link as
+               * `pb-[18px]` (8 px inner vertical-centre-pad + 10 px
+               * requested breathing). That way the whole area — row +
+               * gap — is part of ONE hover surface, so
+               * `hover:bg-brand-500/[0.07]` flushes continuously from the
+               * divider all the way down to the popover's rounded bottom
+               * edge. No white strip, no pseudo-element workaround. Row
+               * still reads as h-11 because the icon (28 px) + the 8 px
+               * top-pad = 36 px inner content aligned to the top-centre;
+               * text is `items-center` so it sits on the same baseline
+               * as the icon regardless of the added bottom-pad.
+               */}
+              <Link
+                href={`/r4j/${slug}/report`}
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  btnRef.current?.blur();
+                }}
+                // ─────────────────────────────────────────────────────────
+                //  ONE hover surface covers the whole option
+                // ─────────────────────────────────────────────────────────
+                //  block + pb-2.5 → the 10 px breathing gap is INSIDE the
+                //  Link, so hover paints it as part of the same fill. The
+                //  inner <div> reproduces the original h-11 row so nothing
+                //  visually shifts. Hover tint bumped from /[0.07] to
+                //  /[0.1] (matching the same-weight brand row on Option 1
+                //  when the palette accumulates ring+icon+text) so the
+                //  fill is unambiguously visible even in the thin gutter.
+                className="group/item relative block pb-2.5 transition-colors duration-150 hover:bg-brand-500/[0.1]"
+              >
+                <div className="flex h-11 items-center gap-2.5 bg-transparent px-3.5">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-500/[0.12] text-brand-600 transition-all duration-200 group-hover/item:bg-brand-500 group-hover/item:text-white group-hover/item:shadow-[0_6px_14px_-4px_rgba(13,128,116,.5)]">
+                    <InfoIcon className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="flex-1 text-right text-[12.5px] font-extrabold text-ink-800 transition-colors group-hover/item:text-brand-700">
+                    گزارش اطلاعات
+                  </span>
+                  <ChevronLeftIcon className="h-3.5 w-3.5 text-ink-400 transition-all duration-200 group-hover/item:-translate-x-0.5 group-hover/item:text-brand-600" />
+                </div>
+              </Link>
 
-        {/* Tail — dynamic-position diamond that always points at the
+              {/* Tail — dynamic-position diamond that always points at the
             hammer, even after the popover shifts to stay in-viewport.
             Renders BELOW the popover for the default `top` placement
             (menu above the button) and ABOVE the popover for `bottom`
@@ -620,29 +643,30 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
             uses opposite diagonals in each case so the outer hairline
             ring around the popover stays visually continuous with
             the caret's outer edge. */}
-        {pos?.placement === 'bottom' ? (
-          <div
-            aria-hidden="true"
-            className="absolute -top-1.5 w-3 h-3 rotate-45 bg-gradient-to-b from-brand-50/70 to-brand-50/70 -translate-x-1/2"
-            style={{
-              left: pos?.caretLeft ?? '50%',
-              boxShadow: '-1px -1px 0 rgba(178,205,201,.55)',
-            }}
-          />
-        ) : (
-          <div
-            aria-hidden="true"
-            className="absolute -bottom-1.5 w-3 h-3 rotate-45 bg-white -translate-x-1/2"
-            style={{
-              left: pos?.caretLeft ?? '50%',
-              boxShadow: '1px 1px 0 rgba(217,222,229,.7)',
-            }}
-          />
-        )}
-      </motion.div>
-    </AnimatePresence>,
-    document.body,
-  ) : null;
+              {pos?.placement === 'bottom' ? (
+                <div
+                  aria-hidden="true"
+                  className="absolute -top-1.5 h-3 w-3 -translate-x-1/2 rotate-45 bg-gradient-to-b from-brand-50/70 to-brand-50/70"
+                  style={{
+                    left: pos?.caretLeft ?? '50%',
+                    boxShadow: '-1px -1px 0 rgba(178,205,201,.55)',
+                  }}
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="absolute -bottom-1.5 h-3 w-3 -translate-x-1/2 rotate-45 bg-white"
+                  style={{
+                    left: pos?.caretLeft ?? '50%',
+                    boxShadow: '1px 1px 0 rgba(217,222,229,.7)',
+                  }}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>,
+          document.body,
+        )
+      : null;
 
   return (
     <div
@@ -748,20 +772,13 @@ function HammerMenu({ slug, fullName }: { slug: string; fullName: string }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`مشارکت در مجازات ${fullName}`}
-        className="justice-hammer-btn relative inline-flex items-center justify-center
-                   w-8 h-8 rounded-full text-white
-                   bg-white/10 hover:bg-white/25 focus:bg-white/25
-                   ring-1 ring-white/25 hover:ring-white/60
-                   transition-[background-color,box-shadow,transform] duration-200
-                   focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80
-                   hover:shadow-[0_6px_16px_-4px_rgba(0,0,0,.35)]"
+        className="justice-hammer-btn relative inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/25 transition-[background-color,box-shadow,transform] duration-200 hover:bg-white/25 hover:shadow-[0_6px_16px_-4px_rgba(0,0,0,.35)] hover:ring-white/60 focus:bg-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
       >
-        <HammerIcon className="w-[18px] h-[18px] relative z-10 drop-shadow-[0_1px_0_rgba(0,0,0,.35)]" />
+        <HammerIcon className="relative z-10 h-[18px] w-[18px] drop-shadow-[0_1px_0_rgba(0,0,0,.35)]" />
         {/* Impact halo — tiny ring that pings out when the head strikes */}
         <span
           aria-hidden="true"
-          className="justice-hammer-halo pointer-events-none absolute inset-0 rounded-full
-                     ring-2 ring-white/70 opacity-0"
+          className="justice-hammer-halo pointer-events-none absolute inset-0 rounded-full opacity-0 ring-2 ring-white/70"
         />
       </button>
 
@@ -845,7 +862,9 @@ const HAMMER_STYLES = `
 /* ───────────────────────────────────────────────────────────────────────── */
 
 function CriminalCardView({
-  p, delay = 0, onOpenAlbum,
+  p,
+  delay = 0,
+  onOpenAlbum,
 }: {
   p: CriminalCard;
   delay?: number;
@@ -867,21 +886,16 @@ function CriminalCardView({
          - md+   (≥ 768px): 4 cols → calc((100% - 3*1.25rem)/4)
          Combined with parent flex+wrap+justify-center an orphan in the
          last row auto-centres. min-w-0 keeps card content shrinkable. */
-      className="group flex flex-col bg-white rounded-[28px] overflow-hidden isolate
-                 shadow-[0_2px_10px_-4px_rgba(15,20,32,.06)]
-                 hover:shadow-[0_22px_44px_-22px_rgba(11,53,48,.22)]
-                 hover:-translate-y-0.5 transition-all duration-300
-                 w-[calc((100%-0.75rem)/2)] md:w-[calc((100%-3*1.25rem)/4)] min-w-0"
+      className="group isolate flex w-[calc((100%-0.75rem)/2)] min-w-0 flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_2px_10px_-4px_rgba(15,20,32,.06)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_44px_-22px_rgba(11,53,48,.22)] md:w-[calc((100%-3*1.25rem)/4)]"
     >
       {/* Photo — relative + overflow-hidden so the popover can pop INTO
           the upper part of the portrait without ever leaving the card. */}
-      <div className="relative aspect-[3/4] bg-ink-200 overflow-hidden">
+      <div className="relative aspect-[3/4] overflow-hidden bg-ink-200">
         <button
           type="button"
           onClick={() => onOpenAlbum(p)}
           aria-label={`نمایش آلبوم تصاویر ${p.fullName}`}
-          className="absolute inset-0 block cursor-zoom-in focus:outline-none
-                     focus-visible:ring-2 focus-visible:ring-brand-500"
+          className="absolute inset-0 block cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
         >
           <SmartImage
             src={thumbUrl}
@@ -895,15 +909,19 @@ function CriminalCardView({
           {/* Gallery-count chip when there's more than one image */}
           {galleryHint > 1 && (
             <span
-              className="absolute bottom-2 left-2 inline-flex items-center gap-1
-                         px-1.5 h-5 rounded-md bg-black/55 backdrop-blur-sm
-                         text-white text-[10.5px] font-extrabold tabular-nums
-                         ring-1 ring-white/20 z-[2]"
+              className="absolute bottom-2 left-2 z-[2] inline-flex h-5 items-center gap-1 rounded-md bg-black/55 px-1.5 text-[10.5px] font-extrabold tabular-nums text-white ring-1 ring-white/20 backdrop-blur-sm"
               aria-hidden="true"
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"
-                   strokeLinejoin="round">
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <rect x="3" y="3" width="18" height="18" rx="3" />
                 <circle cx="9" cy="9" r="2" />
                 <path d="m21 15-5-5L5 21" />
@@ -925,11 +943,7 @@ function CriminalCardView({
           A single flex row: the criminal's name is a link to the
           detail page (as before) and the hammer trigger sits to its
           left (RTL) as a peer child of the plate. */}
-      <div
-        className="relative flex items-center gap-2 px-3 pt-3 pb-3 bg-brand-500
-                   rounded-b-[28px] group/plate transition-colors
-                   hover:bg-brand-600"
-      >
+      <div className="group/plate relative flex items-center gap-2 rounded-b-[28px] bg-brand-500 px-3 pb-3 pt-3 transition-colors hover:bg-brand-600">
         {/* Hammer trigger — peer of the name link so its own hover
             state stays isolated from the plate's hover state (both
             can highlight independently). */}
@@ -939,9 +953,7 @@ function CriminalCardView({
             "open detail page" — full-width so tap area stays generous. */}
         <Link
           href={`/r4j/${p.slug}`}
-          className="flex-1 min-w-0 text-white text-center
-                     text-[14px] md:text-[14.5px] font-extrabold leading-6
-                     truncate"
+          className="min-w-0 flex-1 truncate text-center text-[14px] font-extrabold leading-6 text-white md:text-[14.5px]"
           title={p.fullName}
         >
           {p.fullName}
@@ -950,7 +962,7 @@ function CriminalCardView({
         {/* Symmetry spacer — mirrors the hammer button's footprint so
             the name reads truly centred instead of drifting toward one
             edge. Non-interactive. */}
-        <span aria-hidden="true" className="shrink-0 w-8 h-8" />
+        <span aria-hidden="true" className="h-8 w-8 shrink-0" />
       </div>
     </motion.article>
   );
@@ -970,8 +982,14 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
   );
 
   // No-op when there's only one page — pair with `disabled={...}` below.
-  const prev = () => { if (totalPages <= 1) return; setPage((p) => (p - 1 + totalPages) % totalPages); };
-  const next = () => { if (totalPages <= 1) return; setPage((p) => (p + 1) % totalPages); };
+  const prev = () => {
+    if (totalPages <= 1) return;
+    setPage((p) => (p - 1 + totalPages) % totalPages);
+  };
+  const next = () => {
+    if (totalPages <= 1) return;
+    setPage((p) => (p + 1) % totalPages);
+  };
 
   // ── Album state ────────────────────────────────────────────────────
   // NOTE — we intentionally use the GENERIC `subtitle` shape here.
@@ -992,19 +1010,16 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
 
   const closeAlbum = useCallback(() => setAlbum((a) => ({ ...a, open: false })), []);
 
-  const buildImages = useCallback(
-    (p: CriminalCard, extra?: AlbumImage[]): AlbumImage[] => {
-      const out: AlbumImage[] = [];
-      if (p.imageUrl) out.push({ url: p.imageUrl, alt: p.fullName });
-      if (extra && extra.length) {
-        for (const im of extra) {
-          if (!out.some((o) => o.url === im.url)) out.push(im);
-        }
+  const buildImages = useCallback((p: CriminalCard, extra?: AlbumImage[]): AlbumImage[] => {
+    const out: AlbumImage[] = [];
+    if (p.imageUrl) out.push({ url: p.imageUrl, alt: p.fullName });
+    if (extra && extra.length) {
+      for (const im of extra) {
+        if (!out.some((o) => o.url === im.url)) out.push(im);
       }
-      return out;
-    },
-    [],
-  );
+    }
+    return out;
+  }, []);
 
   // Compose the R4J album's secondary line from whatever location
   // fields the backend has surfaced (which may all be null when the
@@ -1017,66 +1032,86 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
     [],
   );
 
-  const openAlbum = useCallback(async (p: CriminalCard) => {
-    const seedSubtitle = buildR4JSubtitle(p.pillLabel);
+  const openAlbum = useCallback(
+    async (p: CriminalCard) => {
+      const seedSubtitle = buildR4JSubtitle(p.pillLabel);
 
-    if (p.gallery && p.gallery.length) {
+      if (p.gallery && p.gallery.length) {
+        setAlbum({
+          open: true,
+          title: p.fullName,
+          subtitle: seedSubtitle,
+          images: buildImages(p, p.gallery),
+          loading: false,
+        });
+        return;
+      }
+      const cached = photoCache[p.slug];
+      if (cached) {
+        setAlbum({
+          open: true,
+          title: p.fullName,
+          subtitle: seedSubtitle,
+          images: buildImages(p, cached),
+          loading: false,
+        });
+        return;
+      }
       setAlbum({
-        open: true, title: p.fullName, subtitle: seedSubtitle,
-        images: buildImages(p, p.gallery), loading: false,
+        open: true,
+        title: p.fullName,
+        subtitle: seedSubtitle,
+        images: buildImages(p),
+        loading: true,
       });
-      return;
-    }
-    const cached = photoCache[p.slug];
-    if (cached) {
-      setAlbum({
-        open: true, title: p.fullName, subtitle: seedSubtitle,
-        images: buildImages(p, cached), loading: false,
-      });
-      return;
-    }
-    setAlbum({
-      open: true, title: p.fullName, subtitle: seedSubtitle,
-      images: buildImages(p), loading: true,
-    });
-    try {
-      // Detail endpoint mirrors R4JPublicCriminalDetailSerializer:
-      //   photos[]  (id, image, caption, is_primary, order)
-      //   country / province / city  (visibility-controlled → may be null)
-      // We refresh the subtitle from the detail payload so the album
-      // reflects the freshest public-visible location, then fall back
-      // to the seed pillLabel if visibility hides everything.
-      const detail = await apiFetch<{
-        photos?: Array<{ id: number; image: string; caption?: string; is_primary?: boolean; order?: number }>;
-        country?: string | null;
-        province?: string | null;
-        city?: string | null;
-      }>(
-        `/r4j/criminals/${encodeURIComponent(p.slug)}/`,
-        { revalidate: 600, tags: [`criminal:${p.slug}`] },
-      );
-      const fetched: AlbumImage[] = (detail.photos ?? [])
-        .slice()
-        // primary first, then ordered ascending — matches Meta.ordering
-        // on R4JCriminalPhoto so the album mirrors the backend order.
-        .sort((a, b) => {
-          if (!!b.is_primary !== !!a.is_primary) return b.is_primary ? 1 : -1;
-          return (a.order ?? 0) - (b.order ?? 0);
-        })
-        .map((g) => ({ url: absoluteMediaUrl(g.image) ?? '', alt: g.caption || p.fullName }))
-        .filter((g) => !!g.url);
-      const detailLoc = [detail.city, detail.province, detail.country]
-        .filter((s): s is string => !!s && s.trim().length > 0)
-        .join('، ');
-      const freshSubtitle = buildR4JSubtitle(detailLoc) ?? seedSubtitle;
-      setPhotoCache((prev) => ({ ...prev, [p.slug]: fetched }));
-      setAlbum((a) => a.open
-        ? { ...a, subtitle: freshSubtitle, images: buildImages(p, fetched), loading: false }
-        : a);
-    } catch {
-      setAlbum((a) => a.open ? { ...a, loading: false } : a);
-    }
-  }, [photoCache, buildImages, buildR4JSubtitle]);
+      try {
+        // Detail endpoint mirrors R4JPublicCriminalDetailSerializer:
+        //   photos[]  (id, image, caption, is_primary, order)
+        //   country / province / city  (visibility-controlled → may be null)
+        // We refresh the subtitle from the detail payload so the album
+        // reflects the freshest public-visible location, then fall back
+        // to the seed pillLabel if visibility hides everything.
+        const detail = await apiFetch<{
+          photos?: Array<{
+            id: number;
+            image: string;
+            caption?: string;
+            is_primary?: boolean;
+            order?: number;
+          }>;
+          country?: string | null;
+          province?: string | null;
+          city?: string | null;
+        }>(`/r4j/criminals/${encodeURIComponent(p.slug)}/`, {
+          revalidate: 600,
+          tags: [`criminal:${p.slug}`],
+        });
+        const fetched: AlbumImage[] = (detail.photos ?? [])
+          .slice()
+          // primary first, then ordered ascending — matches Meta.ordering
+          // on R4JCriminalPhoto so the album mirrors the backend order.
+          .sort((a, b) => {
+            if (!!b.is_primary !== !!a.is_primary) return b.is_primary ? 1 : -1;
+            return (a.order ?? 0) - (b.order ?? 0);
+          })
+          .map((g) => ({ url: absoluteMediaUrl(g.image) ?? '', alt: g.caption || p.fullName }))
+          .filter((g) => !!g.url);
+        const detailLoc = [detail.city, detail.province, detail.country]
+          .filter((s): s is string => !!s && s.trim().length > 0)
+          .join('، ');
+        const freshSubtitle = buildR4JSubtitle(detailLoc) ?? seedSubtitle;
+        setPhotoCache((prev) => ({ ...prev, [p.slug]: fetched }));
+        setAlbum((a) =>
+          a.open
+            ? { ...a, subtitle: freshSubtitle, images: buildImages(p, fetched), loading: false }
+            : a,
+        );
+      } catch {
+        setAlbum((a) => (a.open ? { ...a, loading: false } : a));
+      }
+    },
+    [photoCache, buildImages, buildR4JSubtitle],
+  );
 
   return (
     <section className="section-y section-alt" id="justice">
@@ -1100,7 +1135,7 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
             surface. We keep the wrapper as a `<div>` so the padding
             below still gives the cards breathing room and the pager
             layout stays untouched — only the visible chrome is gone. */}
-        <div className="pt-2 pb-2 md:pt-4 md:pb-4">
+        <div className="pb-2 pt-2 md:pb-4 md:pt-4">
           {/* flex+wrap+justify-center so orphan cards in the last row
               centre instead of clinging to the RTL-right edge. */}
           {criminals.length === 0 ? (
@@ -1113,35 +1148,48 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
             <div className="flex flex-wrap justify-center gap-3 md:gap-5">
               <AnimatePresence mode="wait" initial={false}>
                 {visible.map((p, i) => (
-                  <CriminalCardView key={`${page}-${p.slug}`} p={p} delay={i * 0.06} onOpenAlbum={openAlbum} />
+                  <CriminalCardView
+                    key={`${page}-${p.slug}`}
+                    p={p}
+                    delay={i * 0.06}
+                    onOpenAlbum={openAlbum}
+                  />
                 ))}
               </AnimatePresence>
             </div>
           )}
 
           {/* Pager — lives INSIDE the off-white panel, centred below the cards */}
-          <div className="flex items-center justify-center gap-4 mt-6 md:mt-8">
+          <div className="mt-6 flex items-center justify-center gap-4 md:mt-8">
             <button
               type="button"
               aria-label="قبلی"
               onClick={prev}
               disabled={totalPages <= 1}
-              className="relative w-12 h-12 rounded-full hover:scale-110 active:scale-95
-                         transition-transform duration-200 disabled:opacity-40
-                         disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="relative h-12 w-12 rounded-full transition-transform duration-200 hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
             >
-              <Image src="/brand/pager-arrow-prev.png" alt="" fill sizes="48px" className="object-contain" />
+              <Image
+                src="/brand/pager-arrow-prev.png"
+                alt=""
+                fill
+                sizes="48px"
+                className="object-contain"
+              />
             </button>
             <button
               type="button"
               aria-label="بعدی"
               onClick={next}
               disabled={totalPages <= 1}
-              className="relative w-12 h-12 rounded-full hover:scale-110 active:scale-95
-                         transition-transform duration-200 disabled:opacity-40
-                         disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="relative h-12 w-12 rounded-full transition-transform duration-200 hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
             >
-              <Image src="/brand/pager-arrow-next.png" alt="" fill sizes="48px" className="object-contain" />
+              <Image
+                src="/brand/pager-arrow-next.png"
+                alt=""
+                fill
+                sizes="48px"
+                className="object-contain"
+              />
             </button>
           </div>
         </div>
@@ -1149,16 +1197,23 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
         {/* See-all CTA — matches the WarFund pattern for cross-section
             consistency. Pulls the user out of the home preview and into
             the full R4J case browser. */}
-        <div className="flex justify-center mt-6">
+        <div className="mt-6 flex justify-center">
           <Link
             href="/#justice"
-            className="inline-flex items-center gap-2 h-12 px-7 rounded-full
-                       bg-white border-2 border-brand-500 text-brand-700 font-extrabold text-[14px]
-                       hover:bg-brand-50 transition-colors"
+            className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-brand-500 bg-white px-7 text-[14px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
           >
             <span>مشاهده همه پرونده‌ها</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
               <line x1="19" y1="12" x2="5" y2="12" />
               <polyline points="12 19 5 12 12 5" />
             </svg>

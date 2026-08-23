@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     canonical: '/',
     languages: {
       'fa-IR': '/',
-      'fa':    '/',
+      fa: '/',
       'x-default': '/',
     },
   },
@@ -103,8 +103,8 @@ export const metadata: Metadata = {
       // `?v=4` cache-busts users who already visited the old placeholder
       // favicon — browsers aggressively pin favicons for weeks otherwise.
       { url: '/favicon.ico?v=4', sizes: 'any', type: 'image/x-icon' },
-      { url: '/favicon-16.png?v=4',  sizes: '16x16',   type: 'image/png' },
-      { url: '/favicon-32.png?v=4',  sizes: '32x32',   type: 'image/png' },
+      { url: '/favicon-16.png?v=4', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32.png?v=4', sizes: '32x32', type: 'image/png' },
       { url: '/favicon-192.png?v=4', sizes: '192x192', type: 'image/png' },
       { url: '/favicon-512.png?v=4', sizes: '512x512', type: 'image/png' },
     ],
@@ -149,16 +149,16 @@ export const metadata: Metadata = {
     'og:locale:alternate': 'en_US',
     'og:site_name': siteConfig.name,
     // Discourage translation of Persian brand tokens by Chrome/Yandex.
-    'google': 'notranslate',
+    google: 'notranslate',
     // Explicit rating for family-friendly platform (some app stores use).
-    'rating': 'general',
+    rating: 'general',
   },
 };
 
 export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: siteConfig.themeColor },
-    { media: '(prefers-color-scheme: dark)',  color: '#0B3530' },
+    { media: '(prefers-color-scheme: dark)', color: '#0B3530' },
   ],
   width: 'device-width',
   initialScale: 1,
@@ -317,7 +317,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         */}
         <style
           id="app-splash-boot"
-          dangerouslySetInnerHTML={{ __html: `
+          dangerouslySetInnerHTML={{
+            __html: `
             /*
               Splash overlay geometry:
                 - Icon sits DEAD CENTRE of the viewport, matching
@@ -345,7 +346,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             @keyframes appSplashPop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
             @keyframes appSplashFadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
             @media (prefers-reduced-motion:reduce){#app-splash .ic,#app-splash .lbl{animation:none!important;opacity:1!important}}
-          ` }}
+          `,
+          }}
         />
         <div id="app-splash" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -363,7 +365,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           fires (offline, blocked resource, etc).
         */}
         <script
-          dangerouslySetInnerHTML={{ __html: `
+          dangerouslySetInnerHTML={{
+            __html: `
             (function(){var h=document.documentElement;h.classList.add('app-splash-lock');
             /*
               MIN_HOLD_MS = 1100. The overlay stays up for at
@@ -393,7 +396,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             if (document.readyState === 'complete') requestAnimationFrame(done);
             else window.addEventListener('load', function(){ requestAnimationFrame(done); }, { once: true });
             setTimeout(done, HARD_TIMEOUT_MS);})();
-          ` }}
+          `,
+          }}
         />
         {/*
           Service worker — registered to bulldoze Chrome's PWA
@@ -415,7 +419,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           the SW updates while the page is already open.
         */}
         <script
-          dangerouslySetInnerHTML={{ __html: `
+          dangerouslySetInnerHTML={{
+            __html: `
             if ('serviceWorker' in navigator) {
               window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js').then(function(reg){
@@ -443,17 +448,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 });
               });
             }
-          ` }}
+          `,
+          }}
         />
 
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:right-3 focus:z-[100] focus:bg-brand-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg"
+          className="sr-only focus:not-sr-only focus:fixed focus:right-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-white"
         >
           پرش به محتوای اصلی
         </a>
         <Header />
-        <main id="main" className="min-h-[60vh]">{children}</main>
+        <main id="main" className="min-h-[60vh]">
+          {children}
+        </main>
         <Footer />
       </body>
     </html>

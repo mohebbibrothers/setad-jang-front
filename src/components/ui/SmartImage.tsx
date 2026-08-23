@@ -35,13 +35,13 @@ import Image, { type ImageProps } from 'next/image';
 import { useState, useEffect, useMemo } from 'react';
 
 export type SmartImageVariant =
-  | 'image'      // generic photograph
-  | 'avatar'     // user portrait
-  | 'campaign'   // madadkar cover
-  | 'criminal'   // r4j portrait
-  | 'course'     // lms cover
-  | 'kindness'   // dude/dude help listing cover
-  | 'tabyin';    // tabyin content thumbnail
+  | 'image' // generic photograph
+  | 'avatar' // user portrait
+  | 'campaign' // madadkar cover
+  | 'criminal' // r4j portrait
+  | 'course' // lms cover
+  | 'kindness' // dude/dude help listing cover
+  | 'tabyin'; // tabyin content thumbnail
 
 type Base = Omit<ImageProps, 'src' | 'alt' | 'onError' | 'onLoad' | 'onLoadingComplete'>;
 
@@ -67,9 +67,14 @@ export type SmartImageProps = Base & {
 
 function VariantGlyph({ variant, className }: { variant: SmartImageVariant; className: string }) {
   const common = {
-    viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
-    strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const,
-    className, 'aria-hidden': true,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.6,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    className,
+    'aria-hidden': true,
   };
   switch (variant) {
     case 'avatar':
@@ -89,8 +94,10 @@ function VariantGlyph({ variant, className }: { variant: SmartImageVariant; clas
       return (
         <svg {...common}>
           <path d="m14.5 12.5-8 8a2.1 2.1 0 1 1-3-3l8-8" />
-          <path d="m16 16 6-6" /><path d="m8 8 6-6" />
-          <path d="m9 7 8 8" /><path d="M21 11 13 3" />
+          <path d="m16 16 6-6" />
+          <path d="m8 8 6-6" />
+          <path d="m9 7 8 8" />
+          <path d="M21 11 13 3" />
         </svg>
       );
     case 'course':
@@ -133,13 +140,55 @@ function VariantGlyph({ variant, className }: { variant: SmartImageVariant; clas
 type Palette = { from: string; via: string; to: string; glyph: string; dot: string };
 
 const PALETTE: Record<SmartImageVariant, Palette> = {
-  image:    { from: '#E6F3F1', via: '#F5F7FA', to: '#C2E0DB', glyph: 'text-brand-500/70',  dot: 'rgba(13,128,116,0.10)' },
-  avatar:   { from: '#E6F3F1', via: '#F5F7FA', to: '#C2E0DB', glyph: 'text-brand-600/80',  dot: 'rgba(13,128,116,0.12)' },
-  campaign: { from: '#E6F3F1', via: '#F0F7F5', to: '#B8DBD5', glyph: 'text-brand-600/75',  dot: 'rgba(13,128,116,0.10)' },
-  criminal: { from: '#FFF1E6', via: '#FFF7EF', to: '#FFDCB8', glyph: 'text-accent-500/70', dot: 'rgba(255,107,26,0.10)' },
-  course:   { from: '#FFF7E6', via: '#FFFBEF', to: '#FFE6B0', glyph: 'text-gold-600/75',   dot: 'rgba(240,148,26,0.12)' },
-  kindness: { from: '#E6F8F6', via: '#F0FBF9', to: '#B8ECE5', glyph: 'text-mint-600/80',   dot: 'rgba(37,197,186,0.12)' },
-  tabyin:   { from: '#F3E9FF', via: '#F7F0FF', to: '#DDC7F5', glyph: 'text-violet-500/75', dot: 'rgba(139,92,246,0.10)' },
+  image: {
+    from: '#E6F3F1',
+    via: '#F5F7FA',
+    to: '#C2E0DB',
+    glyph: 'text-brand-500/70',
+    dot: 'rgba(13,128,116,0.10)',
+  },
+  avatar: {
+    from: '#E6F3F1',
+    via: '#F5F7FA',
+    to: '#C2E0DB',
+    glyph: 'text-brand-600/80',
+    dot: 'rgba(13,128,116,0.12)',
+  },
+  campaign: {
+    from: '#E6F3F1',
+    via: '#F0F7F5',
+    to: '#B8DBD5',
+    glyph: 'text-brand-600/75',
+    dot: 'rgba(13,128,116,0.10)',
+  },
+  criminal: {
+    from: '#FFF1E6',
+    via: '#FFF7EF',
+    to: '#FFDCB8',
+    glyph: 'text-accent-500/70',
+    dot: 'rgba(255,107,26,0.10)',
+  },
+  course: {
+    from: '#FFF7E6',
+    via: '#FFFBEF',
+    to: '#FFE6B0',
+    glyph: 'text-gold-600/75',
+    dot: 'rgba(240,148,26,0.12)',
+  },
+  kindness: {
+    from: '#E6F8F6',
+    via: '#F0FBF9',
+    to: '#B8ECE5',
+    glyph: 'text-mint-600/80',
+    dot: 'rgba(37,197,186,0.12)',
+  },
+  tabyin: {
+    from: '#F3E9FF',
+    via: '#F7F0FF',
+    to: '#DDC7F5',
+    glyph: 'text-violet-500/75',
+    dot: 'rgba(139,92,246,0.10)',
+  },
 };
 
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -147,8 +196,14 @@ const PALETTE: Record<SmartImageVariant, Palette> = {
 /* ───────────────────────────────────────────────────────────────────────── */
 
 function Placeholder({
-  variant, animated = false, ariaLabel,
-}: { variant: SmartImageVariant; animated?: boolean; ariaLabel?: string }) {
+  variant,
+  animated = false,
+  ariaLabel,
+}: {
+  variant: SmartImageVariant;
+  animated?: boolean;
+  ariaLabel?: string;
+}) {
   const p = PALETTE[variant];
   return (
     <div
@@ -167,19 +222,22 @@ function Placeholder({
       {/* Subtle top-left highlight for depth */}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute -top-1/3 -right-1/4 w-[80%] h-[80%] rounded-full opacity-40 blur-2xl"
+        className="pointer-events-none absolute -right-1/4 -top-1/3 h-[80%] w-[80%] rounded-full opacity-40 blur-2xl"
         style={{ background: `radial-gradient(circle, ${p.from} 0%, transparent 60%)` }}
       />
       {/* Glyph — sized to ~28% of the shortest edge so it works on
           every scale from a 32px avatar to a 400px hero cover. */}
       <span className={`relative ${p.glyph} ${animated ? 'animate-pulse' : ''}`}>
-        <VariantGlyph variant={variant} className="w-[clamp(20px,28%,64px)] h-[clamp(20px,28%,64px)]" />
+        <VariantGlyph
+          variant={variant}
+          className="h-[clamp(20px,28%,64px)] w-[clamp(20px,28%,64px)]"
+        />
       </span>
       {/* Corner watermark — barely visible brand mark, keeps the tile
           feeling considered rather than empty. */}
       <span
         aria-hidden="true"
-        className="absolute bottom-2 left-2 text-[9px] font-extrabold tracking-wider uppercase opacity-25 text-ink-700 select-none"
+        className="absolute bottom-2 left-2 select-none text-[9px] font-extrabold uppercase tracking-wider text-ink-700 opacity-25"
       >
         بعثت مردم
       </span>
@@ -206,7 +264,7 @@ export function SmartImage({
 }: SmartImageProps) {
   const hasSrc = typeof src === 'string' && src.trim().length > 0;
   const [errored, setErrored] = useState(false);
-  const [loaded,  setLoaded]  = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   // Reset load/error state whenever the source changes — important for
   // gallery-style callers that swap the src between renders.
@@ -221,9 +279,7 @@ export function SmartImage({
   // for `<Image fill />`. Callers that want inline sizing can pass
   // their own wrapperClassName.
   const wrap = useMemo(
-    () =>
-      wrapperClassName ??
-      (fill ? 'absolute inset-0' : 'relative w-full h-full'),
+    () => wrapperClassName ?? (fill ? 'absolute inset-0' : 'relative w-full h-full'),
     [wrapperClassName, fill],
   );
 
@@ -240,9 +296,7 @@ export function SmartImage({
       {/* Skeleton — visible ONLY while the image is decoding. Uses a
           brand-tinted shimmer, not a plain grey pulse, so it feels like
           part of the site even in a 100ms flash. */}
-      {!loaded && !quietSkeleton && (
-        <Placeholder variant={variant} animated ariaLabel={alt} />
-      )}
+      {!loaded && !quietSkeleton && <Placeholder variant={variant} animated ariaLabel={alt} />}
       <Image
         {...rest}
         src={src as string}
@@ -274,7 +328,7 @@ export function SmartImagePlaceholder({
   className?: string;
 }) {
   return (
-    <span className={className ?? 'relative w-full h-full block'}>
+    <span className={className ?? 'relative block h-full w-full'}>
       <Placeholder variant={variant} ariaLabel={ariaLabel} />
     </span>
   );

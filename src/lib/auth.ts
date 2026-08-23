@@ -276,8 +276,9 @@ export function changePassword(payload: {
 /* ───────────────────────────────────────────────────────────────────────── */
 
 export function listSessions(): Promise<AuthSession[]> {
-  return apiFetch<AuthSession[] | { results: AuthSession[] }>('/auth/sessions/')
-    .then((res) => (Array.isArray(res) ? res : res.results ?? []));
+  return apiFetch<AuthSession[] | { results: AuthSession[] }>('/auth/sessions/').then((res) =>
+    Array.isArray(res) ? res : (res.results ?? []),
+  );
 }
 
 export function revokeSession(sessionId: number | string): Promise<{ message?: string }> {

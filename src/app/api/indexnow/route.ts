@@ -96,9 +96,10 @@ export async function POST(request: NextRequest) {
     /* empty body is fine — falls through to defaults */
   }
 
-  const urls = Array.isArray(payload.urls) && payload.urls.length
-    ? payload.urls
-    : ['/', '/tabyin', '/tabyin/new'];
+  const urls =
+    Array.isArray(payload.urls) && payload.urls.length
+      ? payload.urls
+      : ['/', '/tabyin', '/tabyin/new'];
 
   const result = await submit(urls);
   return NextResponse.json({ success: result.ok, ...result });

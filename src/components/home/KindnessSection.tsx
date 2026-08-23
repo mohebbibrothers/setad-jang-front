@@ -87,8 +87,16 @@ export type KindListing = {
 /** All listings — multi-card stack / wall glyph */
 function AllIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.1}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.1}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <rect x="3" y="3" width="7" height="9" rx="1.5" />
       <rect x="14" y="3" width="7" height="5" rx="1.5" />
       <rect x="14" y="12" width="7" height="9" rx="1.5" />
@@ -104,8 +112,16 @@ function AllIcon({ className = 'w-4 h-4' }: { className?: string }) {
  *  literacy unmistakable.                                                    */
 function GiveIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.9}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       {/* Solid filled heart sitting on top of the lid */}
       <path
         d="M12 7c-.7-.9-2-1.4-3-.5-.95.85-.95 2.25 0 3.1L12 12.4l3-2.8c.95-.85.95-2.25 0-3.1-1-.9-2.3-.4-3 .5Z"
@@ -126,8 +142,16 @@ function GiveIcon({ className = 'w-4 h-4' }: { className?: string }) {
  *  Metaphor: my heart needs care / a signal calling for help.               */
 function NeedIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       {/* Heart outline */}
       <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
       {/* Heartbeat line inside */}
@@ -139,8 +163,16 @@ function NeedIcon({ className = 'w-4 h-4' }: { className?: string }) {
 /** Plus glyph for the "post listing" trigger */
 function PlusIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
@@ -154,9 +186,21 @@ function PlusIcon({ className = 'w-4 h-4' }: { className?: string }) {
 const FILTERS = [
   // `shortLabel` is what we render on phones (≤ 480 px) so the segmented
   // switcher never overflows or wraps mid-word.
-  { key: 'all',   label: 'همه آگهی‌ها',      shortLabel: 'همه',       Glyph: AllIcon,  tone: 'brand' as const },
-  { key: 'offer', label: 'می‌خواهم کمک کنم', shortLabel: 'کمک می‌کنم', Glyph: GiveIcon, tone: 'mint'  as const },
-  { key: 'need',  label: 'نیاز به کمک دارم', shortLabel: 'نیازمندم',   Glyph: NeedIcon, tone: 'rose'  as const },
+  { key: 'all', label: 'همه آگهی‌ها', shortLabel: 'همه', Glyph: AllIcon, tone: 'brand' as const },
+  {
+    key: 'offer',
+    label: 'می‌خواهم کمک کنم',
+    shortLabel: 'کمک می‌کنم',
+    Glyph: GiveIcon,
+    tone: 'mint' as const,
+  },
+  {
+    key: 'need',
+    label: 'نیاز به کمک دارم',
+    shortLabel: 'نیازمندم',
+    Glyph: NeedIcon,
+    tone: 'rose' as const,
+  },
 ] as const;
 type FilterKey = (typeof FILTERS)[number]['key'];
 
@@ -206,18 +250,14 @@ function daysUntilExpiry(dateStr?: string): number | null {
 function PostListingSplit() {
   return (
     <div
-      className="relative inline-flex items-center gap-2 h-12 px-7 rounded-full
-                 bg-mint-500/60 text-white/95 font-extrabold text-[14px]
-                 shadow-[0_8px_24px_-8px_rgba(37,197,186,.35)]
-                 cursor-not-allowed select-none"
+      className="relative inline-flex h-12 cursor-not-allowed select-none items-center gap-2 rounded-full bg-mint-500/60 px-7 text-[14px] font-extrabold text-white/95 shadow-[0_8px_24px_-8px_rgba(37,197,186,.35)]"
       title="این بخش به‌زودی فعال می‌شود"
       role="button"
       aria-disabled="true"
     >
-      <PlusIcon className="w-4 h-4" />
+      <PlusIcon className="h-4 w-4" />
       <span>ثبت آگهی جدید</span>
-      <span className="ml-1 inline-flex items-center px-2 h-6 rounded-full
-                       bg-white/25 text-[10.5px] font-extrabold tracking-wide">
+      <span className="ml-1 inline-flex h-6 items-center rounded-full bg-white/25 px-2 text-[10.5px] font-extrabold tracking-wide">
         به‌زودی
       </span>
     </div>
@@ -250,8 +290,8 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
 
   const counts = useMemo(
     () => ({
-      all:   listings.length,
-      need:  listings.filter((l) => l.type === 'need').length,
+      all: listings.length,
+      need: listings.filter((l) => l.type === 'need').length,
       offer: listings.filter((l) => l.type === 'offer').length,
     }),
     [listings],
@@ -260,7 +300,8 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
   const filtered = useMemo(() => {
     return listings.filter((l) => {
       if (filter !== 'all' && l.type !== filter) return false;
-      if (category !== 'all' && l.categoryTitle !== category && l.categorySlug !== category) return false;
+      if (category !== 'all' && l.categoryTitle !== category && l.categorySlug !== category)
+        return false;
       return true;
     });
   }, [listings, filter, category]);
@@ -277,8 +318,14 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
 
   const goPrev = () => setPage((p) => (p - 1 + totalPages) % totalPages);
   const goNext = () => setPage((p) => (p + 1) % totalPages);
-  function setFilterReset(k: FilterKey) { setFilter(k); setPage(0); }
-  function setCategoryReset(c: string)  { setCategory(c); setPage(0); }
+  function setFilterReset(k: FilterKey) {
+    setFilter(k);
+    setPage(0);
+  }
+  function setCategoryReset(c: string) {
+    setCategory(c);
+    setPage(0);
+  }
 
   // ── Album state ────────────────────────────────────────────────────
   // Kindness album subtitle projects the listing TYPE (need/offer),
@@ -295,68 +342,84 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
   const [imgCache, setImgCache] = useState<Record<string, AlbumImage[]>>({});
   const closeAlbum = useCallback(() => setAlbum((a) => ({ ...a, open: false })), []);
 
-  const buildImages = useCallback(
-    (l: KindListing, extra?: AlbumImage[]): AlbumImage[] => {
-      const out: AlbumImage[] = [];
-      if (l.coverImage) out.push({ url: l.coverImage, alt: l.title });
-      if (extra && extra.length) {
-        for (const im of extra) {
-          if (!out.some((o) => o.url === im.url)) out.push(im);
-        }
+  const buildImages = useCallback((l: KindListing, extra?: AlbumImage[]): AlbumImage[] => {
+    const out: AlbumImage[] = [];
+    if (l.coverImage) out.push({ url: l.coverImage, alt: l.title });
+    if (extra && extra.length) {
+      for (const im of extra) {
+        if (!out.some((o) => o.url === im.url)) out.push(im);
       }
-      return out;
-    },
-    [],
-  );
+    }
+    return out;
+  }, []);
 
-  const buildKindSubtitle = useCallback(
-    (l: KindListing): { label: string; value: string } => {
-      const typeLabel = l.type === 'need' ? 'نیاز به کمک' : 'پیشنهاد کمک';
-      const value = l.categoryTitle ? `${typeLabel} · ${l.categoryTitle}` : typeLabel;
-      return { label: 'نوع', value };
-    },
-    [],
-  );
+  const buildKindSubtitle = useCallback((l: KindListing): { label: string; value: string } => {
+    const typeLabel = l.type === 'need' ? 'نیاز به کمک' : 'پیشنهاد کمک';
+    const value = l.categoryTitle ? `${typeLabel} · ${l.categoryTitle}` : typeLabel;
+    return { label: 'نوع', value };
+  }, []);
 
-  const openAlbum = useCallback(async (l: KindListing) => {
-    const subtitle = buildKindSubtitle(l);
-    if (l.gallery && l.gallery.length) {
-      setAlbum({ open: true, title: l.title, subtitle, images: buildImages(l, l.gallery), loading: false });
-      return;
-    }
-    const cached = imgCache[l.slug];
-    if (cached) {
-      setAlbum({ open: true, title: l.title, subtitle, images: buildImages(l, cached), loading: false });
-      return;
-    }
-    setAlbum({ open: true, title: l.title, subtitle, images: buildImages(l), loading: true });
-    try {
-      // Mirrors KindnessListingDetailSerializer + KindnessListingImageSerializer.
-      const detail = await apiFetch<{
-        images?: Array<{ id: number; image: string; alt_text?: string; caption?: string; is_cover?: boolean; order?: number }>;
-        contact_available?: boolean;
-      }>(
-        `/kindness-wall/listings/${encodeURIComponent(l.slug)}/`,
-        { revalidate: 600, tags: [`kindness:${l.slug}`] },
-      );
-      const fetched: AlbumImage[] = (detail.images ?? [])
-        .slice()
-        // cover first, then ordered ascending (matches backend Meta.ordering).
-        .sort((a, b) => {
-          if (!!b.is_cover !== !!a.is_cover) return b.is_cover ? 1 : -1;
-          return (a.order ?? 0) - (b.order ?? 0);
-        })
-        .map((g) => ({
-          url: absoluteMediaUrl(g.image) ?? g.image,
-          alt: g.alt_text || g.caption || l.title,
-        }))
-        .filter((g) => !!g.url);
-      setImgCache((prev) => ({ ...prev, [l.slug]: fetched }));
-      setAlbum((a) => a.open ? { ...a, images: buildImages(l, fetched), loading: false } : a);
-    } catch {
-      setAlbum((a) => a.open ? { ...a, loading: false } : a);
-    }
-  }, [imgCache, buildImages, buildKindSubtitle]);
+  const openAlbum = useCallback(
+    async (l: KindListing) => {
+      const subtitle = buildKindSubtitle(l);
+      if (l.gallery && l.gallery.length) {
+        setAlbum({
+          open: true,
+          title: l.title,
+          subtitle,
+          images: buildImages(l, l.gallery),
+          loading: false,
+        });
+        return;
+      }
+      const cached = imgCache[l.slug];
+      if (cached) {
+        setAlbum({
+          open: true,
+          title: l.title,
+          subtitle,
+          images: buildImages(l, cached),
+          loading: false,
+        });
+        return;
+      }
+      setAlbum({ open: true, title: l.title, subtitle, images: buildImages(l), loading: true });
+      try {
+        // Mirrors KindnessListingDetailSerializer + KindnessListingImageSerializer.
+        const detail = await apiFetch<{
+          images?: Array<{
+            id: number;
+            image: string;
+            alt_text?: string;
+            caption?: string;
+            is_cover?: boolean;
+            order?: number;
+          }>;
+          contact_available?: boolean;
+        }>(`/kindness-wall/listings/${encodeURIComponent(l.slug)}/`, {
+          revalidate: 600,
+          tags: [`kindness:${l.slug}`],
+        });
+        const fetched: AlbumImage[] = (detail.images ?? [])
+          .slice()
+          // cover first, then ordered ascending (matches backend Meta.ordering).
+          .sort((a, b) => {
+            if (!!b.is_cover !== !!a.is_cover) return b.is_cover ? 1 : -1;
+            return (a.order ?? 0) - (b.order ?? 0);
+          })
+          .map((g) => ({
+            url: absoluteMediaUrl(g.image) ?? g.image,
+            alt: g.alt_text || g.caption || l.title,
+          }))
+          .filter((g) => !!g.url);
+        setImgCache((prev) => ({ ...prev, [l.slug]: fetched }));
+        setAlbum((a) => (a.open ? { ...a, images: buildImages(l, fetched), loading: false } : a));
+      } catch {
+        setAlbum((a) => (a.open ? { ...a, loading: false } : a));
+      }
+    },
+    [imgCache, buildImages, buildKindSubtitle],
+  );
 
   /* ── Category strip overflow controls (same pattern as Education) ── */
   const catScrollRef = useRef<HTMLDivElement | null>(null);
@@ -403,22 +466,24 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
               - tablet+ (≥ 480px): full labels with an inline counter pill.
             The pill width is constrained by min-w-0 so flex children can
             shrink and the gradient tab stays inside the segmented box. */}
-        <div className="flex justify-center mb-5">
+        <div className="mb-5 flex justify-center">
           {/* Pill trough: white on the alt-surface so the segmented
               control reads as a lifted control, not blending into the
               section's soft-greige backdrop. */}
-          <div className="inline-flex p-1 bg-white rounded-full shadow-inner
-                          ring-1 ring-ink-100 w-full sm:w-auto max-w-full"
-               role="tablist" aria-label="نوع آگهی">
-            <div className="grid grid-cols-3 sm:flex w-full gap-1 min-w-0">
+          <div
+            className="inline-flex w-full max-w-full rounded-full bg-white p-1 shadow-inner ring-1 ring-ink-100 sm:w-auto"
+            role="tablist"
+            aria-label="نوع آگهی"
+          >
+            <div className="grid w-full min-w-0 grid-cols-3 gap-1 sm:flex">
               {FILTERS.map((f) => {
                 const isActive = filter === f.key;
                 const toneActive =
                   f.tone === 'rose'
                     ? 'bg-gradient-to-l from-[#f43f5e] to-[#e11d48] text-white shadow-[0_8px_20px_-6px_rgba(225,29,72,.55)]'
                     : f.tone === 'mint'
-                    ? 'bg-gradient-to-l from-[#2FE0CC] to-[#1FB3A8] text-white shadow-[0_8px_20px_-6px_rgba(37,197,186,.55)]'
-                    : 'bg-gradient-to-l from-brand-500 to-brand-700 text-white shadow-[0_8px_20px_-6px_rgba(13,128,116,.55)]';
+                      ? 'bg-gradient-to-l from-[#2FE0CC] to-[#1FB3A8] text-white shadow-[0_8px_20px_-6px_rgba(37,197,186,.55)]'
+                      : 'bg-gradient-to-l from-brand-500 to-brand-700 text-white shadow-[0_8px_20px_-6px_rgba(13,128,116,.55)]';
                 return (
                   <button
                     key={f.key}
@@ -426,29 +491,23 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => setFilterReset(f.key)}
-                    className={`relative inline-flex items-center justify-center gap-1.5 sm:gap-2
-                                h-11 px-2.5 sm:px-5 min-w-0
-                                rounded-full text-[12px] sm:text-[13.5px] font-extrabold whitespace-nowrap
-                                transition-all duration-200 flex-1 sm:flex-none
-                                ${isActive ? toneActive : 'text-ink-600 hover:text-ink-900 hover:bg-white/60'}`}
+                    className={`relative inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[12px] font-extrabold transition-all duration-200 sm:flex-none sm:gap-2 sm:px-5 sm:text-[13.5px] ${isActive ? toneActive : 'text-ink-600 hover:bg-white/60 hover:text-ink-900'}`}
                   >
-                    <f.Glyph className="w-[15px] h-[15px] sm:w-4 sm:h-4 shrink-0" />
+                    <f.Glyph className="h-[15px] w-[15px] shrink-0 sm:h-4 sm:w-4" />
                     {/* Compact label on phones, full label from sm+ */}
-                    <span className="sm:hidden truncate">{f.shortLabel}</span>
+                    <span className="truncate sm:hidden">{f.shortLabel}</span>
                     <span className="hidden sm:inline">{f.label}</span>
                     {/* Inline counter pill — only ≥ sm. On mobile a small
                         corner chip avoids any chance of overflow. */}
-                    <span className={`hidden sm:inline-flex items-center justify-center min-w-[20px] h-5 px-1.5
-                                      rounded-full text-[10.5px] font-extrabold tabular-nums
-                                      ${isActive ? 'bg-white/25' : 'bg-ink-100 text-ink-500'}`}>
+                    <span
+                      className={`hidden h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-extrabold tabular-nums sm:inline-flex ${isActive ? 'bg-white/25' : 'bg-ink-100 text-ink-500'}`}
+                    >
                       {counts[f.key].toLocaleString('fa-IR')}
                     </span>
                     {/* Mobile corner counter */}
-                    <span className={`sm:hidden absolute -top-1 -left-1 min-w-[16px] h-[16px]
-                                      inline-flex items-center justify-center rounded-full
-                                      text-[9.5px] font-extrabold tabular-nums px-1
-                                      ${isActive ? 'bg-white text-ink-900' : 'bg-ink-200 text-ink-600'}
-                                      ring-2 ring-ink-50`}>
+                    <span
+                      className={`absolute -left-1 -top-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1 text-[9.5px] font-extrabold tabular-nums sm:hidden ${isActive ? 'bg-white text-ink-900' : 'bg-ink-200 text-ink-600'} ring-2 ring-ink-50`}
+                    >
                       {counts[f.key].toLocaleString('fa-IR')}
                     </span>
                   </button>
@@ -466,15 +525,16 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
                 type="button"
                 aria-label="حرکت به چپ"
                 onClick={() => scrollCats('left')}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex
-                           w-9 h-9 items-center justify-center rounded-full
-                           bg-white text-ink-600 hover:text-brand-600 hover:bg-brand-50
-                           shadow-[0_4px_14px_-4px_rgba(15,20,32,.15)] ring-1 ring-ink-100
-                           transition-colors"
+                className="absolute left-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white text-ink-600 shadow-[0_4px_14px_-4px_rgba(15,20,32,.15)] ring-1 ring-ink-100 transition-colors hover:bg-brand-50 hover:text-brand-600"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <polyline points="15 18 9 12 15 6" stroke="currentColor" strokeWidth="2.4"
-                            strokeLinecap="round" strokeLinejoin="round" />
+                  <polyline
+                    points="15 18 9 12 15 6"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </button>
             )}
@@ -483,34 +543,36 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
                 type="button"
                 aria-label="حرکت به راست"
                 onClick={() => scrollCats('right')}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex
-                           w-9 h-9 items-center justify-center rounded-full
-                           bg-white text-ink-600 hover:text-brand-600 hover:bg-brand-50
-                           shadow-[0_4px_14px_-4px_rgba(15,20,32,.15)] ring-1 ring-ink-100
-                           transition-colors"
+                className="absolute right-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white text-ink-600 shadow-[0_4px_14px_-4px_rgba(15,20,32,.15)] ring-1 ring-ink-100 transition-colors hover:bg-brand-50 hover:text-brand-600"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <polyline points="9 18 15 12 9 6" stroke="currentColor" strokeWidth="2.4"
-                            strokeLinecap="round" strokeLinejoin="round" />
+                  <polyline
+                    points="9 18 15 12 9 6"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </button>
             )}
 
             {catCanNext && (
-              <div aria-hidden="true"
-                   className="absolute left-0 top-0 bottom-0 w-12 md:w-16 z-10 pointer-events-none
-                              bg-gradient-to-l from-white to-transparent" />
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-12 bg-gradient-to-l from-white to-transparent md:w-16"
+              />
             )}
             {catCanPrev && (
-              <div aria-hidden="true"
-                   className="absolute right-0 top-0 bottom-0 w-12 md:w-16 z-10 pointer-events-none
-                              bg-gradient-to-r from-white to-transparent" />
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-12 bg-gradient-to-r from-white to-transparent md:w-16"
+              />
             )}
 
             <div
               ref={catScrollRef}
-              className="flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden
-                         no-scrollbar px-10 md:px-12 scroll-smooth"
+              className="no-scrollbar flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden scroll-smooth px-10 md:px-12"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {categoryChips.map((c) => {
@@ -520,17 +582,17 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
                     key={c.slug}
                     type="button"
                     onClick={() => setCategoryReset(c.slug)}
-                    className={`inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full
-                                text-[12.5px] font-extrabold whitespace-nowrap transition-colors flex-shrink-0
-                                ${isActive
-                                  ? 'bg-brand-500 text-white shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)]'
-                                  : 'bg-white text-ink-600 ring-1 ring-ink-100 hover:ring-brand-200 hover:text-brand-700'}`}
+                    className={`inline-flex h-9 flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[12.5px] font-extrabold transition-colors ${
+                      isActive
+                        ? 'bg-brand-500 text-white shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)]'
+                        : 'bg-white text-ink-600 ring-1 ring-ink-100 hover:text-brand-700 hover:ring-brand-200'
+                    }`}
                   >
-                    <Icon name="tag" className="w-3 h-3" />
+                    <Icon name="tag" className="h-3 w-3" />
                     <span>{c.title}</span>
-                    <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5
-                                      rounded-full text-[10.5px] font-extrabold tabular-nums
-                                      ${isActive ? 'bg-white/25' : 'bg-ink-100 text-ink-500'}`}>
+                    <span
+                      className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-extrabold tabular-nums ${isActive ? 'bg-white/25' : 'bg-ink-100 text-ink-500'}`}
+                    >
                       {c.count.toLocaleString('fa-IR')}
                     </span>
                   </button>
@@ -551,23 +613,28 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
               transition={{ duration: 0.25 }}
             >
               <EmptyState
-                title={listings.length === 0
-                  ? 'هنوز آگهی منتشر نشده'
-                  : 'آگهی‌ای در این فیلتر یافت نشد'}
-                description={listings.length === 0
-                  ? 'به‌محض ثبت اولین آگهی‌های دیوار مهربانی، اینجا قابل مشاهده خواهد بود.'
-                  : 'فیلترها را پاک کن یا با عنوان دیگری جست‌وجو کن.'}
+                title={
+                  listings.length === 0 ? 'هنوز آگهی منتشر نشده' : 'آگهی‌ای در این فیلتر یافت نشد'
+                }
+                description={
+                  listings.length === 0
+                    ? 'به‌محض ثبت اولین آگهی‌های دیوار مهربانی، اینجا قابل مشاهده خواهد بود.'
+                    : 'فیلترها را پاک کن یا با عنوان دیگری جست‌وجو کن.'
+                }
                 iconPath="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
               />
               {listings.length > 0 && (
                 <div className="mt-2 text-center">
                   <button
                     type="button"
-                    onClick={() => { setFilterReset('all'); setCategoryReset('all'); }}
-                    className="inline-flex items-center gap-1.5 text-[13px] text-brand-600 font-extrabold hover:gap-2 transition-all"
+                    onClick={() => {
+                      setFilterReset('all');
+                      setCategoryReset('all');
+                    }}
+                    className="inline-flex items-center gap-1.5 text-[13px] font-extrabold text-brand-600 transition-all hover:gap-2"
                   >
                     پاک کردن فیلترها
-                    <Icon name="arrow-left" className="w-3.5 h-3.5" />
+                    <Icon name="arrow-left" className="h-3.5 w-3.5" />
                   </button>
                 </div>
               )}
@@ -594,35 +661,47 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
         </AnimatePresence>
 
         {/* Pager (brand PNG arrows) */}
-        <div className="flex items-center justify-center gap-4 mt-8">
+        <div className="mt-8 flex items-center justify-center gap-4">
           <button
-            type="button" aria-label="قبلی" onClick={goPrev} disabled={totalPages <= 1}
-            className="relative w-12 h-12 rounded-full hover:scale-110 active:scale-95
-                       transition-transform duration-200 disabled:opacity-40
-                       disabled:cursor-not-allowed disabled:hover:scale-100"
+            type="button"
+            aria-label="قبلی"
+            onClick={goPrev}
+            disabled={totalPages <= 1}
+            className="relative h-12 w-12 rounded-full transition-transform duration-200 hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
-            <Image src="/brand/pager-arrow-prev.png" alt="" fill sizes="48px" className="object-contain" />
+            <Image
+              src="/brand/pager-arrow-prev.png"
+              alt=""
+              fill
+              sizes="48px"
+              className="object-contain"
+            />
           </button>
           <button
-            type="button" aria-label="بعدی" onClick={goNext} disabled={totalPages <= 1}
-            className="relative w-12 h-12 rounded-full hover:scale-110 active:scale-95
-                       transition-transform duration-200 disabled:opacity-40
-                       disabled:cursor-not-allowed disabled:hover:scale-100"
+            type="button"
+            aria-label="بعدی"
+            onClick={goNext}
+            disabled={totalPages <= 1}
+            className="relative h-12 w-12 rounded-full transition-transform duration-200 hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
-            <Image src="/brand/pager-arrow-next.png" alt="" fill sizes="48px" className="object-contain" />
+            <Image
+              src="/brand/pager-arrow-next.png"
+              alt=""
+              fill
+              sizes="48px"
+              className="object-contain"
+            />
           </button>
         </div>
 
         {/* Footer actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8 md:mt-10">
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row md:mt-10">
           <Link
             href="/#kindness"
-            className="inline-flex items-center gap-2 h-12 px-7 rounded-full
-                       bg-white border-2 border-brand-500 text-brand-700 font-extrabold text-[14px]
-                       hover:bg-brand-50 transition-colors"
+            className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-brand-500 bg-white px-7 text-[14px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
           >
             <span>مشاهده همه آگهی‌ها</span>
-            <Icon name="arrow-left" className="w-4 h-4" />
+            <Icon name="arrow-left" className="h-4 w-4" />
           </Link>
           <PostListingSplit />
         </div>
@@ -646,7 +725,9 @@ export function KindnessSection({ listings }: { listings: KindListing[] }) {
 /* ───────────────────────────────────────────────────────────────────────── */
 
 function ListingCard({
-  l, delay = 0, onOpenAlbum,
+  l,
+  delay = 0,
+  onOpenAlbum,
 }: {
   l: KindListing;
   delay?: number;
@@ -669,22 +750,14 @@ function ListingCard({
          - desktop (1024+) : 3 columns → calc((100% - 2*1.25rem) / 3)
          Combined with parent flex+wrap+justify-center, any orphan in the
          last row auto-centres. min-w-0 keeps long content from blowing out. */
-      className="group flex flex-col bg-white rounded-[26px] overflow-hidden isolate
-                 shadow-[0_2px_10px_-4px_rgba(15,20,32,.06)]
-                 hover:shadow-[0_22px_44px_-22px_rgba(11,53,48,.22)]
-                 hover:-translate-y-1 transition-all duration-300
-                 w-full
-                 sm:w-[calc((100%-1.25rem)/2)]
-                 lg:w-[calc((100%-2.5rem)/3)]
-                 min-w-0"
+      className="group isolate flex w-full min-w-0 flex-col overflow-hidden rounded-[26px] bg-white shadow-[0_2px_10px_-4px_rgba(15,20,32,.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_44px_-22px_rgba(11,53,48,.22)] sm:w-[calc((100%-1.25rem)/2)] lg:w-[calc((100%-2.5rem)/3)]"
     >
       {/* Cover — fixed 16:10 box, taps OPEN the album lightbox so the user
           can browse every uploaded image without leaving the wall. */}
       <button
         type="button"
         onClick={() => onOpenAlbum(l)}
-        className="relative aspect-[16/10] bg-ink-100 overflow-hidden block w-full text-right
-                   cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+        className="relative block aspect-[16/10] w-full cursor-zoom-in overflow-hidden bg-ink-100 text-right focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
         aria-label={`نمایش آلبوم تصاویر ${l.title}`}
       >
         <SmartImage
@@ -699,15 +772,19 @@ function ListingCard({
         {/* Gallery-count chip */}
         {galleryHint > 1 && (
           <span
-            className="absolute bottom-2 left-2 inline-flex items-center gap-1
-                       px-1.5 h-5 rounded-md bg-black/55 backdrop-blur-sm
-                       text-white text-[10.5px] font-extrabold tabular-nums
-                       ring-1 ring-white/20 z-[3]"
+            className="absolute bottom-2 left-2 z-[3] inline-flex h-5 items-center gap-1 rounded-md bg-black/55 px-1.5 text-[10.5px] font-extrabold tabular-nums text-white ring-1 ring-white/20 backdrop-blur-sm"
             aria-hidden="true"
           >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"
-                 strokeLinejoin="round">
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <rect x="3" y="3" width="18" height="18" rx="3" />
               <circle cx="9" cy="9" r="2" />
               <path d="m21 15-5-5L5 21" />
@@ -716,37 +793,37 @@ function ListingCard({
           </span>
         )}
 
-        <div aria-hidden="true"
-             className="absolute inset-x-0 bottom-0 h-1/2 z-[1]
-                        bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 z-[1] h-1/2 bg-gradient-to-t from-black/55 via-black/15 to-transparent"
+        />
 
         {/* Type badge */}
-        <span className={`absolute top-3 right-3 z-10 inline-flex items-center gap-1.5
-                          h-8 px-3 rounded-2xl text-[11.5px] font-extrabold text-white
-                          ring-[2.5px] ring-black/10
-                          ${isNeed
-                            ? 'bg-gradient-to-l from-[#f43f5e] to-[#e11d48] shadow-[0_4px_14px_-4px_rgba(225,29,72,.55)]'
-                            : 'bg-gradient-to-l from-[#2FE0CC] to-[#1FB3A8] shadow-[0_4px_14px_-4px_rgba(37,197,186,.55)]'}`}>
-          {isNeed ? <NeedIcon className="w-3.5 h-3.5" /> : <GiveIcon className="w-3.5 h-3.5" />}
+        <span
+          className={`absolute right-3 top-3 z-10 inline-flex h-8 items-center gap-1.5 rounded-2xl px-3 text-[11.5px] font-extrabold text-white ring-[2.5px] ring-black/10 ${
+            isNeed
+              ? 'bg-gradient-to-l from-[#f43f5e] to-[#e11d48] shadow-[0_4px_14px_-4px_rgba(225,29,72,.55)]'
+              : 'bg-gradient-to-l from-[#2FE0CC] to-[#1FB3A8] shadow-[0_4px_14px_-4px_rgba(37,197,186,.55)]'
+          }`}
+        >
+          {isNeed ? <NeedIcon className="h-3.5 w-3.5" /> : <GiveIcon className="h-3.5 w-3.5" />}
           {isNeed ? 'نیازمند کمک' : 'پیشنهاد کمک'}
         </span>
 
         {/* Expiry badge */}
         {daysLeft !== null && daysLeft <= 7 && (
-          <span className="absolute top-3 left-3 z-10 inline-flex items-center gap-1
-                           h-7 px-2.5 rounded-full text-[11px] font-extrabold
-                           bg-white/95 text-amber-700 backdrop-blur-md shadow-soft">
-            <Icon name="clock" className="w-3 h-3" />
-            {daysLeft === 0 ? 'امروز منقضی می‌شود' : `${daysLeft.toLocaleString('fa-IR')} روز تا انقضا`}
+          <span className="absolute left-3 top-3 z-10 inline-flex h-7 items-center gap-1 rounded-full bg-white/95 px-2.5 text-[11px] font-extrabold text-amber-700 shadow-soft backdrop-blur-md">
+            <Icon name="clock" className="h-3 w-3" />
+            {daysLeft === 0
+              ? 'امروز منقضی می‌شود'
+              : `${daysLeft.toLocaleString('fa-IR')} روز تا انقضا`}
           </span>
         )}
 
         {/* Category chip */}
         {l.categoryTitle && (
-          <span className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1
-                           h-6 px-2.5 rounded-full bg-white/95 text-ink-700
-                           text-[11px] font-extrabold backdrop-blur-md shadow-soft">
-            <Icon name="tag" className="w-3 h-3" />
+          <span className="absolute bottom-3 right-3 z-10 inline-flex h-6 items-center gap-1 rounded-full bg-white/95 px-2.5 text-[11px] font-extrabold text-ink-700 shadow-soft backdrop-blur-md">
+            <Icon name="tag" className="h-3 w-3" />
             {l.categoryTitle}
           </span>
         )}
@@ -758,12 +835,19 @@ function ListingCard({
             listing serializers never expose — they live only inside the
             owner + admin serializers. */}
         {l.contactAvailable && (
-          <span className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1
-                           h-6 px-2.5 rounded-full bg-brand-500 text-white
-                           text-[11px] font-extrabold shadow-[0_4px_14px_-4px_rgba(13,128,116,.55)]">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+          <span className="absolute bottom-3 left-3 z-10 inline-flex h-6 items-center gap-1 rounded-full bg-brand-500 px-2.5 text-[11px] font-extrabold text-white shadow-[0_4px_14px_-4px_rgba(13,128,116,.55)]">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
             </svg>
             تماس در دسترس
           </span>
@@ -771,30 +855,30 @@ function ListingCard({
       </button>
 
       {/* Body */}
-      <div className="flex flex-col flex-1 p-4 md:p-5">
-        <Link href={`/kindness-wall/${l.slug}`}
-              className="font-extrabold text-[14.5px] md:text-[15px] text-ink-900 leading-7 line-clamp-2 min-h-[3.5rem]
-                         hover:text-brand-600 transition-colors">
+      <div className="flex flex-1 flex-col p-4 md:p-5">
+        <Link
+          href={`/kindness-wall/${l.slug}`}
+          className="line-clamp-2 min-h-[3.5rem] text-[14.5px] font-extrabold leading-7 text-ink-900 transition-colors hover:text-brand-600 md:text-[15px]"
+        >
           {l.title}
         </Link>
 
-        <div className="mt-3 flex items-center justify-between text-[12px] text-ink-500 font-bold gap-2">
-          <span className="inline-flex items-center gap-1 min-w-0">
-            <Icon name="map-pin" className="w-3.5 h-3.5 text-brand-500 shrink-0" />
+        <div className="mt-3 flex items-center justify-between gap-2 text-[12px] font-bold text-ink-500">
+          <span className="inline-flex min-w-0 items-center gap-1">
+            <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0 text-brand-500" />
             <span className="truncate">
               {[l.city, l.province].filter(Boolean).join('، ') || 'سراسر کشور'}
             </span>
           </span>
-          <span className="inline-flex items-center gap-1 shrink-0">
-            <Icon name="clock" className="w-3.5 h-3.5" />
+          <span className="inline-flex shrink-0 items-center gap-1">
+            <Icon name="clock" className="h-3.5 w-3.5" />
             {relativeTime(l.publishedAt)}
           </span>
         </div>
 
-        <div className="mt-3.5 pt-3.5 border-t border-ink-100 flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0
-                            ring-2 ring-white shadow-[0_2px_6px_-2px_rgba(0,0,0,.12)]">
+        <div className="mt-3.5 flex items-center justify-between border-t border-ink-100 pt-3.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full shadow-[0_2px_6px_-2px_rgba(0,0,0,.12)] ring-2 ring-white">
               <SmartImage
                 src={l.ownerAvatar}
                 alt={l.ownerName || 'کاربر دیوار مهربانی'}
@@ -805,13 +889,13 @@ function ListingCard({
                 className="object-cover"
               />
             </div>
-            <span className="text-[12.5px] text-ink-700 truncate font-extrabold">
+            <span className="truncate text-[12.5px] font-extrabold text-ink-700">
               {l.ownerName || 'کاربر دیوار مهربانی'}
             </span>
           </div>
           {typeof l.viewCount === 'number' && l.viewCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-ink-400 tabular-nums shrink-0 font-bold">
-              <Icon name="eye" className="w-3.5 h-3.5" />
+            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold tabular-nums text-ink-400">
+              <Icon name="eye" className="h-3.5 w-3.5" />
               {l.viewCount.toLocaleString('fa-IR')}
             </span>
           )}
@@ -821,32 +905,28 @@ function ListingCard({
         <div className="mt-3.5 flex items-center gap-2">
           <Link
             href={`/kindness-wall/${l.slug}`}
-            className={`flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-xl
-                        text-white text-[13px] font-extrabold transition-all
-                        ${isNeed
-                          ? 'bg-gradient-to-l from-[#f43f5e] to-[#e11d48] hover:from-[#e11d48] hover:to-[#be123c] shadow-[0_6px_14px_-6px_rgba(225,29,72,.55)]'
-                          : 'bg-gradient-to-l from-brand-500 to-brand-700 hover:from-brand-600 hover:to-brand-800 shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)]'}`}
+            className={`inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-[13px] font-extrabold text-white transition-all ${
+              isNeed
+                ? 'bg-gradient-to-l from-[#f43f5e] to-[#e11d48] shadow-[0_6px_14px_-6px_rgba(225,29,72,.55)] hover:from-[#e11d48] hover:to-[#be123c]'
+                : 'bg-gradient-to-l from-brand-500 to-brand-700 shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)] hover:from-brand-600 hover:to-brand-800'
+            }`}
           >
             <span>مشاهده آگهی</span>
-            <Icon name="arrow-left" className="w-3.5 h-3.5" />
+            <Icon name="arrow-left" className="h-3.5 w-3.5" />
           </Link>
           <button
             type="button"
             aria-label="نشان‌گذاری"
-            className="w-10 h-10 rounded-xl border border-ink-200 text-ink-500 bg-white
-                       hover:border-rose-300 hover:text-rose-500 transition-colors
-                       inline-flex items-center justify-center"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-ink-200 bg-white text-ink-500 transition-colors hover:border-rose-300 hover:text-rose-500"
           >
-            <Icon name="heart" className="w-4 h-4" />
+            <Icon name="heart" className="h-4 w-4" />
           </button>
           <button
             type="button"
             aria-label="اشتراک‌گذاری"
-            className="w-10 h-10 rounded-xl border border-ink-200 text-ink-500 bg-white
-                       hover:border-brand-300 hover:text-brand-600 transition-colors
-                       inline-flex items-center justify-center"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-ink-200 bg-white text-ink-500 transition-colors hover:border-brand-300 hover:text-brand-600"
           >
-            <Icon name="link" className="w-4 h-4" />
+            <Icon name="link" className="h-4 w-4" />
           </button>
         </div>
       </div>

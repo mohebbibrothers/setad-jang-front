@@ -29,11 +29,7 @@ function getServerSnapshot() {
 }
 
 export function useAuth() {
-  const isAuthenticated = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    getServerSnapshot,
-  );
+  const isAuthenticated = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [user, setUser] = useState<AuthUser | null>(cachedUser);
   const [loading, setLoading] = useState<boolean>(isAuthenticated && !cachedUser);
   const [error, setError] = useState<string | null>(null);

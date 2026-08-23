@@ -10,14 +10,52 @@ import type { ReactElement } from 'react';
  */
 
 export type IconName =
-  | 'search' | 'menu' | 'close' | 'chevron-down' | 'chevron-left' | 'chevron-right'
-  | 'login' | 'plus' | 'send' | 'paperclip' | 'attach' | 'check' | 'eye' | 'heart' | 'link'
-  | 'instagram' | 'twitter' | 'linkedin' | 'telegram' | 'aparat'
-  | 'user' | 'users' | 'phone' | 'id-card' | 'category-pick' | 'message-square'
-  | 'map-pin' | 'clock' | 'tag' | 'shield' | 'handshake' | 'megaphone'
-  | 'helping-hand' | 'graduation' | 'scale' | 'flag' | 'hand-heart'
-  | 'sparkles' | 'play' | 'arrow-left' | 'filter' | 'grid' | 'list'
-  | 'heart-handshake' | 'gavel' | 'gift';
+  | 'search'
+  | 'menu'
+  | 'close'
+  | 'chevron-down'
+  | 'chevron-left'
+  | 'chevron-right'
+  | 'login'
+  | 'plus'
+  | 'send'
+  | 'paperclip'
+  | 'attach'
+  | 'check'
+  | 'eye'
+  | 'heart'
+  | 'link'
+  | 'instagram'
+  | 'twitter'
+  | 'linkedin'
+  | 'telegram'
+  | 'aparat'
+  | 'user'
+  | 'users'
+  | 'phone'
+  | 'id-card'
+  | 'category-pick'
+  | 'message-square'
+  | 'map-pin'
+  | 'clock'
+  | 'tag'
+  | 'shield'
+  | 'handshake'
+  | 'megaphone'
+  | 'helping-hand'
+  | 'graduation'
+  | 'scale'
+  | 'flag'
+  | 'hand-heart'
+  | 'sparkles'
+  | 'play'
+  | 'arrow-left'
+  | 'filter'
+  | 'grid'
+  | 'list'
+  | 'heart-handshake'
+  | 'gavel'
+  | 'gift';
 
 type Props = {
   name: IconName;
@@ -28,9 +66,7 @@ type Props = {
 };
 
 export function Icon({ name, className, label, strokeWidth = 2 }: Props) {
-  const aria = label
-    ? { role: 'img' as const, 'aria-label': label }
-    : { 'aria-hidden': true };
+  const aria = label ? { role: 'img' as const, 'aria-label': label } : { 'aria-hidden': true };
   return (
     <svg
       viewBox="0 0 24 24"
@@ -48,20 +84,20 @@ export function Icon({ name, className, label, strokeWidth = 2 }: Props) {
 }
 
 const PATHS: Record<IconName, ReactElement> = {
-  'search': (
+  search: (
     <>
       <circle cx="11" cy="11" r="7" />
       <path d="m20 20-3.5-3.5" />
     </>
   ),
-  'menu': (
+  menu: (
     <>
       <line x1="3" y1="6" x2="21" y2="6" />
       <line x1="3" y1="12" x2="21" y2="12" />
       <line x1="3" y1="18" x2="21" y2="18" />
     </>
   ),
-  'close': (
+  close: (
     <>
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
@@ -76,70 +112,78 @@ const PATHS: Record<IconName, ReactElement> = {
       <polyline points="12 19 5 12 12 5" />
     </>
   ),
-  'login': (
+  login: (
     <>
       <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
       <polyline points="10 17 15 12 10 7" />
       <line x1="15" y1="12" x2="3" y2="12" />
     </>
   ),
-  'plus': (
+  plus: (
     <>
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
     </>
   ),
-  'send': (
+  send: (
     <g transform="rotate(-45 12 12)">
       <path d="M22 2 11 13" />
       <path d="M22 2 15 22 11 13 2 9z" />
     </g>
   ),
-  'paperclip': <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />,
-  'attach':    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />,
-  'check': <polyline points="20 6 9 17 4 12" />,
-  'eye': (
+  paperclip: (
+    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+  ),
+  attach: (
+    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+  ),
+  check: <polyline points="20 6 9 17 4 12" />,
+  eye: (
     <>
       <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
       <circle cx="12" cy="12" r="3" />
     </>
   ),
-  'heart': <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />,
-  'link': (
+  heart: (
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+  ),
+  link: (
     <>
       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
     </>
   ),
-  'instagram': (
+  instagram: (
     <>
       <rect x="3" y="3" width="18" height="18" rx="5" />
       <circle cx="12" cy="12" r="4" />
       <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none" />
     </>
   ),
-  'twitter': <path d="M22 4.01c-1 .49-1.98.689-3 .99-1.121-1.265-2.783-1.335-4.38-.737S11.977 6.323 12 8v1c-3.245.083-6.135-1.395-8-4 0 0-4.182 7.433 4 11-1.872 1.247-3.739 2.088-6 2 3.308 1.803 6.913 2.423 10.034 1.517 3.58-1.04 6.522-3.723 7.651-7.742a13.84 13.84 0 0 0 .497-3.753C21.998 7.773 23.5 5.755 22 4.01z" />,
-  'linkedin': (
+  twitter: (
+    <path d="M22 4.01c-1 .49-1.98.689-3 .99-1.121-1.265-2.783-1.335-4.38-.737S11.977 6.323 12 8v1c-3.245.083-6.135-1.395-8-4 0 0-4.182 7.433 4 11-1.872 1.247-3.739 2.088-6 2 3.308 1.803 6.913 2.423 10.034 1.517 3.58-1.04 6.522-3.723 7.651-7.742a13.84 13.84 0 0 0 .497-3.753C21.998 7.773 23.5 5.755 22 4.01z" />
+  ),
+  linkedin: (
     <>
       <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z" />
       <rect x="2" y="9" width="4" height="12" />
       <circle cx="4" cy="4" r="2" />
     </>
   ),
-  'telegram': <path d="M21.5 4.5 2.5 11.5l5 2 2 6 3-4 5 4 4-15z" />,
-  'aparat': (
+  telegram: <path d="M21.5 4.5 2.5 11.5l5 2 2 6 3-4 5 4 4-15z" />,
+  aparat: (
     <>
       <circle cx="12" cy="12" r="9" />
       <polygon points="10 8 16 12 10 16" fill="currentColor" stroke="none" />
     </>
   ),
-  'user': (
+  user: (
     <>
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
     </>
   ),
-  'users': (
+  users: (
     <>
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
@@ -147,7 +191,9 @@ const PATHS: Record<IconName, ReactElement> = {
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </>
   ),
-  'phone': <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />,
+  phone: (
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+  ),
   'id-card': (
     <>
       <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -172,21 +218,23 @@ const PATHS: Record<IconName, ReactElement> = {
       <circle cx="12" cy="10" r="3" />
     </>
   ),
-  'clock': (
+  clock: (
     <>
       <circle cx="12" cy="12" r="9" />
       <polyline points="12 7 12 12 16 14" />
     </>
   ),
-  'tag': (
+  tag: (
     <>
       <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
       <line x1="7" y1="7" x2="7.01" y2="7" />
     </>
   ),
-  'shield': <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
-  'handshake': <path d="M8.5 14.5 4 19a2.121 2.121 0 0 0 0 3 2.121 2.121 0 0 0 3 0l4-4M14 7l3-3 4 4-3 3M9 11l5-5 4 4-5 5z" />,
-  'megaphone': (
+  shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+  handshake: (
+    <path d="M8.5 14.5 4 19a2.121 2.121 0 0 0 0 3 2.121 2.121 0 0 0 3 0l4-4M14 7l3-3 4 4-3 3M9 11l5-5 4 4-5 5z" />
+  ),
+  megaphone: (
     <>
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
       <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
@@ -199,14 +247,14 @@ const PATHS: Record<IconName, ReactElement> = {
       <path d="M11 13V5a2 2 0 1 1 4 0v5" />
     </>
   ),
-  'graduation': (
+  graduation: (
     <>
       <path d="M22 10v6" />
       <path d="M2 10l10-5 10 5-10 5z" />
       <path d="M6 12v5c3 3 9 3 12 0v-5" />
     </>
   ),
-  'scale': (
+  scale: (
     <>
       <path d="M12 3v18" />
       <path d="M3 8h18" />
@@ -215,7 +263,7 @@ const PATHS: Record<IconName, ReactElement> = {
       <path d="M8 21h8" />
     </>
   ),
-  'flag': (
+  flag: (
     <>
       <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
       <line x1="4" y1="22" x2="4" y2="15" />
@@ -227,10 +275,10 @@ const PATHS: Record<IconName, ReactElement> = {
       <path d="M5 12l-3-3 4-4 3 3" />
     </>
   ),
-  'sparkles': <path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 14.6 7 18.2l1.9-5.8L4 8.8h6.1z" />,
-  'play': <polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none" />,
-  'filter': <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />,
-  'grid': (
+  sparkles: <path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 14.6 7 18.2l1.9-5.8L4 8.8h6.1z" />,
+  play: <polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none" />,
+  filter: <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />,
+  grid: (
     <>
       <rect x="3" y="3" width="7" height="7" rx="1" />
       <rect x="14" y="3" width="7" height="7" rx="1" />
@@ -238,7 +286,7 @@ const PATHS: Record<IconName, ReactElement> = {
       <rect x="14" y="14" width="7" height="7" rx="1" />
     </>
   ),
-  'list': (
+  list: (
     <>
       <line x1="8" y1="6" x2="21" y2="6" />
       <line x1="8" y1="12" x2="21" y2="12" />
@@ -258,7 +306,7 @@ const PATHS: Record<IconName, ReactElement> = {
     </>
   ),
   /* Gavel — pillar icon for R4J / justice */
-  'gavel': (
+  gavel: (
     <>
       <path d="m14.5 12.5-8 8a2.121 2.121 0 1 1-3-3l8-8" />
       <path d="m16 16 6-6" />
@@ -268,7 +316,7 @@ const PATHS: Record<IconName, ReactElement> = {
     </>
   ),
   /* Gift — pillar icon for دیوار مهربانی */
-  'gift': (
+  gift: (
     <>
       <rect x="3" y="8" width="18" height="4" rx="1" />
       <path d="M12 8v13" />

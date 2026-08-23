@@ -87,19 +87,13 @@ export default function AboutBesatPage() {
       {/* ── Breadcrumb strip ─────────────────────────────────────────
        * Small, unobtrusive, single-row. Also visible for the
        * BreadcrumbList JSON-LD emitted by <AboutBesat/>. */}
-      <nav
-        aria-label="مسیر پیمایش"
-        className="bg-white border-b border-ink-100"
-      >
-        <div className="container-edge py-3 text-[13px] text-ink-500 flex items-center gap-1.5">
-          <Link
-            href="/"
-            className="hover:text-brand-700 transition-colors font-medium"
-          >
+      <nav aria-label="مسیر پیمایش" className="border-b border-ink-100 bg-white">
+        <div className="container-edge flex items-center gap-1.5 py-3 text-[13px] text-ink-500">
+          <Link href="/" className="font-medium transition-colors hover:text-brand-700">
             خانه
           </Link>
-          <ChevronLeft className="w-3.5 h-3.5 text-ink-300" aria-hidden="true" />
-          <span className="text-ink-900 font-bold">درباره بعثت</span>
+          <ChevronLeft className="h-3.5 w-3.5 text-ink-300" aria-hidden="true" />
+          <span className="font-bold text-ink-900">درباره بعثت</span>
         </div>
       </nav>
 

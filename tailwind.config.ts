@@ -20,7 +20,7 @@ const config: Config = {
       colors: {
         // Brand palette — eyedropped from graphic designer's mockup
         brand: {
-          50:  '#E6F3F1',
+          50: '#E6F3F1',
           100: '#C2E0DB',
           200: '#92CABF',
           300: '#5DB3A4',
@@ -34,7 +34,7 @@ const config: Config = {
         },
         // brighter cyan-teal used in "+ جدید" CTA buttons in design
         mint: {
-          50:  '#E6F8F6',
+          50: '#E6F8F6',
           100: '#C5EFEB',
           400: '#3FD0C2',
           500: '#25C5BA',
@@ -42,7 +42,7 @@ const config: Config = {
           700: '#178C84',
         },
         accent: {
-          50:  '#FFF1E6',
+          50: '#FFF1E6',
           100: '#FFDCB8',
           200: '#FFC085',
           300: '#FFA552',
@@ -61,7 +61,7 @@ const config: Config = {
           700: '#C77815',
         },
         ink: {
-          50:  '#F7F8FA',
+          50: '#F7F8FA',
           100: '#EEF1F4',
           200: '#D9DEE5',
           300: '#B7C0CC',
@@ -74,8 +74,8 @@ const config: Config = {
         },
         success: '#16A06B',
         warning: '#F59E0B',
-        danger:  '#DC2626',
-        info:    '#2563EB',
+        danger: '#DC2626',
+        info: '#2563EB',
         surface: {
           DEFAULT: '#FFFFFF',
           muted: '#F4F7F8',
@@ -98,19 +98,21 @@ const config: Config = {
         glow: '0 0 40px -4px rgba(31, 138, 122, 0.45)',
       },
       backgroundImage: {
-        'grid-pattern': "url(\"data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M40 0H0v40' fill='none' stroke='%231F8A7A' stroke-opacity='0.06' stroke-width='1'/%3E%3C/svg%3E\")",
-        'noise': "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        'grid-pattern':
+          "url(\"data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M40 0H0v40' fill='none' stroke='%231F8A7A' stroke-opacity='0.06' stroke-width='1'/%3E%3C/svg%3E\")",
+        noise:
+          "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
       },
       keyframes: {
         'fade-in-up': {
           '0%': { opacity: '0', transform: 'translateY(20px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
-        'float': {
+        float: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-8px)' },
         },
-        'shimmer': {
+        shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
@@ -121,8 +123,8 @@ const config: Config = {
       },
       animation: {
         'fade-in-up': 'fade-in-up 0.6s ease-out both',
-        'float': 'float 6s ease-in-out infinite',
-        'shimmer': 'shimmer 2.5s linear infinite',
+        float: 'float 6s ease-in-out infinite',
+        shimmer: 'shimmer 2.5s linear infinite',
         'pulse-ring': 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
     },

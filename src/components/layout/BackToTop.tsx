@@ -40,7 +40,11 @@ export function BackToTop() {
     const behavior: ScrollBehavior = reduced ? 'auto' : 'smooth';
 
     // Hit every scroll surface — different browsers honour different ones.
-    try { window.scrollTo({ top: 0, left: 0, behavior }); } catch { /* old browsers */ }
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior });
+    } catch {
+      /* old browsers */
+    }
     if (document.scrollingElement) {
       try {
         document.scrollingElement.scrollTo({ top: 0, left: 0, behavior });
@@ -49,32 +53,31 @@ export function BackToTop() {
       }
     }
     if (document.documentElement) document.documentElement.scrollTop = 0;
-    if (document.body)            document.body.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
   };
 
   return (
     <div
-      className={`relative mt-7 flex justify-center transition-opacity duration-300
-                  ${visible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      className={`relative mt-7 flex justify-center transition-opacity duration-300 ${visible ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
     >
       <button
         type="button"
         onClick={scrollToTop}
         aria-label="بازگشت به ابتدای صفحه"
-        className="group inline-flex items-center gap-2 text-[12px] font-extrabold text-ink-500
-                   hover:text-brand-700 transition-colors bg-transparent border-0 cursor-pointer
-                   font-[inherit] focus:outline-none focus-visible:text-brand-700"
+        className="group inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent font-[inherit] text-[12px] font-extrabold text-ink-500 transition-colors hover:text-brand-700 focus:outline-none focus-visible:text-brand-700"
       >
-        <span
-          className="w-7 h-7 rounded-full bg-white border border-ink-200
-                     flex items-center justify-center
-                     shadow-[0_2px_6px_-3px_rgba(15,20,32,.10)]
-                     transition-all duration-200
-                     group-hover:border-brand-300 group-hover:-translate-y-0.5
-                     group-hover:shadow-[0_6px_12px_-4px_rgba(13,128,116,.30)]"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-ink-200 bg-white shadow-[0_2px_6px_-3px_rgba(15,20,32,.10)] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-brand-300 group-hover:shadow-[0_6px_12px_-4px_rgba(13,128,116,.30)]">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
             <polyline points="18 15 12 9 6 15" />
           </svg>
         </span>

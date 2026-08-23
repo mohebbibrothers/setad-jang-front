@@ -20,26 +20,23 @@ type Partner = { label: string; href: string };
 
 const PARTNERS: Partner[] = [
   { label: 'رسانه‌ی رهبر انقلاب', href: 'https://rahbar.ir/' },
-  { label: 'رسانه‌ی رهبر شهید',   href: 'https://khamenei.ir/' },
-  { label: 'جانفدا',                href: 'https://janfadaa.ir/' },
+  { label: 'رسانه‌ی رهبر شهید', href: 'https://khamenei.ir/' },
+  { label: 'جانفدا', href: 'https://janfadaa.ir/' },
 ];
 
 export function TopBar() {
   return (
-    <div className="hidden md:block bg-brand-600 text-white text-[12.5px]">
-      <div className="container-edge h-9 flex items-center gap-4">
+    <div className="hidden bg-brand-600 text-[12.5px] text-white md:block">
+      <div className="container-edge flex h-9 items-center gap-4">
         {/* Partner links — visually RIGHT in RTL, open in a new tab. */}
-        <nav
-          aria-label="پیوندهای شریکان"
-          className="flex items-center gap-8"
-        >
+        <nav aria-label="پیوندهای شریکان" className="flex items-center gap-8">
           {PARTNERS.map((p) => (
             <Link
               key={p.href}
               href={p.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="opacity-90 hover:opacity-100 transition-opacity"
+              className="opacity-90 transition-opacity hover:opacity-100"
             >
               {p.label}
             </Link>
@@ -48,14 +45,26 @@ export function TopBar() {
 
         {/* Social icons — visually LEFT */}
         <div className="mr-auto flex items-center gap-3">
-          <Link href="#" aria-label="اینستاگرام" className="opacity-90 hover:opacity-100 transition-opacity">
-            <Instagram className="w-4 h-4" />
+          <Link
+            href="#"
+            aria-label="اینستاگرام"
+            className="opacity-90 transition-opacity hover:opacity-100"
+          >
+            <Instagram className="h-4 w-4" />
           </Link>
-          <Link href="#" aria-label="توییتر" className="opacity-90 hover:opacity-100 transition-opacity">
-            <Twitter className="w-4 h-4" />
+          <Link
+            href="#"
+            aria-label="توییتر"
+            className="opacity-90 transition-opacity hover:opacity-100"
+          >
+            <Twitter className="h-4 w-4" />
           </Link>
-          <Link href="#" aria-label="لینکدین" className="opacity-90 hover:opacity-100 transition-opacity">
-            <Linkedin className="w-4 h-4" />
+          <Link
+            href="#"
+            aria-label="لینکدین"
+            className="opacity-90 transition-opacity hover:opacity-100"
+          >
+            <Linkedin className="h-4 w-4" />
           </Link>
         </div>
       </div>

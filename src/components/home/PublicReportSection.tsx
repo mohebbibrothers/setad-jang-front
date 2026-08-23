@@ -67,17 +67,17 @@ const SUBJECT_ICON: IconName = 'category-pick';
 // ── Backend-mirrored limits (apps.public_reports.validators) ────────────
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const;
 const MAX_IMAGE_SIZE_MB = 5;
-const MAX_FILE_SIZE     = MAX_IMAGE_SIZE_MB * 1024 * 1024;
-const MAX_ATTACHMENTS   = 5;     // mirrors MAX_ATTACHMENTS_PER_REPORT
+const MAX_FILE_SIZE = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+const MAX_ATTACHMENTS = 5; // mirrors MAX_ATTACHMENTS_PER_REPORT
 
 // ── Backend-mirrored field caps (apps.public_reports.models) ────────────
-const FULL_NAME_MAX  = 150;      // Report.full_name max_length=150
-const PHONE_MAX      = 14;       // Report.phone_number max_length=14
+const FULL_NAME_MAX = 150; // Report.full_name max_length=150
+const PHONE_MAX = 14; // Report.phone_number max_length=14
 
 // Frontend-only UX hints (description has no DB max on backend)
-const DESC_MIN          = 30;
-const DESC_MAX          = 5000;
-const COOLDOWN_SECS     = 12;    // matches anon throttle (5/min ≈ 12s)
+const DESC_MIN = 30;
+const DESC_MAX = 5000;
+const COOLDOWN_SECS = 12; // matches anon throttle (5/min ≈ 12s)
 
 type FormState = {
   full_name: string;
@@ -87,7 +87,10 @@ type FormState = {
 };
 
 const INITIAL: FormState = {
-  full_name: '', phone_number: '', subject_id: '', description: '',
+  full_name: '',
+  phone_number: '',
+  subject_id: '',
+  description: '',
 };
 
 function getExt(name: string): string {
@@ -100,7 +103,14 @@ function getExt(name: string): string {
 /* ───────────────────────────────────────────────────────────────────────── */
 
 function Field({
-  icon, placeholder, value, onChange, type = 'text', inputMode, maxLength, required,
+  icon,
+  placeholder,
+  value,
+  onChange,
+  type = 'text',
+  inputMode,
+  maxLength,
+  required,
 }: {
   icon: React.ReactNode;
   placeholder: string;
@@ -114,12 +124,7 @@ function Field({
   return (
     <div className="relative">
       {/* Icon disc — soft brand-tinted, premium-badge feel */}
-      <span
-        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 pointer-events-none
-                   w-9 h-9 rounded-xl flex items-center justify-center
-                   bg-gradient-to-br from-brand-50 to-brand-100
-                   text-brand-600 shadow-[inset_0_0_0_1px_rgba(13,128,116,.08)]"
-      >
+      <span className="pointer-events-none absolute right-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 text-brand-600 shadow-[inset_0_0_0_1px_rgba(13,128,116,.08)]">
         {icon}
       </span>
       <input
@@ -131,9 +136,7 @@ function Field({
         aria-label={placeholder}
         maxLength={maxLength}
         dir="rtl"
-        className="w-full h-12 pr-12 pl-4 rounded-xl bg-white text-ink-800 text-[14px]
-                   outline-none focus:ring-2 focus:ring-white/60 placeholder:text-ink-400
-                   text-right font-medium transition-shadow"
+        className="h-12 w-full rounded-xl bg-white pl-4 pr-12 text-right text-[14px] font-medium text-ink-800 outline-none transition-shadow placeholder:text-ink-400 focus:ring-2 focus:ring-white/60"
       />
     </div>
   );
@@ -144,7 +147,9 @@ function Field({
 /* ───────────────────────────────────────────────────────────────────────── */
 
 function SubjectDropdown({
-  subjects, value, onChange,
+  subjects,
+  value,
+  onChange,
 }: {
   subjects: Subject[];
   value: string;
@@ -159,7 +164,9 @@ function SubjectDropdown({
     function onDown(e: MouseEvent | TouchEvent) {
       if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
     }
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false); }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
     document.addEventListener('mousedown', onDown);
     document.addEventListener('touchstart', onDown, { passive: true });
     document.addEventListener('keydown', onKey);
@@ -177,18 +184,10 @@ function SubjectDropdown({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={`relative w-full h-12 pr-12 pl-12 rounded-xl bg-white text-right
-                    text-[14px] font-medium outline-none transition-shadow
-                    ${open ? 'ring-2 ring-white/60' : ''}
-                    ${selected ? 'text-ink-800' : 'text-ink-400'}`}
+        className={`relative h-12 w-full rounded-xl bg-white pl-12 pr-12 text-right text-[14px] font-medium outline-none transition-shadow ${open ? 'ring-2 ring-white/60' : ''} ${selected ? 'text-ink-800' : 'text-ink-400'}`}
       >
-        <span
-          className="absolute right-2 top-1/2 -translate-y-1/2
-                     w-9 h-9 rounded-xl flex items-center justify-center
-                     bg-gradient-to-br from-brand-50 to-brand-100
-                     text-brand-600 shadow-[inset_0_0_0_1px_rgba(13,128,116,.08)]"
-        >
-          <Icon name={SUBJECT_ICON} className="w-4 h-4" />
+        <span className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 text-brand-600 shadow-[inset_0_0_0_1px_rgba(13,128,116,.08)]">
+          <Icon name={SUBJECT_ICON} className="h-4 w-4" />
         </span>
 
         <span className="block truncate">
@@ -196,11 +195,10 @@ function SubjectDropdown({
         </span>
 
         <span
-          className={`absolute left-3 top-1/2 -translate-y-1/2 text-ink-500
-                      transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
+          className={`absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
           aria-hidden="true"
         >
-          <Icon name="chevron-down" className="w-4 h-4" />
+          <Icon name="chevron-down" className="h-4 w-4" />
         </span>
       </button>
 
@@ -209,21 +207,23 @@ function SubjectDropdown({
           <motion.ul
             role="listbox"
             initial={{ opacity: 0, y: 10, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0,  scale: 1 }}
-            exit={{    opacity: 0, y: 6,  scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 380, damping: 26, mass: 0.6 }}
-            className="absolute z-30 inset-x-0 mt-2 p-2 rounded-2xl bg-white
-                       shadow-[0_24px_60px_-12px_rgba(0,0,0,.30),0_0_0_1px_rgba(217,222,229,.7)]
-                       max-h-[340px] overflow-y-auto"
+            className="absolute inset-x-0 z-30 mt-2 max-h-[340px] overflow-y-auto rounded-2xl bg-white p-2 shadow-[0_24px_60px_-12px_rgba(0,0,0,.30),0_0_0_1px_rgba(217,222,229,.7)]"
           >
             {subjects.length === 0 && (
-              <li role="presentation" className="px-3 py-5 flex flex-col items-center text-center">
-                <span className="mb-2.5 w-10 h-10 rounded-xl bg-gradient-to-br from-ink-100 to-ink-50
-                                 text-ink-400 flex items-center justify-center" aria-hidden="true">
-                  <Icon name={SUBJECT_ICON} className="w-5 h-5" />
+              <li role="presentation" className="flex flex-col items-center px-3 py-5 text-center">
+                <span
+                  className="mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-ink-100 to-ink-50 text-ink-400"
+                  aria-hidden="true"
+                >
+                  <Icon name={SUBJECT_ICON} className="h-5 w-5" />
                 </span>
-                <span className="block text-[13px] font-extrabold text-ink-700">دسته‌بندی‌ای یافت نشد</span>
-                <span className="block mt-1 text-[11.5px] text-ink-500 font-medium leading-5">
+                <span className="block text-[13px] font-extrabold text-ink-700">
+                  دسته‌بندی‌ای یافت نشد
+                </span>
+                <span className="mt-1 block text-[11.5px] font-medium leading-5 text-ink-500">
                   دسته‌بندی‌های گزارش توسط مدیران سامانه ثبت می‌شوند.
                 </span>
               </li>
@@ -236,35 +236,36 @@ function SubjectDropdown({
                     type="button"
                     role="option"
                     aria-selected={isActive}
-                    onClick={() => { onChange(s.id); setOpen(false); }}
-                    className={`group/item w-full flex items-start gap-3.5 px-3 py-3 rounded-xl
-                                text-right transition-colors duration-150
-                                ${isActive
-                                  ? 'bg-brand-50 text-brand-700'
-                                  : 'text-ink-800 hover:bg-ink-50'}`}
+                    onClick={() => {
+                      onChange(s.id);
+                      setOpen(false);
+                    }}
+                    className={`group/item flex w-full items-start gap-3.5 rounded-xl px-3 py-3 text-right transition-colors duration-150 ${
+                      isActive ? 'bg-brand-50 text-brand-700' : 'text-ink-800 hover:bg-ink-50'
+                    }`}
                   >
                     <span
-                      className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0
-                                  transition-all duration-200 mt-0.5
-                                  ${isActive
-                                    ? 'bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-[0_6px_14px_-4px_rgba(13,128,116,.55)]'
-                                    : 'bg-gradient-to-br from-brand-50 to-brand-100 text-brand-600 group-hover/item:from-brand-100 group-hover/item:to-brand-200'}`}
+                      className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ${
+                        isActive
+                          ? 'bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-[0_6px_14px_-4px_rgba(13,128,116,.55)]'
+                          : 'bg-gradient-to-br from-brand-50 to-brand-100 text-brand-600 group-hover/item:from-brand-100 group-hover/item:to-brand-200'
+                      }`}
                     >
-                      <Icon name={SUBJECT_ICON} className="w-[18px] h-[18px]" />
+                      <Icon name={SUBJECT_ICON} className="h-[18px] w-[18px]" />
                     </span>
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-[13.5px] font-extrabold leading-6 truncate">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13.5px] font-extrabold leading-6">
                         {s.name}
                       </span>
                       {s.description && (
-                        <span className="block mt-1 text-[11.5px] text-ink-500 font-medium leading-5 line-clamp-2">
+                        <span className="mt-1 line-clamp-2 block text-[11.5px] font-medium leading-5 text-ink-500">
                           {s.description}
                         </span>
                       )}
                     </span>
                     {isActive && (
-                      <span className="shrink-0 text-brand-600 mt-2">
-                        <Icon name="check" className="w-4 h-4" strokeWidth={3} />
+                      <span className="mt-2 shrink-0 text-brand-600">
+                        <Icon name="check" className="h-4 w-4" strokeWidth={3} />
                       </span>
                     )}
                   </button>
@@ -282,17 +283,12 @@ function SubjectDropdown({
 /*  Slide-to-verify ('من ربات نیستم' replacement)                            */
 /* ───────────────────────────────────────────────────────────────────────── */
 
-function SlideToVerify({
-  verified, onVerify,
-}: {
-  verified: boolean;
-  onVerify: () => void;
-}) {
+function SlideToVerify({ verified, onVerify }: { verified: boolean; onVerify: () => void }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [x, setX] = useState(0);
   const [maxX, setMaxX] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const THUMB = 48;                  // px
+  const THUMB = 48; // px
   const COMPLETE_RATIO = 0.92;
 
   const measure = useCallback(() => {
@@ -333,14 +329,16 @@ function SlideToVerify({
   const beginDrag = (clientX: number) => {
     if (verified) return;
     setDragging(true);
-    const t = trackRef.current; if (!t) return;
+    const t = trackRef.current;
+    if (!t) return;
     const rect = t.getBoundingClientRect();
     const offset = rect.right - clientX - THUMB / 2 - 4;
     setX(Math.min(maxX, Math.max(0, offset)));
   };
   const moveDrag = (clientX: number) => {
     if (!dragging || verified) return;
-    const t = trackRef.current; if (!t) return;
+    const t = trackRef.current;
+    if (!t) return;
     const rect = t.getBoundingClientRect();
     const offset = rect.right - clientX - THUMB / 2 - 4;
     setX(Math.min(maxX, Math.max(0, offset)));
@@ -386,11 +384,11 @@ function SlideToVerify({
     <div className="w-full select-none">
       <div
         ref={trackRef}
-        className={`relative w-full h-14 rounded-full overflow-hidden
-                    ring-1 transition-colors duration-300
-                    ${verified
-                      ? 'bg-gradient-to-l from-emerald-500 via-emerald-500 to-brand-500 ring-emerald-300/40'
-                      : 'bg-gradient-to-br from-white via-white to-ink-50 ring-black/[0.06]'}`}
+        className={`relative h-14 w-full overflow-hidden rounded-full ring-1 transition-colors duration-300 ${
+          verified
+            ? 'bg-gradient-to-l from-emerald-500 via-emerald-500 to-brand-500 ring-emerald-300/40'
+            : 'bg-gradient-to-br from-white via-white to-ink-50 ring-black/[0.06]'
+        }`}
         style={{ touchAction: 'pan-y' }}
         role="button"
         aria-label="برای تأیید بکشید"
@@ -399,9 +397,7 @@ function SlideToVerify({
         {/* Fill */}
         <div
           aria-hidden="true"
-          className="absolute inset-y-0 right-0 transition-colors duration-300
-                     bg-gradient-to-l from-brand-400 to-brand-600
-                     pointer-events-none"
+          className="pointer-events-none absolute inset-y-0 right-0 bg-gradient-to-l from-brand-400 to-brand-600 transition-colors duration-300"
           style={{
             width: `${verified ? 100 : progress * 100}%`,
             opacity: verified ? 0 : 0.95,
@@ -409,17 +405,17 @@ function SlideToVerify({
         />
 
         {/* Background label */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1] px-14">
+        <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center px-14">
           {verified ? (
-            <span className="inline-flex items-center gap-1.5 text-[12.5px] font-extrabold text-white truncate">
-              <Icon name="check" className="w-4 h-4 shrink-0" strokeWidth={3} />
+            <span className="inline-flex items-center gap-1.5 truncate text-[12.5px] font-extrabold text-white">
+              <Icon name="check" className="h-4 w-4 shrink-0" strokeWidth={3} />
               <span className="truncate">تأیید شد — آماده ارسال</span>
             </span>
           ) : (
-            <span className={`inline-flex items-center gap-1.5 text-[12.5px] font-extrabold
-                              transition-colors duration-200 truncate
-                              ${pctNum > 30 ? 'text-white' : 'text-ink-600'}`}>
-              <Icon name="shield" className="w-4 h-4 shrink-0" />
+            <span
+              className={`inline-flex items-center gap-1.5 truncate text-[12.5px] font-extrabold transition-colors duration-200 ${pctNum > 30 ? 'text-white' : 'text-ink-600'}`}
+            >
+              <Icon name="shield" className="h-4 w-4 shrink-0" />
               <span className="truncate">برای تأیید انسان بودن، بکشید ←</span>
             </span>
           )}
@@ -433,13 +429,21 @@ function SlideToVerify({
                 key={i}
                 aria-hidden="true"
                 initial={{ opacity: 0, scale: 0.4 }}
-                animate={{ opacity: [0, 1, 0], scale: [0.4, 1.2, 0.4],
-                           x: (i - 2) * 22, y: -8 + (i % 2) * 14 }}
-                transition={{ duration: 1.2, delay: 0.1 + i * 0.06, repeat: Infinity, repeatDelay: 1.6 }}
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
-                           text-white pointer-events-none z-[2]"
+                animate={{
+                  opacity: [0, 1, 0],
+                  scale: [0.4, 1.2, 0.4],
+                  x: (i - 2) * 22,
+                  y: -8 + (i % 2) * 14,
+                }}
+                transition={{
+                  duration: 1.2,
+                  delay: 0.1 + i * 0.06,
+                  repeat: Infinity,
+                  repeatDelay: 1.6,
+                }}
+                className="pointer-events-none absolute left-1/2 top-1/2 z-[2] -translate-x-1/2 -translate-y-1/2 text-white"
               >
-                <Icon name="sparkles" className="w-3 h-3" />
+                <Icon name="sparkles" className="h-3 w-3" />
               </motion.span>
             ))}
           </>
@@ -454,20 +458,32 @@ function SlideToVerify({
           onMouseDown={(e) => beginDrag(e.clientX)}
           onTouchStart={(e) => beginDrag(e.touches[0].clientX)}
           animate={{ right: thumbRight }}
-          transition={{ type: dragging ? 'tween' : 'spring', stiffness: 300, damping: 28, duration: dragging ? 0 : 0.3 }}
-          className={`absolute top-1/2 -translate-y-1/2 w-12 h-12 rounded-full
-                      flex items-center justify-center cursor-grab active:cursor-grabbing
-                      shadow-[0_8px_18px_-4px_rgba(0,0,0,.30)]
-                      transition-colors duration-300 z-[3]
-                      ${verified
-                        ? 'bg-white text-emerald-600'
-                        : 'bg-gradient-to-br from-brand-500 to-brand-700 text-white'}`}
+          transition={{
+            type: dragging ? 'tween' : 'spring',
+            stiffness: 300,
+            damping: 28,
+            duration: dragging ? 0 : 0.3,
+          }}
+          className={`absolute top-1/2 z-[3] flex h-12 w-12 -translate-y-1/2 cursor-grab items-center justify-center rounded-full shadow-[0_8px_18px_-4px_rgba(0,0,0,.30)] transition-colors duration-300 active:cursor-grabbing ${
+            verified
+              ? 'bg-white text-emerald-600'
+              : 'bg-gradient-to-br from-brand-500 to-brand-700 text-white'
+          }`}
         >
           {verified ? (
-            <Icon name="check" className="w-5 h-5" strokeWidth={3} />
+            <Icon name="check" className="h-5 w-5" strokeWidth={3} />
           ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
               <polyline points="11 17 6 12 11 7" />
               <polyline points="18 17 13 12 18 7" />
             </svg>
@@ -491,15 +507,15 @@ export function PublicReportSection({
    *  from the page-level loader so SSR has data on first paint. */
   subjects?: Subject[];
 }) {
-  const [form, setForm]             = useState<FormState>(INITIAL);
-  const [files, setFiles]           = useState<File[]>([]);
-  const [previews, setPreviews]     = useState<Preview[]>([]);
-  const [verified, setVerified]     = useState(false);
+  const [form, setForm] = useState<FormState>(INITIAL);
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<Preview[]>([]);
+  const [verified, setVerified] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted]   = useState(false);
-  const [errorMsg, setErrorMsg]     = useState<string | null>(null);
-  const [cooldown, setCooldown]     = useState(0);
-  const fileInputRef                = useRef<HTMLInputElement>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Build object URLs as files change (state-driven, NOT memo). Each URL
   // is revoked when the file it points to leaves the list. This fixes the
@@ -512,7 +528,10 @@ export function PublicReportSection({
       const next: Preview[] = files.map((f) => {
         const k = f.name + '|' + f.size;
         const existing = byKey.get(k);
-        if (existing) { byKey.delete(k); return existing; }
+        if (existing) {
+          byKey.delete(k);
+          return existing;
+        }
         return { name: f.name, size: f.size, url: URL.createObjectURL(f) };
       });
       // Revoke URLs of files that were removed.
@@ -552,7 +571,9 @@ export function PublicReportSection({
         continue;
       }
       if (f.size > MAX_FILE_SIZE) {
-        errors.push(`${f.name}: حجم بیش از ${MAX_IMAGE_SIZE_MB.toLocaleString('fa-IR')} مگابایت است.`);
+        errors.push(
+          `${f.name}: حجم بیش از ${MAX_IMAGE_SIZE_MB.toLocaleString('fa-IR')} مگابایت است.`,
+        );
         continue;
       }
       if (files.length + ok.length >= MAX_ATTACHMENTS) {
@@ -586,9 +607,9 @@ export function PublicReportSection({
       //   ReportCreateSerializer:
       //     full_name, phone_number?, subject_id, description, attachments[]
       const fd = new FormData();
-      fd.append('full_name',   form.full_name.trim());
+      fd.append('full_name', form.full_name.trim());
       if (form.phone_number.trim()) fd.append('phone_number', form.phone_number.trim());
-      fd.append('subject_id',  form.subject_id);
+      fd.append('subject_id', form.subject_id);
       fd.append('description', form.description.trim());
       files.forEach((f) => fd.append('attachments', f));
 
@@ -601,9 +622,10 @@ export function PublicReportSection({
       setCooldown(COOLDOWN_SECS);
       setTimeout(() => setSubmitted(false), 6000);
     } catch (err) {
-      const msg = err instanceof ApiError
-        ? err.message
-        : 'ارتباط با سرور برقرار نشد. لطفاً دوباره تلاش کنید.';
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : 'ارتباط با سرور برقرار نشد. لطفاً دوباره تلاش کنید.';
       setErrorMsg(msg);
     } finally {
       setSubmitting(false);
@@ -624,20 +646,22 @@ export function PublicReportSection({
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="bg-brand-500 rounded-[2rem] md:rounded-[2.5rem] p-5 md:p-8 lg:p-10
-                     text-white relative overflow-hidden"
+          className="relative overflow-hidden rounded-[2rem] bg-brand-500 p-5 text-white md:rounded-[2.5rem] md:p-8 lg:p-10"
         >
-          <div aria-hidden="true" className="absolute inset-0 opacity-[0.06] pointer-events-none"
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-[0.06]"
             style={{
               backgroundImage:
                 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.7) 1px, transparent 1px)',
               backgroundSize: '22px 22px',
-            }} />
+            }}
+          />
 
           {/* ── Identity row ───────────────────────────────────────────── */}
-          <div className="relative grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-3 md:mb-4">
+          <div className="relative mb-3 grid grid-cols-1 gap-3 md:mb-4 md:grid-cols-2 md:gap-4">
             <Field
-              icon={<Icon name="user" className="w-4 h-4" />}
+              icon={<Icon name="user" className="h-4 w-4" />}
               placeholder="نام و نام خانوادگی"
               value={form.full_name}
               onChange={(v) => update('full_name', v.slice(0, FULL_NAME_MAX))}
@@ -645,10 +669,12 @@ export function PublicReportSection({
               required
             />
             <Field
-              icon={<Icon name="phone" className="w-4 h-4" />}
+              icon={<Icon name="phone" className="h-4 w-4" />}
               placeholder="شماره تماس (اختیاری)"
               value={form.phone_number}
-              onChange={(v) => update('phone_number', v.replace(/[^0-9+]/g, '').slice(0, PHONE_MAX))}
+              onChange={(v) =>
+                update('phone_number', v.replace(/[^0-9+]/g, '').slice(0, PHONE_MAX))
+              }
               maxLength={PHONE_MAX}
               type="tel"
               inputMode="tel"
@@ -667,13 +693,10 @@ export function PublicReportSection({
           {/* ── Description with live char counter ─────────────────────── */}
           <div className="relative mb-4 md:mb-5">
             <span
-              className="absolute right-2 top-2 z-10 pointer-events-none
-                         w-9 h-9 rounded-xl flex items-center justify-center
-                         bg-gradient-to-br from-brand-50 to-brand-100
-                         text-brand-600 shadow-[inset_0_0_0_1px_rgba(13,128,116,.08)]"
+              className="pointer-events-none absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 text-brand-600 shadow-[inset_0_0_0_1px_rgba(13,128,116,.08)]"
               aria-hidden="true"
             >
-              <Icon name="message-square" className="w-4 h-4" />
+              <Icon name="message-square" className="h-4 w-4" />
             </span>
             <textarea
               value={form.description}
@@ -683,12 +706,11 @@ export function PublicReportSection({
               rows={5}
               maxLength={DESC_MAX}
               dir="rtl"
-              className="w-full pr-12 pl-4 pt-3 pb-4 rounded-xl bg-white text-ink-800 text-[14px]
-                         outline-none focus:ring-2 focus:ring-white/60 resize-y min-h-[140px]
-                         text-right leading-7 font-medium"
+              className="min-h-[140px] w-full resize-y rounded-xl bg-white pb-4 pl-4 pr-12 pt-3 text-right text-[14px] font-medium leading-7 text-ink-800 outline-none focus:ring-2 focus:ring-white/60"
             />
-            <div className={`mt-1.5 px-1 flex items-center justify-between text-[11px] font-bold
-                             ${form.description.length < DESC_MIN ? 'text-white/70' : 'text-white/90'}`}>
+            <div
+              className={`mt-1.5 flex items-center justify-between px-1 text-[11px] font-bold ${form.description.length < DESC_MIN ? 'text-white/70' : 'text-white/90'}`}
+            >
               <span>
                 {form.description.length < DESC_MIN
                   ? `حداقل ${DESC_MIN.toLocaleString('fa-IR')} کاراکتر`
@@ -703,14 +725,14 @@ export function PublicReportSection({
 
           {/* ── Attachments dropzone ───────────────────────────────────── */}
           <div className="relative mb-5">
-            <div className="text-[12.5px] font-extrabold text-white/90 mb-2 px-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+            <div className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 px-1 text-[12.5px] font-extrabold text-white/90">
               <span className="inline-flex items-center gap-1.5">
-                <Icon name="attach" className="w-3.5 h-3.5" />
+                <Icon name="attach" className="h-3.5 w-3.5" />
                 <span>پیوست تصویری</span>
               </span>
-              <span className="text-white/70 font-medium">
-                (اختیاری — حداکثر {MAX_ATTACHMENTS.toLocaleString('fa-IR')} تصویر،
-                هر کدام تا {MAX_IMAGE_SIZE_MB.toLocaleString('fa-IR')} مگابایت — jpg / jpeg / png / webp)
+              <span className="font-medium text-white/70">
+                (اختیاری — حداکثر {MAX_ATTACHMENTS.toLocaleString('fa-IR')} تصویر، هر کدام تا{' '}
+                {MAX_IMAGE_SIZE_MB.toLocaleString('fa-IR')} مگابایت — jpg / jpeg / png / webp)
               </span>
             </div>
             <Dropzone
@@ -724,52 +746,71 @@ export function PublicReportSection({
           </div>
 
           {/* ── Slide-to-verify + submit row ───────────────────────────── */}
-          <div className="relative grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-center">
-            <SlideToVerify
-              verified={verified}
-              onVerify={() => setVerified(true)}
-            />
+          <div className="relative grid grid-cols-1 items-center gap-3 md:grid-cols-[1fr_auto]">
+            <SlideToVerify verified={verified} onVerify={() => setVerified(true)} />
             <button
               type="submit"
               disabled={!canSubmit}
-              className="relative inline-flex items-center justify-center gap-2 h-14 px-7
-                         rounded-full bg-white text-brand-700 font-extrabold text-[14px]
-                         shadow-[0_8px_24px_-8px_rgba(0,0,0,.35)]
-                         transition-all duration-200
-                         disabled:opacity-50 disabled:cursor-not-allowed
-                         enabled:hover:scale-[1.02] enabled:active:scale-[.98] overflow-hidden"
+              className="relative inline-flex h-14 items-center justify-center gap-2 overflow-hidden rounded-full bg-white px-7 text-[14px] font-extrabold text-brand-700 shadow-[0_8px_24px_-8px_rgba(0,0,0,.35)] transition-all duration-200 enabled:hover:scale-[1.02] enabled:active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <AnimatePresence mode="wait" initial={false}>
                 {submitting ? (
                   <motion.span
                     key="loading"
-                    initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
                     className="inline-flex items-center gap-2"
                   >
-                    <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
-                      <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                    <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeOpacity="0.25"
+                        strokeWidth="3"
+                      />
+                      <path
+                        d="M22 12a10 10 0 0 0-10-10"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      />
                     </svg>
                     در حال ارسال…
                   </motion.span>
                 ) : cooldown > 0 ? (
                   <motion.span
                     key="cool"
-                    initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
                     className="inline-flex items-center gap-2 tabular-nums"
                   >
-                    <Icon name="clock" className="w-4 h-4" />
+                    <Icon name="clock" className="h-4 w-4" />
                     لطفاً {cooldown.toLocaleString('fa-IR')} ثانیه صبر کنید
                   </motion.span>
                 ) : (
                   <motion.span
                     key="idle"
-                    initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
                     className="inline-flex items-center gap-2"
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                         strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-                         className="-mt-0.5">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className="-mt-0.5"
+                    >
                       <path d="M22 2 11 13" />
                       <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
                     </svg>
@@ -788,16 +829,13 @@ export function PublicReportSection({
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 4 }}
-                className="relative mt-4 flex items-start gap-3 px-4 py-3 rounded-xl
-                           bg-emerald-500/[0.15] ring-1 ring-emerald-300/40 text-white"
+                className="relative mt-4 flex items-start gap-3 rounded-xl bg-emerald-500/[0.15] px-4 py-3 text-white ring-1 ring-emerald-300/40"
                 role="status"
               >
-                <span className="w-8 h-8 rounded-full bg-emerald-500 text-white
-                                 flex items-center justify-center shrink-0
-                                 shadow-[0_6px_14px_-4px_rgba(16,185,129,.55)]">
-                  <Icon name="check" className="w-4 h-4" strokeWidth={3} />
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_6px_14px_-4px_rgba(16,185,129,.55)]">
+                  <Icon name="check" className="h-4 w-4" strokeWidth={3} />
                 </span>
-                <div className="flex-1 text-[13px] leading-7 font-bold">
+                <div className="flex-1 text-[13px] font-bold leading-7">
                   گزارش شما با موفقیت دریافت شد. کارشناسان ما در اولین فرصت پیگیری خواهند کرد.
                 </div>
               </motion.div>
@@ -808,22 +846,20 @@ export function PublicReportSection({
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 4 }}
-                className="relative mt-4 flex items-start gap-3 px-4 py-3 rounded-xl
-                           bg-rose-500/[0.18] ring-1 ring-rose-300/40 text-white"
+                className="relative mt-4 flex items-start gap-3 rounded-xl bg-rose-500/[0.18] px-4 py-3 text-white ring-1 ring-rose-300/40"
                 role="alert"
               >
-                <span className="w-8 h-8 rounded-full bg-rose-500 text-white
-                                 flex items-center justify-center shrink-0">
-                  <Icon name="close" className="w-4 h-4" strokeWidth={3} />
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-white">
+                  <Icon name="close" className="h-4 w-4" strokeWidth={3} />
                 </span>
-                <div className="flex-1 text-[13px] leading-7 font-bold">{errorMsg}</div>
+                <div className="flex-1 text-[13px] font-bold leading-7">{errorMsg}</div>
               </motion.div>
             )}
           </AnimatePresence>
 
           {/* ── Privacy reassurance ────────────────────────────────────── */}
-          <p className="relative mt-4 text-center text-[11.5px] text-white/80 font-medium">
-            <Icon name="shield" className="w-3 h-3 inline-block -mt-0.5 ml-1" />
+          <p className="relative mt-4 text-center text-[11.5px] font-medium text-white/80">
+            <Icon name="shield" className="-mt-0.5 ml-1 inline-block h-3 w-3" />
             هویت گزارش‌دهنده محرمانه است · داده‌ها رمزنگاری شده ارسال می‌شوند
           </p>
         </motion.form>
@@ -837,7 +873,12 @@ export function PublicReportSection({
 /* ───────────────────────────────────────────────────────────────────────── */
 
 function Dropzone({
-  files, previews, onAdd, onRemove, fileInputRef, max,
+  files,
+  previews,
+  onAdd,
+  onRemove,
+  fileInputRef,
+  max,
 }: {
   files: File[];
   previews: Preview[];
@@ -854,19 +895,28 @@ function Dropzone({
   return (
     <>
       <label
-        onDragEnter={(e) => { e.preventDefault(); setHover(true); }}
-        onDragOver={(e)  => { e.preventDefault(); setHover(true); }}
-        onDragLeave={(e) => { e.preventDefault(); setHover(false); }}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          setHover(true);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setHover(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          setHover(false);
+        }}
         onDrop={(e) => {
           e.preventDefault();
           setHover(false);
           if (e.dataTransfer.files?.length) onAdd(e.dataTransfer.files);
         }}
-        className={`relative block w-full rounded-2xl border-2 border-dashed cursor-pointer
-                    transition-all duration-200 px-4 py-5 text-center
-                    ${hover
-                      ? 'border-white bg-white/[0.15]'
-                      : 'border-white/30 bg-white/[0.06] hover:bg-white/[0.10]'}`}
+        className={`relative block w-full cursor-pointer rounded-2xl border-2 border-dashed px-4 py-5 text-center transition-all duration-200 ${
+          hover
+            ? 'border-white bg-white/[0.15]'
+            : 'border-white/30 bg-white/[0.06] hover:bg-white/[0.10]'
+        }`}
       >
         <input
           ref={fileInputRef}
@@ -874,20 +924,21 @@ function Dropzone({
           multiple
           accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
           className="sr-only"
-          onChange={(e) => { if (e.target.files) onAdd(e.target.files); e.currentTarget.value = ''; }}
+          onChange={(e) => {
+            if (e.target.files) onAdd(e.target.files);
+            e.currentTarget.value = '';
+          }}
           disabled={remaining <= 0}
         />
         <div className="flex flex-col items-center gap-1.5">
-          <span className="w-10 h-10 rounded-full bg-white/[0.15] flex items-center justify-center">
-            <Icon name="attach" className="w-5 h-5 text-white" />
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.15]">
+            <Icon name="attach" className="h-5 w-5 text-white" />
           </span>
           <p className="text-[13px] font-extrabold text-white">
-            {remaining > 0
-              ? 'تصاویر را اینجا بکشید یا کلیک کنید'
-              : 'به سقف پیوست رسیدید'}
+            {remaining > 0 ? 'تصاویر را اینجا بکشید یا کلیک کنید' : 'به سقف پیوست رسیدید'}
           </p>
           {remaining > 0 && (
-            <p className="text-[11px] text-white/75 font-medium">
+            <p className="text-[11px] font-medium text-white/75">
               {`${remaining.toLocaleString('fa-IR')} فایل دیگر می‌توانید اضافه کنید (jpg / jpeg / png / webp)`}
             </p>
           )}
@@ -895,29 +946,27 @@ function Dropzone({
       </label>
 
       {previews.length > 0 && (
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
           {previews.map((p, i) => (
             <div
               key={p.url}
-              className="relative aspect-square rounded-xl overflow-hidden bg-white/10
-                         ring-1 ring-white/20 group"
+              className="group relative aspect-square overflow-hidden rounded-xl bg-white/10 ring-1 ring-white/20"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.url} alt={p.name} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
               <button
                 type="button"
-                onClick={(e) => { e.preventDefault(); onRemove(i); }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onRemove(i);
+                }}
                 aria-label="حذف"
-                className="absolute top-1.5 left-1.5 w-7 h-7 rounded-full bg-rose-500 text-white
-                           flex items-center justify-center
-                           shadow-[0_4px_12px_-4px_rgba(225,29,72,.6)]
-                           hover:scale-110 active:scale-95 transition-transform"
+                className="absolute left-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-rose-500 text-white shadow-[0_4px_12px_-4px_rgba(225,29,72,.6)] transition-transform hover:scale-110 active:scale-95"
               >
-                <Icon name="close" className="w-3.5 h-3.5" strokeWidth={3} />
+                <Icon name="close" className="h-3.5 w-3.5" strokeWidth={3} />
               </button>
-              <p className="absolute bottom-1 inset-x-1 text-[10px] text-white font-bold
-                            truncate text-center px-1 drop-shadow opacity-0 group-hover:opacity-100 transition-opacity">
+              <p className="absolute inset-x-1 bottom-1 truncate px-1 text-center text-[10px] font-bold text-white opacity-0 drop-shadow transition-opacity group-hover:opacity-100">
                 {(p.size / 1024).toFixed(0)} KB
               </p>
             </div>

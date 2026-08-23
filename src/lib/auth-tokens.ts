@@ -26,7 +26,7 @@
 
 import { siteConfig } from './site';
 
-const KEY_ACCESS  = 'sj.auth.access';
+const KEY_ACCESS = 'sj.auth.access';
 const KEY_REFRESH = 'sj.auth.refresh';
 const KEY_PERSIST = 'sj.auth.persist';
 
@@ -217,7 +217,11 @@ const listeners = new Set<Listener>();
 
 function notifyListeners() {
   listeners.forEach((fn) => {
-    try { fn(); } catch { /* isolate one bad listener from the others */ }
+    try {
+      fn();
+    } catch {
+      /* isolate one bad listener from the others */
+    }
   });
 }
 

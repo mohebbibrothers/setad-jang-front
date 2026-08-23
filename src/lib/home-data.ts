@@ -46,8 +46,8 @@ type ApiCampaign = {
   title: string;
   sponsor?: ApiSponsor;
   cover_image?: string | null;
-  total_amount?: number;          // Toman
-  share_price?: number;           // Toman
+  total_amount?: number; // Toman
+  share_price?: number; // Toman
   total_shares?: number;
   purchased_shares?: number;
   remaining_shares?: number;
@@ -81,12 +81,12 @@ export async function loadCampaigns(): Promise<CampaignCard[]> {
     sponsor: c.sponsor?.name || 'گروه جهادی',
     sponsorLogo: absoluteMediaUrl(c.sponsor?.logo),
     totalAmount: c.total_amount ?? 0,
-    sharePrice: c.share_price ?? (c.total_amount && c.total_shares
-      ? Math.floor(c.total_amount / c.total_shares) : 0),
+    sharePrice:
+      c.share_price ??
+      (c.total_amount && c.total_shares ? Math.floor(c.total_amount / c.total_shares) : 0),
     sharesTotal: c.total_shares ?? 0,
-    sharesRemaining: c.remaining_shares ?? Math.max(
-      0, (c.total_shares ?? 0) - (c.purchased_shares ?? 0),
-    ),
+    sharesRemaining:
+      c.remaining_shares ?? Math.max(0, (c.total_shares ?? 0) - (c.purchased_shares ?? 0)),
     progressPercent: c.progress_percent ?? 0,
     coverUrl: absoluteMediaUrl(c.cover_image),
     participantCount: c.participant_count,
@@ -162,10 +162,10 @@ type ApiCourse = {
 };
 
 export async function loadLmsCategories(): Promise<EduCategory[]> {
-  const data = await safeApiFetch<Paginated<ApiLmsCategory>>(
-    '/lms/categories/?page_size=20',
-    { revalidate: 600, tags: ['homepage', 'lms-categories', 'lms'] },
-  );
+  const data = await safeApiFetch<Paginated<ApiLmsCategory>>('/lms/categories/?page_size=20', {
+    revalidate: 600,
+    tags: ['homepage', 'lms-categories', 'lms'],
+  });
   const list = unwrap(data);
   return list.map((c) => ({ slug: c.slug, title: c.title, count: c.courses_count }));
 }
@@ -227,7 +227,14 @@ type ApiKindness = {
   cover_image?: string | null;
   /** Present ONLY when the caller was the DETAIL endpoint. Optional. */
   description?: string;
-  images?: Array<{ id: number; image: string; alt_text?: string; caption?: string; is_cover?: boolean; order?: number }>;
+  images?: Array<{
+    id: number;
+    image: string;
+    alt_text?: string;
+    caption?: string;
+    is_cover?: boolean;
+    order?: number;
+  }>;
   contact_available?: boolean;
 };
 export async function loadKindnessListings(): Promise<KindListing[]> {
@@ -258,7 +265,10 @@ export async function loadKindnessListings(): Promise<KindListing[]> {
         if (!!b.is_cover !== !!a.is_cover) return b.is_cover ? 1 : -1;
         return (a.order ?? 0) - (b.order ?? 0);
       })
-      .map((g) => ({ url: absoluteMediaUrl(g.image) ?? '', alt: g.alt_text || g.caption || l.title }))
+      .map((g) => ({
+        url: absoluteMediaUrl(g.image) ?? '',
+        alt: g.alt_text || g.caption || l.title,
+      }))
       .filter((g) => !!g.url),
   }));
 }
@@ -480,7 +490,9 @@ async function fetchTabyinAllComplete(hardCap = 5000): Promise<ApiTabyin[]> {
   );
   if (!firstPage) return [];
   const firstBatch = unwrap(firstPage);
-  const total = Array.isArray(firstPage) ? firstBatch.length : (firstPage.count ?? firstBatch.length);
+  const total = Array.isArray(firstPage)
+    ? firstBatch.length
+    : (firstPage.count ?? firstBatch.length);
   const effectiveTotal = Math.min(total, hardCap);
   const totalPages = Math.ceil(effectiveTotal / PAGE_SIZE);
 
@@ -560,7 +572,6 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
     fetchTabyinBucket(PER_BUCKET, 'other'),
   ]);
 
-
   // Merge + dedupe by external_id, preferring the newest
   // source_created_at when duplicates occur.
   const byId = new Map<string, ApiTabyin>();
@@ -568,9 +579,12 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
     for (const t of bucket) {
       if (!t?.external_id) continue;
       const prev = byId.get(t.external_id);
-      if (!prev) { byId.set(t.external_id, t); continue; }
+      if (!prev) {
+        byId.set(t.external_id, t);
+        continue;
+      }
       const prevTs = prev.source_created_at ? Date.parse(prev.source_created_at) : 0;
-      const currTs = t.source_created_at   ? Date.parse(t.source_created_at)    : 0;
+      const currTs = t.source_created_at ? Date.parse(t.source_created_at) : 0;
       if (currTs >= prevTs) byId.set(t.external_id, t);
     }
   }
@@ -605,7 +619,7 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
     const hasImageAttachment = attachments.some((a) => a.media_type === 'image');
     const hasVideoAttachment = attachments.some((a) => a.media_type === 'video');
     const imageCover = attachments.find((a) => a.media_type === 'image' && a.url);
-    const video      = attachments.find((a) => a.media_type === 'video' && a.url);
+    const video = attachments.find((a) => a.media_type === 'video' && a.url);
     const videoOrAudio = attachments.find((a) => a.duration);
 
     // Try (a) an image attachment, (b) a derivable poster from the video
@@ -613,7 +627,7 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
     // through `absoluteMediaUrl` so relative /media/... paths are
     // resolved against the backend origin.
     const videoThumbnailUrl = absoluteMediaUrl(deriveTabyinVideoThumbnailUrl(video?.url));
-    const primaryCoverUrl   = absoluteMediaUrl(imageCover?.url) ?? videoThumbnailUrl;
+    const primaryCoverUrl = absoluteMediaUrl(imageCover?.url) ?? videoThumbnailUrl;
 
     // Some external sources (armansky) require auth and 4xx on hot-link,
     // which would leave the tile with a broken frame. Only expose the
@@ -711,7 +725,13 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
 }
 
 /* ─── Public Reports ─────────────────────────────────────────────────── */
-type ApiReportSubject = { id: number; title: string; slug?: string; description?: string; order?: number };
+type ApiReportSubject = {
+  id: number;
+  title: string;
+  slug?: string;
+  description?: string;
+  order?: number;
+};
 
 export type ReportSubject = { id: string; name: string; description?: string };
 

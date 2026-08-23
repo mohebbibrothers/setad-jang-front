@@ -18,22 +18,22 @@ type Props = {
  */
 export function SectionTitle({ title, description, className }: Props) {
   return (
-    <div className={cn('text-center max-w-3xl mx-auto mb-8 md:mb-10', className)}>
+    <div className={cn('mx-auto mb-8 max-w-3xl text-center md:mb-10', className)}>
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.45 }}
-        className="inline-flex items-center justify-center gap-4 flex-row-reverse"
+        className="inline-flex flex-row-reverse items-center justify-center gap-4"
       >
-        <h2 className="text-xl md:text-[26px] font-extrabold text-brand-600">{title}</h2>
+        <h2 className="text-xl font-extrabold text-brand-600 md:text-[26px]">{title}</h2>
         <Image
           src="/brand/pattern-plus.png"
           alt=""
           width={79}
           height={80}
           aria-hidden="true"
-          className="w-11 h-11 md:w-14 md:h-14 object-contain opacity-85"
+          className="h-11 w-11 object-contain opacity-85 md:h-14 md:w-14"
         />
       </motion.div>
       {description && (
@@ -42,7 +42,7 @@ export function SectionTitle({ title, description, className }: Props) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.45, delay: 0.1 }}
-          className="mt-4 md:mt-5 text-ink-600 text-[14.5px] md:text-[15px] leading-8 max-w-2xl mx-auto"
+          className="mx-auto mt-4 max-w-2xl text-[14.5px] leading-8 text-ink-600 md:mt-5 md:text-[15px]"
         >
           {description}
         </motion.p>

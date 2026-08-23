@@ -71,7 +71,7 @@ export type TabyinItem = {
   /** When variant='quote' the tile renders as a brand-green text card */
   variant?: 'cover' | 'quote';
   /** Optional masonry sizing hints (height multipliers) */
-  tall?: boolean;          // span 2 rows on desktop
+  tall?: boolean; // span 2 rows on desktop
   /** Backend-driven extras */
   mediaType?: 'image' | 'video' | 'audio' | 'other';
   durationSeconds?: number;
@@ -106,8 +106,16 @@ function PlayIcon({ className = 'w-5 h-5' }: { className?: string }) {
 
 function VideoIcon({ className = 'w-3 h-3' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <path d="m22 8-6 4 6 4V8Z" />
       <rect x="2" y="6" width="14" height="12" rx="2" />
     </svg>
@@ -116,8 +124,16 @@ function VideoIcon({ className = 'w-3 h-3' }: { className?: string }) {
 
 function AudioIcon({ className = 'w-3 h-3' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <path d="M12 1a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z" />
       <path d="M19 10v1a7 7 0 0 1-14 0v-1" />
       <line x1="12" y1="19" x2="12" y2="23" />
@@ -127,8 +143,16 @@ function AudioIcon({ className = 'w-3 h-3' }: { className?: string }) {
 
 function ImageIcon({ className = 'w-3 h-3' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <circle cx="9" cy="9" r="2" />
       <path d="m21 15-5-5L5 21" />
@@ -138,8 +162,16 @@ function ImageIcon({ className = 'w-3 h-3' }: { className?: string }) {
 
 function GridIcon({ className = 'w-3 h-3' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
       <rect x="14" y="3" width="7" height="7" rx="1.5" />
       <rect x="3" y="14" width="7" height="7" rx="1.5" />
@@ -154,8 +186,16 @@ function GridIcon({ className = 'w-3 h-3' }: { className?: string }) {
  *  grid glyphs on the same strip. */
 function TextIcon({ className = 'w-3 h-3' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
       <polyline points="14 3 14 9 20 9" />
       <line x1="8" y1="13" x2="16" y2="13" />
@@ -226,10 +266,10 @@ function formatDuration(s?: number): string {
  * narrow phones.
  */
 const FILTERS = [
-  { key: 'all',   label: 'همه',   Glyph: GridIcon  },
+  { key: 'all', label: 'همه', Glyph: GridIcon },
   { key: 'image', label: 'تصویر', Glyph: ImageIcon },
   { key: 'video', label: 'ویدئو', Glyph: VideoIcon },
-  { key: 'text',  label: 'سایر',  Glyph: TextIcon  },
+  { key: 'text', label: 'سایر', Glyph: TextIcon },
 ] as const;
 type FilterKey = (typeof FILTERS)[number]['key'];
 
@@ -264,10 +304,16 @@ export type TabyinCounts = {
  *  underscore-prefixed unused binding so future readers of this
  *  file understand at a glance that it's intentionally dead.
  */
-export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]; counts?: TabyinCounts }) {
+export function TabyinSection({
+  items,
+  counts: _ignored,
+}: {
+  items: TabyinItem[];
+  counts?: TabyinCounts;
+}) {
   void _ignored;
   const [filter, setFilter] = useState<FilterKey>('all');
-  const [page, setPage]     = useState(0);
+  const [page, setPage] = useState(0);
 
   /*
    * ── "سایر" tab definition ────────────────────────────────────
@@ -320,25 +366,26 @@ export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]
    *      همه = تصویر + ویدئو + سایر
    *  and every tab's tile count matches its badge exactly.
    */
-  const renderableItems = useMemo(
-    () => items.filter(hasRenderableContent),
-    [items],
+  const renderableItems = useMemo(() => items.filter(hasRenderableContent), [items]);
+
+  const counts = useMemo(
+    () => ({
+      all: renderableItems.length,
+      image: renderableItems.filter((i) => i.mediaType === 'image').length,
+      video: renderableItems.filter((i) => i.mediaType === 'video').length,
+      text: renderableItems.filter(isTextItem).length,
+    }),
+    [renderableItems],
   );
 
-  const counts = useMemo(() => ({
-    all:   renderableItems.length,
-    image: renderableItems.filter((i) => i.mediaType === 'image').length,
-    video: renderableItems.filter((i) => i.mediaType === 'video').length,
-    text:  renderableItems.filter(isTextItem).length,
-  }), [renderableItems]);
-
   const filtered = useMemo(
-    () => renderableItems.filter((i) => {
-      if (filter === 'all') return true;
-      if (filter === 'text') return isTextItem(i);
-      const t = i.mediaType ?? 'image';
-      return t === filter;
-    }),
+    () =>
+      renderableItems.filter((i) => {
+        if (filter === 'all') return true;
+        if (filter === 'text') return isTextItem(i);
+        const t = i.mediaType ?? 'image';
+        return t === filter;
+      }),
     [renderableItems, filter],
   );
 
@@ -367,10 +414,7 @@ export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]
    */
   const PAGE_SIZE = 10;
   const MAX_PAGES = 10;
-  const capped = useMemo(
-    () => filtered.slice(0, PAGE_SIZE * MAX_PAGES),
-    [filtered],
-  );
+  const capped = useMemo(() => filtered.slice(0, PAGE_SIZE * MAX_PAGES), [filtered]);
   const totalPages = Math.max(1, Math.min(MAX_PAGES, Math.ceil(capped.length / PAGE_SIZE)));
 
   const visible = useMemo(
@@ -379,7 +423,9 @@ export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]
   );
 
   // Reset to first page when filter changes
-  useEffect(() => { setPage(0); }, [filter]);
+  useEffect(() => {
+    setPage(0);
+  }, [filter]);
 
   // ── Sparse-mode detection ───────────────────────────────────────────
   // When the visible set is smaller than ONE full row at the current
@@ -473,14 +519,13 @@ export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]
          *      glyphs stay legible at 11 px; smaller than that
          *      starts to strain on phones.
          */}
-        <div className="flex justify-center mb-6 w-full px-2 sm:px-0">
+        <div className="mb-6 flex w-full justify-center px-2 sm:px-0">
           <div
-            className="w-full max-w-[420px] sm:w-auto sm:max-w-full
-                       inline-flex p-1.5 sm:p-1 bg-ink-50 rounded-full
-                       ring-1 ring-ink-100 shadow-inner"
-            role="tablist" aria-label="نوع رسانه"
+            className="inline-flex w-full max-w-[420px] rounded-full bg-ink-50 p-1.5 shadow-inner ring-1 ring-ink-100 sm:w-auto sm:max-w-full sm:p-1"
+            role="tablist"
+            aria-label="نوع رسانه"
           >
-            <div className="grid grid-cols-4 gap-1 sm:flex sm:gap-0 w-full min-w-0">
+            <div className="grid w-full min-w-0 grid-cols-4 gap-1 sm:flex sm:gap-0">
               {FILTERS.map((f) => {
                 const isActive = filter === f.key;
                 const c = counts[f.key];
@@ -491,29 +536,25 @@ export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => setFilter(f.key)}
-                    className={`relative inline-flex items-center justify-center gap-1 sm:gap-1.5
-                                h-10 px-2 sm:px-4 min-w-0
-                                rounded-full text-[11px] sm:text-[12.5px] font-extrabold whitespace-nowrap
-                                transition-all duration-200
-                                ${isActive
-                                  ? 'bg-gradient-to-l from-brand-500 to-brand-700 text-white shadow-[0_8px_20px_-6px_rgba(13,128,116,.55)]'
-                                  : 'text-ink-600 hover:text-ink-900 hover:bg-white/60'}`}
+                    className={`relative inline-flex h-10 min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-full px-2 text-[11px] font-extrabold transition-all duration-200 sm:gap-1.5 sm:px-4 sm:text-[12.5px] ${
+                      isActive
+                        ? 'bg-gradient-to-l from-brand-500 to-brand-700 text-white shadow-[0_8px_20px_-6px_rgba(13,128,116,.55)]'
+                        : 'text-ink-600 hover:bg-white/60 hover:text-ink-900'
+                    }`}
                   >
-                    <f.Glyph className="w-3.5 h-3.5 shrink-0" />
+                    <f.Glyph className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{f.label}</span>
                     {/* Inline count badge — hidden on phones to guarantee fit */}
-                    <span className={`hidden sm:inline-flex items-center justify-center min-w-[20px] h-5 px-1.5
-                                      rounded-full text-[10.5px] font-extrabold tabular-nums
-                                      ${isActive ? 'bg-white/25 text-white' : 'bg-ink-100 text-ink-500'}`}>
+                    <span
+                      className={`hidden h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-extrabold tabular-nums sm:inline-flex ${isActive ? 'bg-white/25 text-white' : 'bg-ink-100 text-ink-500'}`}
+                    >
                       {c.toLocaleString('fa-IR')}
                     </span>
                     {/* Compact corner badge on phones */}
                     {c > 0 && (
-                      <span className={`sm:hidden absolute -top-1 -left-1 min-w-[16px] h-[16px]
-                                        inline-flex items-center justify-center rounded-full
-                                        text-[9.5px] font-extrabold tabular-nums px-1
-                                        ${isActive ? 'bg-white text-ink-900' : 'bg-ink-200 text-ink-600'}
-                                        ring-2 ring-ink-50`}>
+                      <span
+                        className={`absolute -left-1 -top-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1 text-[9.5px] font-extrabold tabular-nums sm:hidden ${isActive ? 'bg-white text-ink-900' : 'bg-ink-200 text-ink-600'} ring-2 ring-ink-50`}
+                      >
                         {c.toLocaleString('fa-IR')}
                       </span>
                     )}
@@ -544,12 +585,14 @@ export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]
               transition={{ duration: 0.28 }}
             >
               <EmptyState
-                title={items.length === 0
-                  ? 'هنوز محتوایی منتشر نشده'
-                  : 'محتوایی در این فیلتر یافت نشد'}
-                description={items.length === 0
-                  ? 'به‌محض انتشار اولین روایت‌های جهاد تبیین، اینجا قابل مشاهده خواهد بود.'
-                  : 'فیلتر دیگری را امتحان کن یا «همه» را انتخاب کن.'}
+                title={
+                  items.length === 0 ? 'هنوز محتوایی منتشر نشده' : 'محتوایی در این فیلتر یافت نشد'
+                }
+                description={
+                  items.length === 0
+                    ? 'به‌محض انتشار اولین روایت‌های جهاد تبیین، اینجا قابل مشاهده خواهد بود.'
+                    : 'فیلتر دیگری را امتحان کن یا «همه» را انتخاب کن.'
+                }
                 iconPath="m3 11 18-5v12L3 14v-3z M11.6 16.8a3 3 0 1 1-5.8-1.6"
               />
             </motion.div>
@@ -562,9 +605,9 @@ export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]
               transition={{ duration: 0.28 }}
               className={
                 isSparse
-                  ? 'flex flex-wrap justify-center items-start gap-3 md:gap-4'
+                  ? 'flex flex-wrap items-start justify-center gap-3 md:gap-4'
                   : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ' +
-                    'auto-rows-[120px] sm:auto-rows-[140px] md:auto-rows-[160px] ' +
+                    'auto-rows-[120px] sm:auto-rows-[140px] md:auto-rows-[160px]' +
                     'gap-3 md:gap-4'
               }
               style={isSparse ? undefined : { gridAutoFlow: 'dense' }}
@@ -580,17 +623,10 @@ export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]
                 // so `grid-auto-flow: dense` never has to spill a tall into
                 // the bottom row, where it would push the grid past its
                 // declared row count and visually escape the panel.
-                const isLastPageAndShort =
-                  visible.length < PAGE_SIZE; // last page may have fewer items
+                const isLastPageAndShort = visible.length < PAGE_SIZE; // last page may have fewer items
                 const tall = !isLastPageAndShort && (i === 0 || i === 1);
                 return (
-                  <TabyinTile
-                    key={it.id}
-                    it={it}
-                    index={i}
-                    forceTall={tall}
-                    sparse={isSparse}
-                  />
+                  <TabyinTile key={it.id} it={it} index={i} forceTall={tall} sparse={isSparse} />
                 );
               })}
             </motion.div>
@@ -598,22 +634,36 @@ export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]
         </AnimatePresence>
 
         {/* Pager (brand PNG arrows — disabled when there's a single page) */}
-        <div className="flex items-center justify-center gap-4 mt-8">
+        <div className="mt-8 flex items-center justify-center gap-4">
           <button
-            type="button" aria-label="قبلی" onClick={goPrev} disabled={totalPages <= 1}
-            className="relative w-12 h-12 rounded-full hover:scale-110 active:scale-95
-                       transition-transform duration-200 disabled:opacity-40
-                       disabled:cursor-not-allowed disabled:hover:scale-100"
+            type="button"
+            aria-label="قبلی"
+            onClick={goPrev}
+            disabled={totalPages <= 1}
+            className="relative h-12 w-12 rounded-full transition-transform duration-200 hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
-            <Image src="/brand/pager-arrow-prev.png" alt="" fill sizes="48px" className="object-contain" />
+            <Image
+              src="/brand/pager-arrow-prev.png"
+              alt=""
+              fill
+              sizes="48px"
+              className="object-contain"
+            />
           </button>
           <button
-            type="button" aria-label="بعدی" onClick={goNext} disabled={totalPages <= 1}
-            className="relative w-12 h-12 rounded-full hover:scale-110 active:scale-95
-                       transition-transform duration-200 disabled:opacity-40
-                       disabled:cursor-not-allowed disabled:hover:scale-100"
+            type="button"
+            aria-label="بعدی"
+            onClick={goNext}
+            disabled={totalPages <= 1}
+            className="relative h-12 w-12 rounded-full transition-transform duration-200 hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
-            <Image src="/brand/pager-arrow-next.png" alt="" fill sizes="48px" className="object-contain" />
+            <Image
+              src="/brand/pager-arrow-next.png"
+              alt=""
+              fill
+              sizes="48px"
+              className="object-contain"
+            />
           </button>
         </div>
 
@@ -622,24 +672,19 @@ export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]
             - 'افزودن محتوا'      → primary, mint pill (action intent,
               routes through the auth-required user-submission flow that
               maps to POST /api/v1/tabyin/me/submissions/)                */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
+        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/tabyin"
-            className="inline-flex items-center gap-2 h-12 px-7 rounded-full
-                       bg-white border-2 border-brand-500 text-brand-700 font-extrabold text-[14px]
-                       hover:bg-brand-50 transition-colors"
+            className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-brand-500 bg-white px-7 text-[14px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
           >
             <span>مشاهده همه محتوا</span>
-            <Icon name="arrow-left" className="w-4 h-4" />
+            <Icon name="arrow-left" className="h-4 w-4" />
           </Link>
           <Link
             href="/tabyin/new"
-            className="inline-flex items-center gap-2 h-12 px-7 rounded-full
-                       bg-mint-500 hover:bg-mint-600 text-white font-extrabold text-[14px]
-                       shadow-[0_8px_24px_-8px_rgba(37,197,186,.5)] transition-all
-                       hover:scale-[1.02] active:scale-[.98]"
+            className="inline-flex h-12 items-center gap-2 rounded-full bg-mint-500 px-7 text-[14px] font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(37,197,186,.5)] transition-all hover:scale-[1.02] hover:bg-mint-600 active:scale-[.98]"
           >
-            <Icon name="plus" className="w-4 h-4" strokeWidth={2.5} />
+            <Icon name="plus" className="h-4 w-4" strokeWidth={2.5} />
             <span>افزودن محتوا</span>
           </Link>
         </div>
@@ -653,19 +698,25 @@ export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]
 /* ───────────────────────────────────────────────────────────────────────── */
 
 function TabyinTile({
-  it, index, forceTall = false, sparse = false,
+  it,
+  index,
+  forceTall = false,
+  sparse = false,
 }: {
-  it: TabyinItem; index: number; forceTall?: boolean; sparse?: boolean;
+  it: TabyinItem;
+  index: number;
+  forceTall?: boolean;
+  sparse?: boolean;
 }) {
   const isQuote = it.variant === 'quote';
   const isVideo = it.mediaType === 'video';
   const isAudio = it.mediaType === 'audio';
-  const isUser  = it.origin === 'user_submitted';
+  const isUser = it.origin === 'user_submitted';
   // `forceTall` is computed PAGE-LOCALLY in the section so the tall slots
   // always align to the dense grid and never overflow on the last row.
   // The data-driven `it.tall` is intentionally ignored here.
   // In SPARSE mode every tile is short (a single centred row).
-  const tall    = !sparse && forceTall;
+  const tall = !sparse && forceTall;
   const tileHref = `/tabyin/${it.slug}`;
   const tileTarget = undefined;
   const tileRel = undefined;
@@ -678,7 +729,9 @@ function TabyinTile({
       'md:w-[calc((100%-2*1rem)/3)] md:h-[160px] ' +
       'lg:w-[calc((100%-3*1rem)/4)] ' +
       'flex-none'
-    : (tall ? 'row-span-2' : 'row-span-1');
+    : tall
+      ? 'row-span-2'
+      : 'row-span-1';
 
   return (
     <motion.article
@@ -686,11 +739,7 @@ function TabyinTile({
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97 }}
       transition={{ duration: 0.4, delay: Math.min(index * 0.025, 0.35) }}
-      className={`group relative rounded-2xl overflow-hidden isolate
-                  shadow-[0_2px_10px_-4px_rgba(15,20,32,.06)]
-                  hover:shadow-[0_22px_44px_-22px_rgba(11,53,48,.28)]
-                  hover:-translate-y-1 transition-all duration-300
-                  ${sparseSizing}`}
+      className={`group relative isolate overflow-hidden rounded-2xl shadow-[0_2px_10px_-4px_rgba(15,20,32,.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_44px_-22px_rgba(11,53,48,.28)] ${sparseSizing}`}
     >
       {isQuote ? (
         /* ── Quote tile (solid brand-green text card) ─────────────────
@@ -716,20 +765,20 @@ function TabyinTile({
          *     card doesn't look empty.
          */
         <Link
-          href={tileHref} target={tileTarget} rel={tileRel}
-          className="relative block w-full h-full text-white
-                     bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700
-                     overflow-hidden"
+          href={tileHref}
+          target={tileTarget}
+          rel={tileRel}
+          className="relative block h-full w-full overflow-hidden bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700 text-white"
         >
           {/* Decorative quote glyphs at the corners. `pointer-events-none`
               so they never intercept clicks; z-index kept below the text
               layer so the safe-area padding does the heavy lifting. */}
-          <QuoteIcon className="pointer-events-none absolute top-2.5 right-2.5 w-5 h-5 md:w-6 md:h-6 opacity-20" />
-          <QuoteIcon className="pointer-events-none absolute bottom-2.5 left-2.5 w-4 h-4 md:w-5 md:h-5 opacity-15 rotate-180" />
+          <QuoteIcon className="pointer-events-none absolute right-2.5 top-2.5 h-5 w-5 opacity-20 md:h-6 md:w-6" />
+          <QuoteIcon className="pointer-events-none absolute bottom-2.5 left-2.5 h-4 w-4 rotate-180 opacity-15 md:h-5 md:w-5" />
           {/* Subtle dotted texture */}
           <div
             aria-hidden="true"
-            className="absolute inset-0 opacity-[0.08] pointer-events-none"
+            className="pointer-events-none absolute inset-0 opacity-[0.08]"
             style={{
               backgroundImage:
                 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.85) 1px, transparent 1px)',
@@ -740,14 +789,10 @@ function TabyinTile({
               wider than the corner glyphs, then flex-centred so the
               paragraph is perfectly balanced regardless of length. */}
           <div
-            className={`absolute inset-0 flex items-center justify-center text-center
-                        px-8 md:px-10 py-8 md:py-10`}
+            className={`absolute inset-0 flex items-center justify-center px-8 py-8 text-center md:px-10 md:py-10`}
           >
             <p
-              className={`relative font-bold drop-shadow
-                          text-[12.5px] md:text-[13.5px]
-                          leading-[1.75]
-                          ${tall ? 'line-clamp-[8]' : 'line-clamp-4'}`}
+              className={`relative text-[12.5px] font-bold leading-[1.75] drop-shadow md:text-[13.5px] ${tall ? 'line-clamp-[8]' : 'line-clamp-4'}`}
               style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
             >
               {it.summary || it.title}
@@ -756,7 +801,12 @@ function TabyinTile({
         </Link>
       ) : it.coverUrl ? (
         /* ── Cover tile (image) ─────────────────────────────────────── */
-        <Link href={tileHref} target={tileTarget} rel={tileRel} className="relative block w-full h-full">
+        <Link
+          href={tileHref}
+          target={tileTarget}
+          rel={tileRel}
+          className="relative block h-full w-full"
+        >
           {isVideo && it.videoUrl ? (
             <video
               src={it.videoUrl}
@@ -772,7 +822,7 @@ function TabyinTile({
                 e.currentTarget.pause();
                 e.currentTarget.currentTime = 0;
               }}
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
             <SmartImage
@@ -785,31 +835,29 @@ function TabyinTile({
             />
           )}
           {/* Brand-teal duotone tint — unifies the wall */}
-          <div aria-hidden="true"
-               className="absolute inset-0 bg-gradient-to-br
-                          from-brand-500/[0.12] via-transparent to-brand-900/[0.18]
-                          mix-blend-multiply pointer-events-none" />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-500/[0.12] via-transparent to-brand-900/[0.18] mix-blend-multiply"
+          />
           {/* Bottom scrim for title legibility */}
-          <div aria-hidden="true"
-               className="absolute inset-x-0 bottom-0 h-3/5
-                          bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/80 via-black/30 to-transparent"
+          />
           {/* Title overlay (only when there's a title) */}
           {it.title && (
-            <p className="absolute bottom-3 inset-x-3 text-white text-[12.5px] md:text-[13px]
-                          font-extrabold leading-5 line-clamp-2 drop-shadow-[0_2px_6px_rgba(0,0,0,.6)]">
+            <p className="absolute inset-x-3 bottom-3 line-clamp-2 text-[12.5px] font-extrabold leading-5 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,.6)] md:text-[13px]">
               {it.title}
             </p>
           )}
           {/* Center play affordance — only on video tiles, fades in on hover */}
           {isVideo && (
-            <div aria-hidden="true"
-                 className="absolute inset-0 flex items-center justify-center z-[4]
-                            opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <span className="w-12 h-12 rounded-full bg-white/95 text-brand-600
-                               flex items-center justify-center
-                               shadow-[0_12px_28px_-8px_rgba(0,0,0,.55)]
-                               scale-90 group-hover:scale-100 transition-transform duration-300">
-                <PlayIcon className="w-5 h-5" />
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 z-[4] flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+            >
+              <span className="flex h-12 w-12 scale-90 items-center justify-center rounded-full bg-white/95 text-brand-600 shadow-[0_12px_28px_-8px_rgba(0,0,0,.55)] transition-transform duration-300 group-hover:scale-100">
+                <PlayIcon className="h-5 w-5" />
               </span>
             </div>
           )}
@@ -818,8 +866,10 @@ function TabyinTile({
         /* ── Fallback tile — brand-tinted placeholder, keeps the wall
              visually coherent when a piece of content has no cover. */
         <Link
-          href={tileHref} target={tileTarget} rel={tileRel}
-          className="relative block w-full h-full"
+          href={tileHref}
+          target={tileTarget}
+          rel={tileRel}
+          className="relative block h-full w-full"
           aria-label={it.title || 'محتوای تبیینی'}
         >
           <SmartImage
@@ -834,22 +884,16 @@ function TabyinTile({
 
       {/* Media-type badge — top-left (only for non-image, non-quote) */}
       {!isQuote && (isVideo || isAudio) && (
-        <span className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1
-                         h-6 px-2 rounded-full bg-black/60 text-white
-                         text-[10.5px] font-extrabold backdrop-blur-md
-                         tabular-nums">
-          {isVideo ? <VideoIcon className="w-3 h-3" /> : <AudioIcon className="w-3 h-3" />}
-          {it.durationSeconds ? formatDuration(it.durationSeconds) : (isVideo ? 'ویدئو' : 'صوت')}
+        <span className="absolute left-2.5 top-2.5 z-10 inline-flex h-6 items-center gap-1 rounded-full bg-black/60 px-2 text-[10.5px] font-extrabold tabular-nums text-white backdrop-blur-md">
+          {isVideo ? <VideoIcon className="h-3 w-3" /> : <AudioIcon className="h-3 w-3" />}
+          {it.durationSeconds ? formatDuration(it.durationSeconds) : isVideo ? 'ویدئو' : 'صوت'}
         </span>
       )}
 
       {/* 'مردمی' chip — when content was contributed by a user */}
       {!isQuote && isUser && (
-        <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1
-                         h-6 px-2 rounded-full bg-mint-500/95 text-white
-                         text-[10.5px] font-extrabold backdrop-blur-md
-                         shadow-[0_4px_12px_-4px_rgba(37,197,186,.55)]">
-          <Icon name="sparkles" className="w-3 h-3" />
+        <span className="absolute right-2.5 top-2.5 z-10 inline-flex h-6 items-center gap-1 rounded-full bg-mint-500/95 px-2 text-[10.5px] font-extrabold text-white shadow-[0_4px_12px_-4px_rgba(37,197,186,.55)] backdrop-blur-md">
+          <Icon name="sparkles" className="h-3 w-3" />
           مردمی
         </span>
       )}
@@ -860,7 +904,7 @@ function TabyinTile({
           in a new tab. When the tabyin content isn't linked back to an
           external source we hide the chip entirely — never render a
           button that does nothing. */}
-      <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 z-10">
+      <div className="absolute bottom-2.5 left-2.5 z-10 flex items-center gap-1.5">
         {it.sourceUrl ? (
           <a
             href={it.sourceUrl}
@@ -869,12 +913,9 @@ function TabyinTile({
             aria-label="مشاهده‌ی منبع اصلی"
             title="منبع اصلی"
             onClick={(e) => e.stopPropagation()}
-            className="w-7 h-7 rounded-full bg-white/90 hover:bg-white text-ink-700
-                       flex items-center justify-center backdrop-blur-md
-                       shadow-[0_2px_6px_-2px_rgba(0,0,0,.25)]
-                       hover:scale-110 transition-all duration-150"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-ink-700 shadow-[0_2px_6px_-2px_rgba(0,0,0,.25)] backdrop-blur-md transition-all duration-150 hover:scale-110 hover:bg-white"
           >
-            <Icon name="link" className="w-3.5 h-3.5" />
+            <Icon name="link" className="h-3.5 w-3.5" />
           </a>
         ) : null}
       </div>

@@ -115,46 +115,36 @@ function MetaPill({
   avatarUrl?: string;
 }) {
   return (
-    <div
-      className="h-[40px] rounded-[10px] border border-ink-200 bg-white
-                 flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 min-w-0 overflow-hidden"
-    >
+    <div className="flex h-[40px] min-w-0 items-center gap-1 overflow-hidden rounded-[10px] border border-ink-200 bg-white px-2 sm:gap-1.5 sm:px-3">
       {/* Sponsor avatar (optional) — square 22px, ring for definition */}
       {avatarUrl && (
-        <span className="relative w-[22px] h-[22px] rounded-md overflow-hidden bg-ink-50 ring-1 ring-ink-100 shrink-0">
+        <span className="relative h-[22px] w-[22px] shrink-0 overflow-hidden rounded-md bg-ink-50 ring-1 ring-ink-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={avatarUrl}
             alt=""
             loading="lazy"
-            className="w-full h-full object-cover"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = 'none';
+            }}
           />
         </span>
       )}
 
-      <span
-        className="text-[11px] sm:text-[12px] text-ink-500 font-medium leading-none
-                   whitespace-nowrap truncate max-w-[42%] shrink"
-      >
+      <span className="max-w-[42%] shrink truncate whitespace-nowrap text-[11px] font-medium leading-none text-ink-500 sm:text-[12px]">
         {label}
       </span>
 
       <span
-        className={`flex-1 min-w-0 text-center
-                    font-extrabold text-[12.5px] sm:text-[13.5px] text-ink-900
-                    whitespace-nowrap overflow-hidden text-ellipsis
-                    ${emphasis === 'num' ? 'tabular-nums' : ''}`}
+        className={`min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-center text-[12.5px] font-extrabold text-ink-900 sm:text-[13.5px] ${emphasis === 'num' ? 'tabular-nums' : ''}`}
         title={typeof value === 'string' ? value : undefined}
       >
         {typeof value === 'number' ? formatPersianNumber(value) : value}
       </span>
 
       {unit && (
-        <span
-          className="text-[10.5px] sm:text-[11px] text-ink-400 font-medium leading-none
-                     whitespace-nowrap shrink-0"
-        >
+        <span className="shrink-0 whitespace-nowrap text-[10.5px] font-medium leading-none text-ink-400 sm:text-[11px]">
           {unit}
         </span>
       )}
@@ -194,7 +184,10 @@ function HandIcon({ className = 'w-[18px] h-[18px]' }: { className?: string }) {
 /* ───────────────────────────────────────────────────────────────────────── */
 
 function Card({
-  c, delay = 0, onOpenAlbum, onOpenParticipate,
+  c,
+  delay = 0,
+  onOpenAlbum,
+  onOpenParticipate,
 }: {
   c: CampaignCard;
   delay?: number;
@@ -210,7 +203,7 @@ function Card({
   //      not the helping-hand glyph fallback)
   //   3. the gradient + glyph fallback as a last resort
   const thumbUrl = c.coverUrl ?? c.gallery?.[0]?.url;
-  const galleryHint = (c.gallery?.length ?? (c.coverUrl ? 1 : 0));
+  const galleryHint = c.gallery?.length ?? (c.coverUrl ? 1 : 0);
 
   // ─── Backend-driven lifecycle signals ───────────────────────────────
   // Mirrors CampaignPublicListSerializer + CampaignStatus enum:
@@ -219,10 +212,10 @@ function Card({
   //   status='published' + remaining > 0 → active
   const isFullyFunded = !!c.isFullyFunded || c.sharesRemaining === 0;
   const statusDisplay = c.statusDisplay ?? '';
-  const isCompleted   = statusDisplay === 'تکمیل‌شده' || isFullyFunded;
-  const isClosed      = statusDisplay === 'بسته‌شده';
-  const ctaDisabled   = isFullyFunded || isClosed || isCompleted;
-  const ctaLabel      = isFullyFunded
+  const isCompleted = statusDisplay === 'تکمیل‌شده' || isFullyFunded;
+  const isClosed = statusDisplay === 'بسته‌شده';
+  const ctaDisabled = isFullyFunded || isClosed || isCompleted;
+  const ctaLabel = isFullyFunded
     ? 'تأمین شد'
     : isClosed
       ? 'بسته شد'
@@ -248,28 +241,21 @@ function Card({
          - desktop (≥ 1024px)        : 2 columns → calc((100% - 1.25rem)/2)
          Combined with parent flex+wrap+justify-center, an orphan in the
          last row auto-centres. min-w-0 lets long titles shrink cleanly. */
-      className="group bg-white rounded-[18px] border border-ink-100
-                 shadow-[0_2px_10px_-4px_rgba(15,20,32,.06)]
-                 hover:shadow-[0_22px_44px_-22px_rgba(11,53,48,.22)]
-                 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden
-                 w-full lg:w-[calc((100%-1.25rem)/2)] min-w-0"
+      className="group w-full min-w-0 overflow-hidden rounded-[18px] border border-ink-100 bg-white shadow-[0_2px_10px_-4px_rgba(15,20,32,.06)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_44px_-22px_rgba(11,53,48,.22)] lg:w-[calc((100%-1.25rem)/2)]"
     >
       <div className="p-3 sm:p-4 md:p-5">
         {/* ── Body: 2-column layout (cover on RTL-right, content on left) ── */}
         <div className="flex items-stretch gap-3 sm:gap-4">
-
           {/* Right column: cover + percent + progress (DOM-first = RTL-right).
               On very narrow phones (< 380px) the cover is pinned to 84px
               so the value column keeps enough breathing room for the
               "باقی‌مانده" / "تعداد سهم" pair below. */}
-          <div className="flex flex-col items-center shrink-0 w-[84px] sm:w-[110px] md:w-[130px]">
+          <div className="flex w-[84px] shrink-0 flex-col items-center sm:w-[110px] md:w-[130px]">
             <button
               type="button"
               onClick={() => onOpenAlbum(c)}
               aria-label={`نمایش آلبوم تصاویر ${c.title}`}
-              className="relative w-full aspect-square rounded-[14px] overflow-hidden
-                         ring-1 ring-ink-100 bg-ink-50 cursor-zoom-in
-                         focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="relative aspect-square w-full cursor-zoom-in overflow-hidden rounded-[14px] bg-ink-50 ring-1 ring-ink-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <SmartImage
                 src={thumbUrl}
@@ -283,15 +269,19 @@ function Card({
               {/* Album hint chip — bottom-left of the cover */}
               {galleryHint > 1 && (
                 <span
-                  className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1
-                             px-1.5 h-5 rounded-md bg-black/55 backdrop-blur-sm
-                             text-white text-[10px] font-extrabold tabular-nums
-                             ring-1 ring-white/20"
+                  className="absolute bottom-1.5 left-1.5 inline-flex h-5 items-center gap-1 rounded-md bg-black/55 px-1.5 text-[10px] font-extrabold tabular-nums text-white ring-1 ring-white/20 backdrop-blur-sm"
                   aria-hidden="true"
                 >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
-                       stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"
-                       strokeLinejoin="round">
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <rect x="3" y="3" width="18" height="18" rx="3" />
                     <circle cx="9" cy="9" r="2" />
                     <path d="m21 15-5-5L5 21" />
@@ -302,14 +292,11 @@ function Card({
 
               {/* Hover veil + "view album" affordance */}
               <span
-                className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent
-                           opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100"
                 aria-hidden="true"
               />
               <span
-                className="absolute inset-x-0 bottom-1.5 text-center
-                           text-white text-[10.5px] font-extrabold
-                           opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                className="absolute inset-x-0 bottom-1.5 text-center text-[10.5px] font-extrabold text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100"
                 aria-hidden="true"
               >
                 نمایش آلبوم
@@ -317,12 +304,12 @@ function Card({
             </button>
 
             {/* Percent — directly under the cover */}
-            <div className="mt-2.5 text-[12px] font-extrabold text-ink-700 tabular-nums leading-none">
+            <div className="mt-2.5 text-[12px] font-extrabold tabular-nums leading-none text-ink-700">
               ٪{formatPersianNumber(pct)}
             </div>
 
             {/* Progress bar — full cover-column width */}
-            <div className="mt-1.5 w-full h-[6px] rounded-full bg-ink-100 overflow-hidden">
+            <div className="mt-1.5 h-[6px] w-full overflow-hidden rounded-full bg-ink-100">
               <motion.div
                 initial={{ width: 0 }}
                 whileInView={{ width: `${pct}%` }}
@@ -334,11 +321,10 @@ function Card({
           </div>
 
           {/* Left column: title + 3 meta pills */}
-          <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex min-w-0 flex-1 flex-col">
             <Link
               href={`/madadkar/${c.slug}`}
-              className="font-extrabold text-[14.5px] md:text-[15px] text-ink-900 leading-7
-                         line-clamp-2 hover:text-brand-600 transition-colors mb-3"
+              className="mb-3 line-clamp-2 text-[14.5px] font-extrabold leading-7 text-ink-900 transition-colors hover:text-brand-600 md:text-[15px]"
             >
               {c.title}
             </Link>
@@ -353,7 +339,12 @@ function Card({
                 <MetaPill label="تعداد سهم" value={c.sharesTotal} unit="سهم" />
               </div>
 
-              <MetaPill label="مددکار" value={c.sponsor} emphasis="text" avatarUrl={c.sponsorLogo} />
+              <MetaPill
+                label="مددکار"
+                value={c.sponsor}
+                emphasis="text"
+                avatarUrl={c.sponsorLogo}
+              />
             </div>
           </div>
         </div>
@@ -365,57 +356,84 @@ function Card({
                 • participant_count  → مشارکت‌کنندگان chip
                 • has_deadline + deadline → countdown chip (warm-tone
                   when ≤ 3 days remain) */}
-        {(isFullyFunded || isCompleted || isClosed
-          || (c.participantCount ?? 0) > 0
-          || daysLeft !== null) && (
-          <div className="flex flex-wrap items-center gap-1.5 mt-3">
+        {(isFullyFunded ||
+          isCompleted ||
+          isClosed ||
+          (c.participantCount ?? 0) > 0 ||
+          daysLeft !== null) && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {isFullyFunded ? (
-              <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-mint-500 text-white
-                               text-[10.5px] font-extrabold ring-1 ring-mint-600/40">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"
-                     strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span className="inline-flex h-6 items-center gap-1 rounded-full bg-mint-500 px-2 text-[10.5px] font-extrabold text-white ring-1 ring-mint-600/40">
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
                 تأمین‌شده
               </span>
             ) : isCompleted ? (
-              <span className="inline-flex items-center h-6 px-2 rounded-full bg-mint-500/15 text-mint-700
-                               text-[10.5px] font-extrabold ring-1 ring-mint-500/30">
+              <span className="inline-flex h-6 items-center rounded-full bg-mint-500/15 px-2 text-[10.5px] font-extrabold text-mint-700 ring-1 ring-mint-500/30">
                 {statusDisplay || 'تکمیل‌شده'}
               </span>
             ) : isClosed ? (
-              <span className="inline-flex items-center h-6 px-2 rounded-full bg-ink-100 text-ink-600
-                               text-[10.5px] font-extrabold ring-1 ring-ink-200">
+              <span className="inline-flex h-6 items-center rounded-full bg-ink-100 px-2 text-[10.5px] font-extrabold text-ink-600 ring-1 ring-ink-200">
                 {statusDisplay || 'بسته‌شده'}
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-brand-50 text-brand-700
-                               text-[10.5px] font-extrabold ring-1 ring-brand-100">
-                <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
+              <span className="inline-flex h-6 items-center gap-1 rounded-full bg-brand-50 px-2 text-[10.5px] font-extrabold text-brand-700 ring-1 ring-brand-100">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-500" />
                 در حال جمع‌آوری
               </span>
             )}
 
             {(c.participantCount ?? 0) > 0 && (
-              <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-ink-50 text-ink-700
-                               text-[10.5px] font-extrabold ring-1 ring-ink-100 tabular-nums">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
-                     strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+              <span className="inline-flex h-6 items-center gap-1 rounded-full bg-ink-50 px-2 text-[10.5px] font-extrabold tabular-nums text-ink-700 ring-1 ring-ink-100">
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
                 {formatPersianNumber(c.participantCount!)} مشارکت‌کننده
               </span>
             )}
 
             {daysLeft !== null && !ctaDisabled && (
-              <span className={`inline-flex items-center gap-1 h-6 px-2 rounded-full text-[10.5px]
-                               font-extrabold ring-1 tabular-nums ${
-                daysLeft <= 3
-                  ? 'bg-amber-50 text-amber-700 ring-amber-100'
-                  : 'bg-ink-50 text-ink-700 ring-ink-100'
-              }`}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
-                     strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span
+                className={`inline-flex h-6 items-center gap-1 rounded-full px-2 text-[10.5px] font-extrabold tabular-nums ring-1 ${
+                  daysLeft <= 3
+                    ? 'bg-amber-50 text-amber-700 ring-amber-100'
+                    : 'bg-ink-50 text-ink-700 ring-ink-100'
+                }`}
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
                 {daysLeft === 0 ? 'آخرین روز' : `${formatPersianNumber(daysLeft)} روز مانده`}
               </span>
             )}
@@ -433,13 +451,11 @@ function Card({
           onClick={() => !ctaDisabled && onOpenParticipate(c)}
           disabled={ctaDisabled}
           aria-disabled={ctaDisabled}
-          className={`relative inline-flex items-center justify-center gap-2 w-full h-[46px] mt-3
-                     rounded-[12px] text-white text-[14.5px] font-extrabold overflow-hidden
-                     transition-colors ${
-                       ctaDisabled
-                         ? 'bg-ink-300 cursor-not-allowed shadow-none'
-                         : 'bg-brand-500 hover:bg-brand-600 active:bg-brand-700 shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)] cursor-pointer'
-                     }`}
+          className={`relative mt-3 inline-flex h-[46px] w-full items-center justify-center gap-2 overflow-hidden rounded-[12px] text-[14.5px] font-extrabold text-white transition-colors ${
+            ctaDisabled
+              ? 'cursor-not-allowed bg-ink-300 shadow-none'
+              : 'cursor-pointer bg-brand-500 shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)] hover:bg-brand-600 active:bg-brand-700'
+          }`}
         >
           <span>{ctaLabel}</span>
           {!ctaDisabled && <HandIcon />}
@@ -479,8 +495,14 @@ export function WarFundSection({ campaigns }: { campaigns: CampaignCard[] }) {
   // No-op when there's only one (or zero) page. The pager buttons are
   // already visually disabled via the `disabled` prop below, but the
   // explicit guard keeps keyboard / spacebar activations honest too.
-  const prev = () => { if (totalPages <= 1) return; setPage((p) => (p - 1 + totalPages) % totalPages); };
-  const next = () => { if (totalPages <= 1) return; setPage((p) => (p + 1) % totalPages); };
+  const prev = () => {
+    if (totalPages <= 1) return;
+    setPage((p) => (p - 1 + totalPages) % totalPages);
+  };
+  const next = () => {
+    if (totalPages <= 1) return;
+    setPage((p) => (p + 1) % totalPages);
+  };
 
   // ─── Album state ──────────────────────────────────────────────────────
   // Madadkar is the ONLY section where "مددکار: X" is semantically
@@ -509,69 +531,74 @@ export function WarFundSection({ campaigns }: { campaigns: CampaignCard[] }) {
   }, []);
   const closeParticipate = useCallback(() => setParticipateOpen(false), []);
 
-  const buildImages = useCallback(
-    (c: CampaignCard, extra?: AlbumImage[]): AlbumImage[] => {
-      const out: AlbumImage[] = [];
-      if (c.coverUrl) out.push({ url: c.coverUrl, alt: c.title });
-      if (extra && extra.length) {
-        // De-duplicate against the cover (some backends repeat the cover
-        // inside gallery_images by mistake).
-        for (const im of extra) {
-          if (!out.some((o) => o.url === im.url)) out.push(im);
-        }
+  const buildImages = useCallback((c: CampaignCard, extra?: AlbumImage[]): AlbumImage[] => {
+    const out: AlbumImage[] = [];
+    if (c.coverUrl) out.push({ url: c.coverUrl, alt: c.title });
+    if (extra && extra.length) {
+      // De-duplicate against the cover (some backends repeat the cover
+      // inside gallery_images by mistake).
+      for (const im of extra) {
+        if (!out.some((o) => o.url === im.url)) out.push(im);
       }
-      return out;
+    }
+    return out;
+  }, []);
+
+  const openAlbum = useCallback(
+    async (c: CampaignCard) => {
+      // Madadkar album subtitle = sponsoring group name.
+      const subtitle = c.sponsor ? { label: 'مددکار', value: c.sponsor } : undefined;
+
+      // 1. seed-supplied gallery → open immediately
+      if (c.gallery && c.gallery.length) {
+        setAlbum({
+          open: true,
+          title: c.title,
+          subtitle,
+          images: buildImages(c, c.gallery),
+          loading: false,
+        });
+        return;
+      }
+      // 2. cached → open immediately
+      const cached = galleryCache[c.slug];
+      if (cached) {
+        setAlbum({
+          open: true,
+          title: c.title,
+          subtitle,
+          images: buildImages(c, cached),
+          loading: false,
+        });
+        return;
+      }
+      // 3. fetch from detail endpoint
+      setAlbum({
+        open: true,
+        title: c.title,
+        subtitle,
+        images: buildImages(c),
+        loading: true,
+      });
+      try {
+        const detail = await apiFetch<ApiCampaignDetail>(
+          `/madadkar/campaigns/${encodeURIComponent(c.slug)}/`,
+          { revalidate: 300, tags: [`campaign:${c.slug}`] },
+        );
+        const fetched: AlbumImage[] = (detail.gallery_images ?? [])
+          .slice()
+          .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+          .map((g) => ({ url: absoluteMediaUrl(g.image) ?? '', alt: g.alt_text || c.title }))
+          .filter((g) => !!g.url);
+        setGalleryCache((prev) => ({ ...prev, [c.slug]: fetched }));
+        setAlbum((a) => (a.open ? { ...a, images: buildImages(c, fetched), loading: false } : a));
+      } catch {
+        // Silent fallback — keep the cover-only album visible.
+        setAlbum((a) => (a.open ? { ...a, loading: false } : a));
+      }
     },
-    [],
+    [galleryCache, buildImages],
   );
-
-  const openAlbum = useCallback(async (c: CampaignCard) => {
-    // Madadkar album subtitle = sponsoring group name.
-    const subtitle = c.sponsor
-      ? { label: 'مددکار', value: c.sponsor }
-      : undefined;
-
-    // 1. seed-supplied gallery → open immediately
-    if (c.gallery && c.gallery.length) {
-      setAlbum({
-        open: true, title: c.title, subtitle,
-        images: buildImages(c, c.gallery), loading: false,
-      });
-      return;
-    }
-    // 2. cached → open immediately
-    const cached = galleryCache[c.slug];
-    if (cached) {
-      setAlbum({
-        open: true, title: c.title, subtitle,
-        images: buildImages(c, cached), loading: false,
-      });
-      return;
-    }
-    // 3. fetch from detail endpoint
-    setAlbum({
-      open: true, title: c.title, subtitle,
-      images: buildImages(c), loading: true,
-    });
-    try {
-      const detail = await apiFetch<ApiCampaignDetail>(
-        `/madadkar/campaigns/${encodeURIComponent(c.slug)}/`,
-        { revalidate: 300, tags: [`campaign:${c.slug}`] },
-      );
-      const fetched: AlbumImage[] = (detail.gallery_images ?? [])
-        .slice()
-        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-        .map((g) => ({ url: absoluteMediaUrl(g.image) ?? '', alt: g.alt_text || c.title }))
-        .filter((g) => !!g.url);
-      setGalleryCache((prev) => ({ ...prev, [c.slug]: fetched }));
-      setAlbum((a) => a.open
-        ? { ...a, images: buildImages(c, fetched), loading: false }
-        : a);
-    } catch {
-      // Silent fallback — keep the cover-only album visible.
-      setAlbum((a) => a.open ? { ...a, loading: false } : a);
-    }
-  }, [galleryCache, buildImages]);
 
   return (
     <section className="section-y bg-white" id="warfund">
@@ -615,41 +642,56 @@ export function WarFundSection({ campaigns }: { campaigns: CampaignCard[] }) {
         )}
 
         {/* Pager — brand PNG arrows, real interactive paging */}
-        <div className="flex items-center justify-center gap-4 mt-8">
+        <div className="mt-8 flex items-center justify-center gap-4">
           <button
             type="button"
             aria-label="قبلی"
             onClick={prev}
             disabled={totalPages <= 1}
-            className="relative w-12 h-12 rounded-full hover:scale-110 active:scale-95
-                       transition-transform duration-200 disabled:opacity-40
-                       disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="relative h-12 w-12 rounded-full transition-transform duration-200 hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
-            <Image src="/brand/pager-arrow-prev.png" alt="" fill sizes="48px" className="object-contain" />
+            <Image
+              src="/brand/pager-arrow-prev.png"
+              alt=""
+              fill
+              sizes="48px"
+              className="object-contain"
+            />
           </button>
           <button
             type="button"
             aria-label="بعدی"
             onClick={next}
             disabled={totalPages <= 1}
-            className="relative w-12 h-12 rounded-full hover:scale-110 active:scale-95
-                       transition-transform duration-200 disabled:opacity-40
-                       disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="relative h-12 w-12 rounded-full transition-transform duration-200 hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
-            <Image src="/brand/pager-arrow-next.png" alt="" fill sizes="48px" className="object-contain" />
+            <Image
+              src="/brand/pager-arrow-next.png"
+              alt=""
+              fill
+              sizes="48px"
+              className="object-contain"
+            />
           </button>
         </div>
 
-        <div className="flex justify-center mt-6">
+        <div className="mt-6 flex justify-center">
           <Link
             href="/#warfund"
-            className="inline-flex items-center gap-2 h-12 px-7 rounded-full
-                       bg-white border-2 border-brand-500 text-brand-700 font-extrabold text-[14px]
-                       hover:bg-brand-50 transition-colors"
+            className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-brand-500 bg-white px-7 text-[14px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
           >
             <span>مشاهده همه کمپین‌ها</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
               <line x1="19" y1="12" x2="5" y2="12" />
               <polyline points="12 19 5 12 12 5" />
             </svg>

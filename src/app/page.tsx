@@ -85,18 +85,42 @@ export const revalidate = 300;
 function buildHomeItemList() {
   const base = siteConfig.url;
   const pillars = [
-    { name: 'گزارش‌های مردمی',           href: '/#reports',   pos: 1,
-      description: 'ارسال گزارش‌های مردمی به بعثت مردم برای پیگیری موضوعات اجتماعی و ملی.' },
-    { name: 'ستاد جنگ اقتصادی و رسانه‌ای', href: '/#warfund',   pos: 2,
-      description: 'کمپین‌های مالی و رسانه‌ای مردمی در چارچوب جهاد تبیین.' },
-    { name: 'مجازات مجرمان جهانی (R4J)',  href: '/#justice',   pos: 3,
-      description: 'حمایت مردمی از پرونده‌های مجازات مجرمان بین‌المللی.' },
-    { name: 'مدرسه جهادی',                href: '/#education', pos: 4,
-      description: 'آموزش‌های تخصصی و جهادی برای فعالان فرهنگی و رسانه‌ای.' },
-    { name: 'دیوار مهربانی',              href: '/#kindness',  pos: 5,
-      description: 'اتصال داوطلبانه نیازمندان و کمک‌کنندگان در سراسر کشور.' },
-    { name: 'جهاد تبیین',                 href: '/tabyin',     pos: 6,
-      description: 'محتوای رسانه‌ای مردمی برای تبیین حقایق روز.' },
+    {
+      name: 'گزارش‌های مردمی',
+      href: '/#reports',
+      pos: 1,
+      description: 'ارسال گزارش‌های مردمی به بعثت مردم برای پیگیری موضوعات اجتماعی و ملی.',
+    },
+    {
+      name: 'ستاد جنگ اقتصادی و رسانه‌ای',
+      href: '/#warfund',
+      pos: 2,
+      description: 'کمپین‌های مالی و رسانه‌ای مردمی در چارچوب جهاد تبیین.',
+    },
+    {
+      name: 'مجازات مجرمان جهانی (R4J)',
+      href: '/#justice',
+      pos: 3,
+      description: 'حمایت مردمی از پرونده‌های مجازات مجرمان بین‌المللی.',
+    },
+    {
+      name: 'مدرسه جهادی',
+      href: '/#education',
+      pos: 4,
+      description: 'آموزش‌های تخصصی و جهادی برای فعالان فرهنگی و رسانه‌ای.',
+    },
+    {
+      name: 'دیوار مهربانی',
+      href: '/#kindness',
+      pos: 5,
+      description: 'اتصال داوطلبانه نیازمندان و کمک‌کنندگان در سراسر کشور.',
+    },
+    {
+      name: 'جهاد تبیین',
+      href: '/tabyin',
+      pos: 6,
+      description: 'محتوای رسانه‌ای مردمی برای تبیین حقایق روز.',
+    },
   ];
 
   return {
@@ -118,8 +142,14 @@ function buildHomeItemList() {
 
 export default async function HomePage() {
   const [
-    campaigns, criminals, lmsCategories, courses,
-    kindness, tabyin, tabyinCounts, reportSubjects,
+    campaigns,
+    criminals,
+    lmsCategories,
+    courses,
+    kindness,
+    tabyin,
+    tabyinCounts,
+    reportSubjects,
   ] = await Promise.all([
     loadCampaigns(),
     loadCriminals(),
@@ -153,9 +183,7 @@ export default async function HomePage() {
         for crawlers. `sr-only` keeps it accessible to screen readers
         AND indexers while remaining invisible to sighted users.
       */}
-      <h1 className="sr-only">
-        بعثت مردم — سامانه مردمی جهاد تبیین، مددکاری، آموزش و همبستگی
-      </h1>
+      <h1 className="sr-only">بعثت مردم — سامانه مردمی جهاد تبیین، مددکاری، آموزش و همبستگی</h1>
 
       <Hero />
       <ActivitiesPanel />

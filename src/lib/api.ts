@@ -133,7 +133,7 @@ function resolveBaseUrl(absolute: boolean): string {
       // No API host configured → treat as same-origin.
       return '/api/v1';
     }
-    const apiHost  = new URL(configured, window.location.origin).host;
+    const apiHost = new URL(configured, window.location.origin).host;
     const pageHost = window.location.host;
     if (apiHost === pageHost) {
       // Same origin — go direct, no proxy hop needed.
@@ -176,17 +176,18 @@ function buildHeaders(
 /*  Core client                                                               */
 /* ───────────────────────────────────────────────────────────────────────── */
 
-async function rawFetch(url: string, init: RequestInit, next: object | undefined): Promise<Response> {
+async function rawFetch(
+  url: string,
+  init: RequestInit,
+  next: object | undefined,
+): Promise<Response> {
   return fetch(url, {
     ...init,
     ...(next ? ({ next } as unknown as RequestInit) : {}),
   });
 }
 
-export async function apiFetch<T = unknown>(
-  path: string,
-  options: FetchOptions = {},
-): Promise<T> {
+export async function apiFetch<T = unknown>(path: string, options: FetchOptions = {}): Promise<T> {
   const {
     absolute = false,
     skipAuth = false,
@@ -211,10 +212,7 @@ export async function apiFetch<T = unknown>(
     try {
       res = await rawFetch(url, requestInit, nextArg);
     } catch (err) {
-      throw new ApiError(
-        err instanceof Error ? err.message : 'خطای شبکه',
-        0,
-      );
+      throw new ApiError(err instanceof Error ? err.message : 'خطای شبکه', 0);
     }
     let payload: ApiEnvelope<T> | null = null;
     try {

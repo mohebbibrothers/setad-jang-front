@@ -126,9 +126,9 @@ export function EducationSection({
     return courses.map((c) => ({
       ...c,
       // 'ویژه' = above-average enrollment (only if not already set)
-      isFeatured: c.isFeatured ?? (
-        typeof c.enrollmentsCount === 'number' && c.enrollmentsCount > avg && avg > 0
-      ),
+      isFeatured:
+        c.isFeatured ??
+        (typeof c.enrollmentsCount === 'number' && c.enrollmentsCount > avg && avg > 0),
       // 'جدید' = either explicitly set OR within 30 days of publish
       isNew: c.isNew ?? false,
     }));
@@ -141,10 +141,7 @@ export function EducationSection({
       count: enrichedCourses.filter((x) => x.categorySlug === c.slug).length,
     }));
     counted.sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
-    return [
-      { slug: ALL_SLUG, title: 'همه آموزش‌ها', count: enrichedCourses.length },
-      ...counted,
-    ];
+    return [{ slug: ALL_SLUG, title: 'همه آموزش‌ها', count: enrichedCourses.length }, ...counted];
   }, [categories, enrichedCourses]);
 
   // 4 cards per page (one full row on desktop)
@@ -160,12 +157,20 @@ export function EducationSection({
   );
 
   // Reset paging whenever the active category changes
-  useEffect(() => { setPage(0); }, [active]);
+  useEffect(() => {
+    setPage(0);
+  }, [active]);
 
   // Pager no-op when there's only one (or zero) page — pairs with the
   // `disabled` prop on the buttons so the affordance stays honest.
-  const prev = () => { if (totalPages <= 1) return; setPage((p) => (p - 1 + totalPages) % totalPages); };
-  const next = () => { if (totalPages <= 1) return; setPage((p) => (p + 1) % totalPages); };
+  const prev = () => {
+    if (totalPages <= 1) return;
+    setPage((p) => (p - 1 + totalPages) % totalPages);
+  };
+  const next = () => {
+    if (totalPages <= 1) return;
+    setPage((p) => (p + 1) % totalPages);
+  };
 
   /* ── Horizontal-only scroll tab strip ── */
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -212,15 +217,16 @@ export function EducationSection({
               type="button"
               aria-label="حرکت به چپ"
               onClick={() => scrollByAmount('left')}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex
-                         w-9 h-9 items-center justify-center rounded-full
-                         bg-white text-ink-600 hover:text-brand-600 hover:bg-brand-50
-                         shadow-[0_4px_14px_-4px_rgba(15,20,32,.15)] ring-1 ring-ink-100
-                         transition-colors"
+              className="absolute left-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white text-ink-600 shadow-[0_4px_14px_-4px_rgba(15,20,32,.15)] ring-1 ring-ink-100 transition-colors hover:bg-brand-50 hover:text-brand-600"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <polyline points="15 18 9 12 15 6" stroke="currentColor" strokeWidth="2.4"
-                          strokeLinecap="round" strokeLinejoin="round" />
+                <polyline
+                  points="15 18 9 12 15 6"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </button>
           )}
@@ -229,37 +235,38 @@ export function EducationSection({
               type="button"
               aria-label="حرکت به راست"
               onClick={() => scrollByAmount('right')}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex
-                         w-9 h-9 items-center justify-center rounded-full
-                         bg-white text-ink-600 hover:text-brand-600 hover:bg-brand-50
-                         shadow-[0_4px_14px_-4px_rgba(15,20,32,.15)] ring-1 ring-ink-100
-                         transition-colors"
+              className="absolute right-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white text-ink-600 shadow-[0_4px_14px_-4px_rgba(15,20,32,.15)] ring-1 ring-ink-100 transition-colors hover:bg-brand-50 hover:text-brand-600"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <polyline points="9 18 15 12 9 6" stroke="currentColor" strokeWidth="2.4"
-                          strokeLinecap="round" strokeLinejoin="round" />
+                <polyline
+                  points="9 18 15 12 9 6"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </button>
           )}
 
           {canNext && (
-            <div aria-hidden="true"
-                 className="absolute left-0 top-0 bottom-0 w-12 md:w-16 z-10 pointer-events-none
-                            bg-gradient-to-l from-white to-transparent" />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-12 bg-gradient-to-l from-white to-transparent md:w-16"
+            />
           )}
           {canPrev && (
-            <div aria-hidden="true"
-                 className="absolute right-0 top-0 bottom-0 w-12 md:w-16 z-10 pointer-events-none
-                            bg-gradient-to-r from-white to-transparent" />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-12 bg-gradient-to-r from-white to-transparent md:w-16"
+            />
           )}
 
           <div
             ref={scrollRef}
             role="tablist"
             aria-label="دسته‌بندی دوره‌ها"
-            className="flex flex-nowrap items-stretch gap-1 border-b border-ink-100
-                       overflow-x-auto overflow-y-hidden no-scrollbar
-                       px-10 md:px-12 scroll-smooth"
+            className="no-scrollbar flex flex-nowrap items-stretch gap-1 overflow-x-auto overflow-y-hidden scroll-smooth border-b border-ink-100 px-10 md:px-12"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {tabs.map((c) => {
@@ -270,10 +277,7 @@ export function EducationSection({
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setActive(c.slug)}
-                  className={`relative inline-flex items-center gap-2 px-4 md:px-5 py-3
-                              text-[13.5px] md:text-[14.5px] font-bold whitespace-nowrap
-                              transition-colors shrink-0
-                              ${isActive ? 'text-brand-600' : 'text-ink-500 hover:text-ink-800'}`}
+                  className={`relative inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-4 py-3 text-[13.5px] font-bold transition-colors md:px-5 md:text-[14.5px] ${isActive ? 'text-brand-600' : 'text-ink-500 hover:text-ink-800'}`}
                 >
                   <span>{c.title}</span>
                   {/* ALWAYS render the count chip — even when zero — so an
@@ -282,13 +286,13 @@ export function EducationSection({
                       uniform and gives clearer empty-state signalling. */}
                   {typeof c.count === 'number' && (
                     <span
-                      className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5
-                                  rounded-full text-[11px] font-extrabold tabular-nums
-                                  ${isActive
-                                    ? 'bg-brand-500 text-white'
-                                    : c.count === 0
-                                      ? 'bg-ink-50 text-ink-400 ring-1 ring-ink-100'
-                                      : 'bg-ink-100 text-ink-500'}`}
+                      className={`inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full px-1.5 text-[11px] font-extrabold tabular-nums ${
+                        isActive
+                          ? 'bg-brand-500 text-white'
+                          : c.count === 0
+                            ? 'bg-ink-50 text-ink-400 ring-1 ring-ink-100'
+                            : 'bg-ink-100 text-ink-500'
+                      }`}
                     >
                       {c.count.toLocaleString('fa-IR')}
                     </span>
@@ -324,12 +328,16 @@ export function EducationSection({
             {visibleCourses.length === 0 && (
               <div className="w-full">
                 <EmptyState
-                  title={courses.length === 0
-                    ? 'هنوز دوره‌ای منتشر نشده'
-                    : 'دوره‌ای در این دسته یافت نشد'}
-                  description={courses.length === 0
-                    ? 'به‌محض انتشار اولین دوره‌های قرارگاه آموزشی، اینجا قابل ثبت‌نام خواهد بود.'
-                    : 'دسته‌ی دیگری را امتحان کن یا «همه آموزش‌ها» را انتخاب کن.'}
+                  title={
+                    courses.length === 0
+                      ? 'هنوز دوره‌ای منتشر نشده'
+                      : 'دوره‌ای در این دسته یافت نشد'
+                  }
+                  description={
+                    courses.length === 0
+                      ? 'به‌محض انتشار اولین دوره‌های قرارگاه آموزشی، اینجا قابل ثبت‌نام خواهد بود.'
+                      : 'دسته‌ی دیگری را امتحان کن یا «همه آموزش‌ها» را انتخاب کن.'
+                  }
                   iconPath="M22 10v6 M2 10l10-5 10 5-10 5z M6 12v5c0 1.66 4 3 6 3s6-1.34 6-3v-5"
                 />
               </div>
@@ -338,41 +346,47 @@ export function EducationSection({
         </AnimatePresence>
 
         {/* ── Pager (same PNG arrows as the WarFund / Justice carousels) ── */}
-        <div className="flex items-center justify-center gap-4 mt-8">
+        <div className="mt-8 flex items-center justify-center gap-4">
           <button
             type="button"
             aria-label="قبلی"
             onClick={prev}
             disabled={totalPages <= 1}
-            className="relative w-12 h-12 rounded-full hover:scale-110 active:scale-95
-                       transition-transform duration-200 disabled:opacity-40
-                       disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="relative h-12 w-12 rounded-full transition-transform duration-200 hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
-            <Image src="/brand/pager-arrow-prev.png" alt="" fill sizes="48px" className="object-contain" />
+            <Image
+              src="/brand/pager-arrow-prev.png"
+              alt=""
+              fill
+              sizes="48px"
+              className="object-contain"
+            />
           </button>
           <button
             type="button"
             aria-label="بعدی"
             onClick={next}
             disabled={totalPages <= 1}
-            className="relative w-12 h-12 rounded-full hover:scale-110 active:scale-95
-                       transition-transform duration-200 disabled:opacity-40
-                       disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="relative h-12 w-12 rounded-full transition-transform duration-200 hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
-            <Image src="/brand/pager-arrow-next.png" alt="" fill sizes="48px" className="object-contain" />
+            <Image
+              src="/brand/pager-arrow-next.png"
+              alt=""
+              fill
+              sizes="48px"
+              className="object-contain"
+            />
           </button>
         </div>
 
         {/* Footer CTA — see full library */}
-        <div className="flex justify-center mt-6 md:mt-8">
+        <div className="mt-6 flex justify-center md:mt-8">
           <Link
             href="/#education"
-            className="inline-flex items-center gap-2 h-12 px-8 rounded-full
-                       bg-mint-500 hover:bg-mint-600 text-white font-extrabold text-[14px]
-                       shadow-[0_8px_24px_-8px_rgba(37,197,186,.5)] transition-colors"
+            className="inline-flex h-12 items-center gap-2 rounded-full bg-mint-500 px-8 text-[14px] font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(37,197,186,.5)] transition-colors hover:bg-mint-600"
           >
             <span>مشاهده کتابخانه کامل آموزش‌ها</span>
-            <Icon name="arrow-left" className="w-4 h-4" />
+            <Icon name="arrow-left" className="h-4 w-4" />
           </Link>
         </div>
       </div>
@@ -397,18 +411,15 @@ function CourseTile({ c, delay = 0 }: { c: CourseCard; delay?: number }) {
          - lg     (≥ 1024px): 4 cols → calc((100% - 3 * 1.25rem) / 4)
          Combined with parent flex+wrap+justify-center, an orphan in the
          last row auto-centres. min-w-0 keeps content shrinkable. */
-      className="group w-full sm:w-[calc((100%-1.25rem)/2)] lg:w-[calc((100%-3*1.25rem)/4)] min-w-0"
+      className="group w-full min-w-0 sm:w-[calc((100%-1.25rem)/2)] lg:w-[calc((100%-3*1.25rem)/4)]"
     >
       <Link
         href={`/lms/courses/${c.slug}`}
-        className="relative flex flex-col rounded-[26px] overflow-hidden isolate
-                   bg-white shadow-[0_2px_10px_-4px_rgba(15,20,32,.06)]
-                   hover:shadow-[0_22px_44px_-22px_rgba(11,53,48,.25)]
-                   hover:-translate-y-1 transition-all duration-300"
+        className="relative isolate flex flex-col overflow-hidden rounded-[26px] bg-white shadow-[0_2px_10px_-4px_rgba(15,20,32,.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_44px_-22px_rgba(11,53,48,.25)]"
         aria-label={c.title}
       >
         {/* ── Cover (4:3) ── */}
-        <div className="relative aspect-[4/3] bg-ink-200 overflow-hidden">
+        <div className="relative aspect-[4/3] overflow-hidden bg-ink-200">
           <SmartImage
             src={c.coverUrl}
             alt={c.title}
@@ -419,20 +430,20 @@ function CourseTile({ c, delay = 0 }: { c: CourseCard; delay?: number }) {
           />
 
           {/* Bottom scrim — keeps the cover-overlaid title legible on any image */}
-          <div aria-hidden="true"
-               className="absolute inset-x-0 bottom-0 h-2/3 z-[1]
-                          bg-gradient-to-t from-black/85 via-black/45 to-transparent" />
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 z-[1] h-2/3 bg-gradient-to-t from-black/85 via-black/45 to-transparent"
+          />
 
           {/* Top badges row */}
-          <div className="absolute top-3 right-3 left-3 flex items-start justify-between gap-2 z-10">
+          <div className="absolute left-3 right-3 top-3 z-10 flex items-start justify-between gap-2">
             {c.isNew ? <NewBadge /> : <span />}
             {c.isFeatured && <FeaturedBadge />}
           </div>
 
           {/* Cover-overlaid title — bold, with drop-shadow for guaranteed legibility */}
-          <div className="absolute inset-x-0 bottom-0 p-3.5 md:p-4 text-white z-10">
-            <h3 className="text-[15px] md:text-[16px] font-extrabold leading-6 line-clamp-2
-                           drop-shadow-[0_2px_6px_rgba(0,0,0,.6)]">
+          <div className="absolute inset-x-0 bottom-0 z-10 p-3.5 text-white md:p-4">
+            <h3 className="line-clamp-2 text-[15px] font-extrabold leading-6 drop-shadow-[0_2px_6px_rgba(0,0,0,.6)] md:text-[16px]">
               {c.title}
             </h3>
           </div>
@@ -440,24 +451,20 @@ function CourseTile({ c, delay = 0 }: { c: CourseCard; delay?: number }) {
           {/* Hover play affordance — circular glass button mid-cover */}
           <div
             aria-hidden="true"
-            className="absolute inset-0 flex items-center justify-center z-[5] opacity-0
-                       group-hover:opacity-100 transition-opacity duration-300"
+            className="absolute inset-0 z-[5] flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100"
           >
-            <span className="w-14 h-14 rounded-full bg-white/95 text-brand-600
-                             flex items-center justify-center
-                             shadow-[0_12px_28px_-8px_rgba(0,0,0,.55)]
-                             scale-90 group-hover:scale-100 transition-transform duration-300">
-              <Icon name="play" className="w-5 h-5" />
+            <span className="flex h-14 w-14 scale-90 items-center justify-center rounded-full bg-white/95 text-brand-600 shadow-[0_12px_28px_-8px_rgba(0,0,0,.55)] transition-transform duration-300 group-hover:scale-100">
+              <Icon name="play" className="h-5 w-5" />
             </span>
           </div>
         </div>
 
         {/* ── Footer info panel (white) ── */}
-        <div className="p-3.5 md:p-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-3 p-3.5 md:p-4">
           {/* Instructor row */}
           {c.instructor && (
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="relative w-7 h-7 rounded-full overflow-hidden ring-2 ring-ink-100 shrink-0">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full ring-2 ring-ink-100">
                 <SmartImage
                   src={c.instructorAvatarUrl}
                   alt={c.instructor}
@@ -468,8 +475,8 @@ function CourseTile({ c, delay = 0 }: { c: CourseCard; delay?: number }) {
                   className="object-cover"
                 />
               </span>
-              <span className="text-[12px] text-ink-600 font-bold truncate min-w-0">
-                <span className="text-ink-400 font-medium">مدرس: </span>
+              <span className="min-w-0 truncate text-[12px] font-bold text-ink-600">
+                <span className="font-medium text-ink-400">مدرس: </span>
                 {c.instructor}
               </span>
             </div>
@@ -478,26 +485,20 @@ function CourseTile({ c, delay = 0 }: { c: CourseCard; delay?: number }) {
           {/* Meta chips */}
           <div className="flex flex-wrap items-center gap-1.5">
             {c.level && LEVEL_LABEL[c.level] && (
-              <span className="inline-flex items-center gap-1 px-2 h-[26px] rounded-full
-                               bg-brand-50 text-brand-700 text-[11.5px] font-extrabold
-                               ring-1 ring-brand-100">
-                <Icon name="graduation" className="w-3 h-3" />
+              <span className="inline-flex h-[26px] items-center gap-1 rounded-full bg-brand-50 px-2 text-[11.5px] font-extrabold text-brand-700 ring-1 ring-brand-100">
+                <Icon name="graduation" className="h-3 w-3" />
                 {LEVEL_LABEL[c.level]}
               </span>
             )}
             {c.durationSeconds ? (
-              <span className="inline-flex items-center gap-1 px-2 h-[26px] rounded-full
-                               bg-ink-50 text-ink-700 text-[11.5px] font-bold
-                               ring-1 ring-ink-100">
-                <Icon name="clock" className="w-3 h-3" />
+              <span className="inline-flex h-[26px] items-center gap-1 rounded-full bg-ink-50 px-2 text-[11.5px] font-bold text-ink-700 ring-1 ring-ink-100">
+                <Icon name="clock" className="h-3 w-3" />
                 {formatDurationShort(c.durationSeconds)}
               </span>
             ) : null}
             {c.lessonsCount ? (
-              <span className="inline-flex items-center gap-1 px-2 h-[26px] rounded-full
-                               bg-ink-50 text-ink-700 text-[11.5px] font-bold
-                               ring-1 ring-ink-100">
-                <Icon name="play" className="w-3 h-3" />
+              <span className="inline-flex h-[26px] items-center gap-1 rounded-full bg-ink-50 px-2 text-[11.5px] font-bold text-ink-700 ring-1 ring-ink-100">
+                <Icon name="play" className="h-3 w-3" />
                 {c.lessonsCount.toLocaleString('fa-IR')} درس
               </span>
             ) : null}
@@ -508,25 +509,24 @@ function CourseTile({ c, delay = 0 }: { c: CourseCard; delay?: number }) {
               CourseSummarySerializer so the card tells the full
               engagement→outcome story instead of just "how many
               signed up". */}
-          <div className="mt-1 pt-3 border-t border-ink-100 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="mt-1 flex items-center justify-between gap-2 border-t border-ink-100 pt-3">
+            <div className="flex min-w-0 items-center gap-3">
               {typeof c.enrollmentsCount === 'number' && c.enrollmentsCount > 0 && (
-                <span className="inline-flex items-center gap-1 text-[11.5px] text-ink-500 font-bold tabular-nums">
-                  <Icon name="user" className="w-3.5 h-3.5 text-ink-400" />
+                <span className="inline-flex items-center gap-1 text-[11.5px] font-bold tabular-nums text-ink-500">
+                  <Icon name="user" className="h-3.5 w-3.5 text-ink-400" />
                   {c.enrollmentsCount.toLocaleString('fa-IR')} یادگیرنده
                 </span>
               )}
               {typeof c.graduatesCount === 'number' && c.graduatesCount > 0 && (
-                <span className="inline-flex items-center gap-1 text-[11.5px] text-mint-700 font-extrabold tabular-nums">
-                  <Icon name="sparkles" className="w-3.5 h-3.5 text-mint-500" />
+                <span className="inline-flex items-center gap-1 text-[11.5px] font-extrabold tabular-nums text-mint-700">
+                  <Icon name="sparkles" className="h-3.5 w-3.5 text-mint-500" />
                   {c.graduatesCount.toLocaleString('fa-IR')} فارغ‌التحصیل
                 </span>
               )}
             </div>
-            <span className="inline-flex items-center gap-1 text-[12px] text-brand-600 font-extrabold
-                             group-hover:gap-2 transition-all duration-200 shrink-0">
+            <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-extrabold text-brand-600 transition-all duration-200 group-hover:gap-2">
               <span>مشاهده دوره</span>
-              <Icon name="arrow-left" className="w-3.5 h-3.5" />
+              <Icon name="arrow-left" className="h-3.5 w-3.5" />
             </span>
           </div>
         </div>
@@ -542,13 +542,10 @@ function CourseTile({ c, delay = 0 }: { c: CourseCard; delay?: number }) {
 function NewBadge() {
   return (
     <span
-      className="inline-flex items-center gap-1 px-3 h-8 rounded-2xl
-                 text-[12px] font-extrabold text-white
-                 ring-[2.5px] ring-brand-700
-                 shadow-[0_4px_12px_-4px_rgba(13,128,116,.45)]"
+      className="inline-flex h-8 items-center gap-1 rounded-2xl px-3 text-[12px] font-extrabold text-white shadow-[0_4px_12px_-4px_rgba(13,128,116,.45)] ring-[2.5px] ring-brand-700"
       style={{ backgroundColor: '#25C5BA' }}
     >
-      <Icon name="sparkles" className="w-3 h-3" />
+      <Icon name="sparkles" className="h-3 w-3" />
       جدید
     </span>
   );
@@ -557,13 +554,10 @@ function NewBadge() {
 function FeaturedBadge() {
   return (
     <span
-      className="inline-flex items-center gap-1 px-3 h-8 rounded-2xl
-                 text-[12px] font-extrabold text-ink-900
-                 ring-[2.5px] ring-amber-700/40
-                 shadow-[0_4px_12px_-4px_rgba(240,148,26,.55)]"
+      className="inline-flex h-8 items-center gap-1 rounded-2xl px-3 text-[12px] font-extrabold text-ink-900 shadow-[0_4px_12px_-4px_rgba(240,148,26,.55)] ring-[2.5px] ring-amber-700/40"
       style={{ backgroundColor: '#FFB033' }}
     >
-      <Icon name="sparkles" className="w-3 h-3" />
+      <Icon name="sparkles" className="h-3 w-3" />
       ویژه
     </span>
   );

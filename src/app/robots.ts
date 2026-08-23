@@ -34,8 +34,8 @@ export default function robots(): MetadataRoute.Robots {
           '/account',
           '/api/proxy',
           '/api/',
-          '/search',        // infinite query-string space
-          '/*?utm_*',       // tracking-param dupes
+          '/search', // infinite query-string space
+          '/*?utm_*', // tracking-param dupes
           '/*?fbclid=*',
           '/*?gclid=*',
         ],
@@ -62,10 +62,26 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/admin', '/dashboard', '/auth', '/account', '/api/proxy', '/api/', '/search'],
       },
       // Modern AI crawlers — allowed so the site appears in LLM answers.
-      { userAgent: 'GPTBot',        allow: ['/'], disallow: ['/admin', '/dashboard', '/auth', '/account', '/api/'] },
-      { userAgent: 'ClaudeBot',     allow: ['/'], disallow: ['/admin', '/dashboard', '/auth', '/account', '/api/'] },
-      { userAgent: 'PerplexityBot', allow: ['/'], disallow: ['/admin', '/dashboard', '/auth', '/account', '/api/'] },
-      { userAgent: 'CCBot',         allow: ['/'], disallow: ['/admin', '/dashboard', '/auth', '/account', '/api/'] },
+      {
+        userAgent: 'GPTBot',
+        allow: ['/'],
+        disallow: ['/admin', '/dashboard', '/auth', '/account', '/api/'],
+      },
+      {
+        userAgent: 'ClaudeBot',
+        allow: ['/'],
+        disallow: ['/admin', '/dashboard', '/auth', '/account', '/api/'],
+      },
+      {
+        userAgent: 'PerplexityBot',
+        allow: ['/'],
+        disallow: ['/admin', '/dashboard', '/auth', '/account', '/api/'],
+      },
+      {
+        userAgent: 'CCBot',
+        allow: ['/'],
+        disallow: ['/admin', '/dashboard', '/auth', '/account', '/api/'],
+      },
     ],
     sitemap: `${base}/sitemap.xml`,
     host: base,

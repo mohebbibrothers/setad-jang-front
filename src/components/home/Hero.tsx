@@ -24,13 +24,13 @@ import { GlobalSearch } from './GlobalSearch';
  * ──────────────────────────────────────────────────────────────────────── */
 export function Hero() {
   return (
-    <section className="relative bg-white pt-6 md:pt-8 pb-0">
+    <section className="relative bg-white pb-0 pt-6 md:pt-8">
       {/* Decorative dotted curves clipped to the section width, OUTSIDE the
           search bar's z-stack — so the dropdown can extend downward into
           the next section unimpeded. */}
       <div
         aria-hidden="true"
-        className="hero-deco-clip absolute inset-0 overflow-hidden pointer-events-none z-0"
+        className="hero-deco-clip pointer-events-none absolute inset-0 z-0 overflow-hidden"
       >
         {/* Top-right dotted wave.
          *
@@ -65,12 +65,10 @@ export function Hero() {
         <Image
           src="/brand/wave-dotted-1.png"
           alt=""
-          width={470} height={254}
+          width={470}
+          height={254}
           priority
-          className="absolute top-24 md:top-4
-                     -right-4 md:right-auto md:left-[calc(50%+240px)]
-                     w-[280px] md:w-[420px]
-                     opacity-95 select-none"
+          className="absolute -right-4 top-24 w-[280px] select-none opacity-95 md:left-[calc(50%+240px)] md:right-auto md:top-4 md:w-[420px]"
         />
         {/* Bottom-left dotted wave.
          *
@@ -100,11 +98,9 @@ export function Hero() {
         <Image
           src="/brand/wave-dotted-2.png"
           alt=""
-          width={487} height={107}
-          className="absolute bottom-2 md:bottom-6
-                     -left-2 md:left-auto md:right-[calc(50%+240px)]
-                     w-[200px] md:w-[420px]
-                     opacity-85 select-none scale-x-[-1]"
+          width={487}
+          height={107}
+          className="absolute -left-2 bottom-2 w-[200px] scale-x-[-1] select-none opacity-85 md:bottom-6 md:left-auto md:right-[calc(50%+240px)] md:w-[420px]"
         />
       </div>
 
@@ -122,7 +118,7 @@ export function Hero() {
             height={1008}
             priority
             sizes="(max-width: 768px) 90vw, 680px"
-            className="relative z-10 w-full h-auto select-none"
+            className="relative z-10 h-auto w-full select-none"
           />
           {/*
             NOTE — the previous white fade-overlay was intentionally removed.

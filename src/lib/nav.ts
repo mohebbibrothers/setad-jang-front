@@ -34,31 +34,31 @@ export type NavGroup = {
 };
 
 export const primaryNav: NavItem[] = [
-  { label: 'صفحه اصلی',      href: '/' },
-  { label: 'پشتیبانی مالی جنگ', href: '/#warfund',   anchor: true },
-  { label: 'جایزه‌ای برای عدالت', href: '/#justice',   anchor: true },
-  { label: 'قرارگاه آموزشی',    href: '/#education', anchor: true },
-  { label: 'دیوار مهربانی',     href: '/#kindness',  anchor: true },
-  { label: 'جهاد تبیین',        href: '/#tabyin',    anchor: true },
-  { label: 'گزارش مردمی',       href: '/#reports',   anchor: true },
+  { label: 'صفحه اصلی', href: '/' },
+  { label: 'پشتیبانی مالی جنگ', href: '/#warfund', anchor: true },
+  { label: 'جایزه‌ای برای عدالت', href: '/#justice', anchor: true },
+  { label: 'قرارگاه آموزشی', href: '/#education', anchor: true },
+  { label: 'دیوار مهربانی', href: '/#kindness', anchor: true },
+  { label: 'جهاد تبیین', href: '/#tabyin', anchor: true },
+  { label: 'گزارش مردمی', href: '/#reports', anchor: true },
 ];
 
 export const footerNav: NavGroup[] = [
   {
     label: 'فعالیت‌ها',
     items: [
-      { label: 'پشتیبانی مالی جنگ', href: '/#warfund',   anchor: true },
-      { label: 'جایزه‌ای برای عدالت', href: '/#justice',   anchor: true },
-      { label: 'قرارگاه آموزشی',   href: '/#education', anchor: true },
-      { label: 'دیوار مهربانی',    href: '/#kindness',  anchor: true },
-      { label: 'جهاد تبیین',       href: '/#tabyin',    anchor: true },
+      { label: 'پشتیبانی مالی جنگ', href: '/#warfund', anchor: true },
+      { label: 'جایزه‌ای برای عدالت', href: '/#justice', anchor: true },
+      { label: 'قرارگاه آموزشی', href: '/#education', anchor: true },
+      { label: 'دیوار مهربانی', href: '/#kindness', anchor: true },
+      { label: 'جهاد تبیین', href: '/#tabyin', anchor: true },
     ],
   },
   {
     label: 'مشارکت',
     items: [
       { label: 'گزارش مردمی', href: '/#reports', anchor: true },
-      { label: 'جست‌وجو',     href: '/search' },
+      { label: 'جست‌وجو', href: '/search' },
     ],
   },
 ];

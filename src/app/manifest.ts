@@ -45,8 +45,8 @@ export default function manifest(): MetadataRoute.Manifest {
     // splash caption, we go back to a proper short_name and
     // rely on our own <div id="app-splash"> Vazirmatn overlay
     // to cover Chrome's native splash the instant HTML streams.
-    name: siteConfig.name,          // «بعثت مردم» — installer + a11y
-    short_name: 'بعثت',            // home-screen icon caption + Chrome splash label
+    name: siteConfig.name, // «بعثت مردم» — installer + a11y
+    short_name: 'بعثت', // home-screen icon caption + Chrome splash label
     description: siteConfig.description,
     start_url: '/',
     display: 'standalone',
@@ -59,13 +59,23 @@ export default function manifest(): MetadataRoute.Manifest {
     dir: 'rtl',
     lang: 'fa-IR',
     icons: [
-      { src: '/favicon.ico',     sizes: '48x48',   type: 'image/x-icon',  purpose: 'any' },
-      { src: '/favicon-192.png', sizes: '192x192', type: 'image/png',     purpose: 'any' },
-      { src: '/favicon-512.png', sizes: '512x512', type: 'image/png',     purpose: 'any' },
+      { src: '/favicon.ico', sizes: '48x48', type: 'image/x-icon', purpose: 'any' },
+      { src: '/favicon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/favicon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
       // Maskable icons carry a WHITE safe-zone ground so
       // launcher masks never paint transparent pixels black.
-      { src: '/favicon-maskable-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-      { src: '/favicon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      {
+        src: '/favicon-maskable-192.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'maskable',
+      },
+      {
+        src: '/favicon-maskable-512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable',
+      },
       { src: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png', purpose: 'any' },
     ],
   };

@@ -1,8 +1,6 @@
 'use client';
 
-import {
-  useState, useEffect, useCallback, useRef, useMemo,
-} from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatPersianNumber } from '@/lib/utils';
@@ -91,9 +89,7 @@ type HudBtnProps = {
   disabled?: boolean;
   pressed?: boolean;
 };
-function HudBtn({
-  onClick, children, ariaLabel, disabled, pressed,
-}: HudBtnProps) {
+function HudBtn({ onClick, children, ariaLabel, disabled, pressed }: HudBtnProps) {
   return (
     <button
       type="button"
@@ -101,10 +97,7 @@ function HudBtn({
       disabled={disabled}
       aria-label={ariaLabel}
       aria-pressed={pressed}
-      className={`inline-flex items-center justify-center w-[30px] h-[30px] sm:w-8 sm:h-8 rounded-full text-white
-                 hover:bg-white/15 active:scale-95 transition-all duration-150 flex-shrink-0
-                 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed
-                 ${pressed ? 'bg-white/20' : ''}`}
+      className={`inline-flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full text-white transition-all duration-150 hover:bg-white/15 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent sm:h-8 sm:w-8 ${pressed ? 'bg-white/20' : ''}`}
     >
       {children}
     </button>
@@ -112,7 +105,14 @@ function HudBtn({
 }
 
 export function CampaignAlbum({
-  open, onClose, title, subtitle, sponsor, images, loading = false, startIndex = 0,
+  open,
+  onClose,
+  title,
+  subtitle,
+  sponsor,
+  images,
+  loading = false,
+  startIndex = 0,
 }: Props) {
   // Migrate the legacy `sponsor` prop into the new generic shape so
   // existing call sites keep rendering identically until they switch
@@ -135,18 +135,20 @@ export function CampaignAlbum({
   //  3. Scroll locking + backdrop cover always land at the viewport
   //     root regardless of where in the tree the component is mounted.
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // ── State ──────────────────────────────────────────────────────────
   const [index, setIndexState] = useState(startIndex);
   const [zoom, setZoom] = useState(1);
-  const [pan,  setPan]  = useState({ x: 0, y: 0 });
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [imgReady, setImgReady] = useState(false);
   const [slideshow, setSlideshow] = useState(false);
-  const [helpOpen,  setHelpOpen]  = useState(false);
-  const [isFs,      setIsFs]      = useState(false);
-  const [hovering,  setHovering]  = useState(false);
-  const [progress,  setProgress]  = useState(0);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [isFs, setIsFs] = useState(false);
+  const [hovering, setHovering] = useState(false);
+  const [progress, setProgress] = useState(0);
   /**
    * `copiedKind` tracks the outcome of the copy button:
    *   'image' → pixel bytes landed on the clipboard (paste into Eitaa,
@@ -160,32 +162,44 @@ export function CampaignAlbum({
   const [copiedKind, setCopiedKind] = useState<null | 'image' | 'url'>(null);
 
   // ── Refs ───────────────────────────────────────────────────────────
-  const stageRef      = useRef<HTMLDivElement>(null);
-  const panelRef      = useRef<HTMLDivElement>(null);
-  const centerImgRef  = useRef<HTMLImageElement | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const centerImgRef = useRef<HTMLImageElement | null>(null);
   const stripScroll = useRef<HTMLDivElement>(null);
-  const stripInner  = useRef<HTMLDivElement>(null);
-  const panStartRef = useRef<{ x: number; y: number; px: number; py: number; mode: 'pan' | 'swipe' } | null>(null);
-  const pinchRef    = useRef<{ startDist: number; startZoom: number } | null>(null);
+  const stripInner = useRef<HTMLDivElement>(null);
+  const panStartRef = useRef<{
+    x: number;
+    y: number;
+    px: number;
+    py: number;
+    mode: 'pan' | 'swipe';
+  } | null>(null);
+  const pinchRef = useRef<{ startDist: number; startZoom: number } | null>(null);
 
   // ── Filmstrip overflow state ───────────────────────────────────────
   const [stripOverflow, setStripOverflow] = useState(false);
-  const [fadeLeft,  setFadeLeft]  = useState(false);
+  const [fadeLeft, setFadeLeft] = useState(false);
   const [fadeRight, setFadeRight] = useState(false);
 
   // ── Reset on open / new campaign ───────────────────────────────────
   useEffect(() => {
     if (open) {
       setIndexState(Math.min(startIndex, Math.max(0, total - 1)));
-      setZoom(1); setPan({ x: 0, y: 0 });
-      setSlideshow(false); setHelpOpen(false); setProgress(0);
-      setImgReady(false); setCopiedKind(null);
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      setSlideshow(false);
+      setHelpOpen(false);
+      setProgress(0);
+      setImgReady(false);
+      setCopiedKind(null);
     }
   }, [open, startIndex, total]);
 
   // ── Reset zoom/pan when active image changes ───────────────────────
   useEffect(() => {
-    setZoom(1); setPan({ x: 0, y: 0 }); setImgReady(false);
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    setImgReady(false);
   }, [index]);
 
   // ── Smart preloading of neighbours ─────────────────────────────────
@@ -206,7 +220,9 @@ export function CampaignAlbum({
         const im = new window.Image();
         im.decoding = 'async';
         im.src = src;
-      } catch { /* ignore — preloading is best-effort */ }
+      } catch {
+        /* ignore — preloading is best-effort */
+      }
     });
   }, [open, index, total, images]);
 
@@ -214,14 +230,17 @@ export function CampaignAlbum({
   // `dir` is accepted for API compatibility with the old cylinder
   // transition; the coverflow layout doesn't need it (the whole strip
   // re-lays out around the new active index on every change).
-  const goTo = useCallback((nextIdx: number, _dir?: 1 | -1) => {
-    void _dir;
-    if (!total) return;
-    const norm = ((nextIdx % total) + total) % total;
-    if (norm === index) return;
-    setIndexState(norm);
-  }, [index, total]);
-  const next = useCallback(() => goTo(index + 1,  1), [index, goTo]);
+  const goTo = useCallback(
+    (nextIdx: number, _dir?: 1 | -1) => {
+      void _dir;
+      if (!total) return;
+      const norm = ((nextIdx % total) + total) % total;
+      if (norm === index) return;
+      setIndexState(norm);
+    },
+    [index, total],
+  );
+  const next = useCallback(() => goTo(index + 1, 1), [index, goTo]);
   const prev = useCallback(() => goTo(index - 1, -1), [index, goTo]);
 
   // ── Zoom + pan helpers ─────────────────────────────────────────────
@@ -230,21 +249,25 @@ export function CampaignAlbum({
     setZoom(clamped);
     if (clamped === 1) setPan({ x: 0, y: 0 });
   }, []);
-  const zoomIn    = useCallback(() => setSafeZoom(zoom + 0.5), [zoom, setSafeZoom]);
-  const zoomOut   = useCallback(() => setSafeZoom(zoom - 0.5), [zoom, setSafeZoom]);
+  const zoomIn = useCallback(() => setSafeZoom(zoom + 0.5), [zoom, setSafeZoom]);
+  const zoomOut = useCallback(() => setSafeZoom(zoom - 0.5), [zoom, setSafeZoom]);
   const zoomReset = useCallback(() => setSafeZoom(1), [setSafeZoom]);
 
-  const constrainPan = useCallback((nx: number, ny: number, z = zoom) => {
-    const stage = stageRef.current;
-    if (!stage || z <= 1) return { x: 0, y: 0 };
-    const w = stage.clientWidth, h = stage.clientHeight;
-    const maxX = (w * (z - 1)) / 2;
-    const maxY = (h * (z - 1)) / 2;
-    return {
-      x: Math.max(-maxX, Math.min(maxX, nx)),
-      y: Math.max(-maxY, Math.min(maxY, ny)),
-    };
-  }, [zoom]);
+  const constrainPan = useCallback(
+    (nx: number, ny: number, z = zoom) => {
+      const stage = stageRef.current;
+      if (!stage || z <= 1) return { x: 0, y: 0 };
+      const w = stage.clientWidth,
+        h = stage.clientHeight;
+      const maxX = (w * (z - 1)) / 2;
+      const maxY = (h * (z - 1)) / 2;
+      return {
+        x: Math.max(-maxX, Math.min(maxX, nx)),
+        y: Math.max(-maxY, Math.min(maxY, ny)),
+      };
+    },
+    [zoom],
+  );
 
   // ── Fullscreen ─────────────────────────────────────────────────────
   // Full vendor-prefix coverage — Safari, older Chrome/Edge and any
@@ -267,7 +290,8 @@ export function CampaignAlbum({
   }, []);
 
   const toggleFs = useCallback(async () => {
-    const el = panelRef.current; if (!el) return;
+    const el = panelRef.current;
+    if (!el) return;
     const anyEl = el as HTMLElement & {
       webkitRequestFullscreen?: () => Promise<void>;
       mozRequestFullScreen?: () => Promise<void>;
@@ -281,19 +305,21 @@ export function CampaignAlbum({
     try {
       if (!getFsElement()) {
         // Enter fullscreen — try every known API in order of ubiquity.
-        if      (anyEl.requestFullscreen)        await anyEl.requestFullscreen();
-        else if (anyEl.webkitRequestFullscreen)  await anyEl.webkitRequestFullscreen();
-        else if (anyEl.mozRequestFullScreen)     await anyEl.mozRequestFullScreen();
-        else if (anyEl.msRequestFullscreen)      await anyEl.msRequestFullscreen();
+        if (anyEl.requestFullscreen) await anyEl.requestFullscreen();
+        else if (anyEl.webkitRequestFullscreen) await anyEl.webkitRequestFullscreen();
+        else if (anyEl.mozRequestFullScreen) await anyEl.mozRequestFullScreen();
+        else if (anyEl.msRequestFullscreen) await anyEl.msRequestFullscreen();
         setIsFs(true);
       } else {
-        if      (anyDoc.exitFullscreen)          await anyDoc.exitFullscreen();
-        else if (anyDoc.webkitExitFullscreen)    await anyDoc.webkitExitFullscreen();
-        else if (anyDoc.mozCancelFullScreen)     await anyDoc.mozCancelFullScreen();
-        else if (anyDoc.msExitFullscreen)        await anyDoc.msExitFullscreen();
+        if (anyDoc.exitFullscreen) await anyDoc.exitFullscreen();
+        else if (anyDoc.webkitExitFullscreen) await anyDoc.webkitExitFullscreen();
+        else if (anyDoc.mozCancelFullScreen) await anyDoc.mozCancelFullScreen();
+        else if (anyDoc.msExitFullscreen) await anyDoc.msExitFullscreen();
         setIsFs(false);
       }
-    } catch { /* user-cancelled or unsupported */ }
+    } catch {
+      /* user-cancelled or unsupported */
+    }
   }, [getFsElement]);
 
   useEffect(() => {
@@ -331,35 +357,50 @@ export function CampaignAlbum({
       if (inField) return;
 
       if (e.key === 'Escape') {
-        if (helpOpen)        setHelpOpen(false);
-        else if (zoom > 1)   zoomReset();
-        else if (slideshow)  setSlideshow(false);
-        else                 onClose();
+        if (helpOpen) setHelpOpen(false);
+        else if (zoom > 1) zoomReset();
+        else if (slideshow) setSlideshow(false);
+        else onClose();
         return;
       }
       // Arrows + Space + Enter — always layout-independent
-      if (e.key === 'ArrowLeft')  { next(); return; }
-      if (e.key === 'ArrowRight') { prev(); return; }
-      if (e.code === 'Space')     { e.preventDefault(); setSlideshow((s) => !s); return; }
+      if (e.key === 'ArrowLeft') {
+        next();
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        prev();
+        return;
+      }
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setSlideshow((s) => !s);
+        return;
+      }
       // Letter shortcuts — check e.code first (physical key), then
       // e.key so Latin keyboards still get their friendly single-key
       // bindings.
-      if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') { toggleFs();               return; }
-      if (e.code === 'KeyH' || e.key === 'h' || e.key === 'H'
-          || e.key === '?' || e.key === '؟')                   { setHelpOpen((h) => !h);  return; }
+      if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') {
+        toggleFs();
+        return;
+      }
+      if (e.code === 'KeyH' || e.key === 'h' || e.key === 'H' || e.key === '?' || e.key === '؟') {
+        setHelpOpen((h) => !h);
+        return;
+      }
       // Zoom — physical + / - / 0 (Digit0 / NumpadAdd / etc.)
-      if (
-        e.code === 'Equal' || e.code === 'NumpadAdd' ||
-        e.key === '+' || e.key === '='
-      ) { zoomIn(); return; }
-      if (
-        e.code === 'Minus' || e.code === 'NumpadSubtract' ||
-        e.key === '-' || e.key === '_'
-      ) { zoomOut(); return; }
-      if (
-        e.code === 'Digit0' || e.code === 'Numpad0' ||
-        e.key === '0' || e.key === '۰'
-      ) { zoomReset(); return; }
+      if (e.code === 'Equal' || e.code === 'NumpadAdd' || e.key === '+' || e.key === '=') {
+        zoomIn();
+        return;
+      }
+      if (e.code === 'Minus' || e.code === 'NumpadSubtract' || e.key === '-' || e.key === '_') {
+        zoomOut();
+        return;
+      }
+      if (e.code === 'Digit0' || e.code === 'Numpad0' || e.key === '0' || e.key === '۰') {
+        zoomReset();
+        return;
+      }
     };
     document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
@@ -395,10 +436,12 @@ export function CampaignAlbum({
   //
   //   `next` is captured through a ref so the RAF closure always sees
   //   the freshest callback without changing its own deps.
-  const nextRef       = useRef(next);
-  const elapsedRef    = useRef<number>(0);
-  const lastTickRef   = useRef<number>(0);
-  useEffect(() => { nextRef.current = next; }, [next]);
+  const nextRef = useRef(next);
+  const elapsedRef = useRef<number>(0);
+  const lastTickRef = useRef<number>(0);
+  useEffect(() => {
+    nextRef.current = next;
+  }, [next]);
 
   // Reset the per-slide timer when the active image changes (whether by
   // the user paging manually or by the slideshow itself advancing).
@@ -477,7 +520,10 @@ export function CampaignAlbum({
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => { cancelled = true; cancelAnimationFrame(raf); };
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
   }, [open, slideshow, total, slideshowPaused]);
 
   // ── Stage pointer handlers ─────────────────────────────────────────
@@ -485,7 +531,10 @@ export function CampaignAlbum({
     if (helpOpen) return;
     if ((e.target as Element).closest('.album-nav,.album-hud,.album-strip,.album-dots')) return;
     panStartRef.current = {
-      x: e.clientX, y: e.clientY, px: pan.x, py: pan.y,
+      x: e.clientX,
+      y: e.clientY,
+      px: pan.x,
+      py: pan.y,
       mode: zoom > 1 ? 'pan' : 'swipe',
     };
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
@@ -514,11 +563,13 @@ export function CampaignAlbum({
     }
   };
   const onPointerUp = (e: React.PointerEvent) => {
-    const s = panStartRef.current; if (!s) return;
+    const s = panStartRef.current;
+    if (!s) return;
     panStartRef.current = null;
     if (s.mode === 'swipe') {
       const dx = e.clientX - s.x;
-      if      (dx >  60) prev();   // RTL: drag-right → previous
+      if (dx > 60)
+        prev(); // RTL: drag-right → previous
       else if (dx < -60) next();
     }
   };
@@ -542,7 +593,9 @@ export function CampaignAlbum({
       setSafeZoom(pinchRef.current.startZoom * (dist / pinchRef.current.startDist));
     }
   };
-  const onTouchEnd = () => { pinchRef.current = null; };
+  const onTouchEnd = () => {
+    pinchRef.current = null;
+  };
   const onDoubleClick = () => setSafeZoom(zoom > 1 ? 1 : 2.25);
 
   // ── Action handlers ────────────────────────────────────────────────
@@ -581,7 +634,9 @@ export function CampaignAlbum({
       a.href = current.url;
       a.target = '_blank';
       a.rel = 'noopener';
-      document.body.appendChild(a); a.click(); a.remove();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
     };
 
     try {
@@ -592,7 +647,9 @@ export function CampaignAlbum({
       const a = document.createElement('a');
       a.href = objectUrl;
       a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
       // Give the browser one tick to consume the blob before revoking
       setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
     } catch {
@@ -662,15 +719,20 @@ export function CampaignAlbum({
           setCopiedKind('url');
           setTimeout(() => setCopiedKind(null), 1800);
           return true;
-        } catch { /* fall through */ }
+        } catch {
+          /* fall through */
+        }
       }
       // execCommand path — works on legacy + http:// contexts.
       try {
         const ta = document.createElement('textarea');
         ta.value = abs;
-        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0.01;width:1px;height:1px;pointer-events:none';
+        ta.style.cssText =
+          'position:fixed;top:0;left:0;opacity:0.01;width:1px;height:1px;pointer-events:none';
         document.body.appendChild(ta);
-        ta.focus(); ta.select(); ta.setSelectionRange(0, abs.length);
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, abs.length);
         const ok = document.execCommand('copy');
         ta.remove();
         if (ok) {
@@ -678,7 +740,9 @@ export function CampaignAlbum({
           setTimeout(() => setCopiedKind(null), 1800);
           return true;
         }
-      } catch { /* silent */ }
+      } catch {
+        /* silent */
+      }
       return false;
     };
 
@@ -701,7 +765,7 @@ export function CampaignAlbum({
           el.src = url;
         });
         const canvas = document.createElement('canvas');
-        canvas.width  = img.naturalWidth  || img.width;
+        canvas.width = img.naturalWidth || img.width;
         canvas.height = img.naturalHeight || img.height;
         const ctx = canvas.getContext('2d');
         if (!ctx) throw new Error('no 2d ctx');
@@ -740,7 +804,8 @@ export function CampaignAlbum({
       // by extension when the blob claims "application/octet-stream".
       if (!raw.type.startsWith('image/')) {
         // Rewrap with our best guess so <img> can decode it.
-        const ext = (current.url.split('?')[0].match(/\.(png|jpe?g|webp|gif|bmp)$/i) || [])[1]?.toLowerCase();
+        const ext = (current.url.split('?')[0].match(/\.(png|jpe?g|webp|gif|bmp)$/i) ||
+          [])[1]?.toLowerCase();
         const guessed = ext === 'jpg' ? 'jpeg' : ext;
         const mime = guessed ? `image/${guessed}` : 'image/png';
         return toPngBlob(new Blob([raw], { type: mime }));
@@ -782,18 +847,28 @@ export function CampaignAlbum({
 
   // ── Filmstrip overflow detection (RTL-aware) ───────────────────────
   const measureStrip = useCallback(() => {
-    const inner = stripInner.current; if (!inner) return;
+    const inner = stripInner.current;
+    if (!inner) return;
     const overflow = inner.scrollWidth - 1 > inner.clientWidth;
     setStripOverflow(overflow);
-    if (!overflow) { setFadeLeft(false); setFadeRight(false); return; }
+    if (!overflow) {
+      setFadeLeft(false);
+      setFadeRight(false);
+      return;
+    }
     const sl = inner.scrollLeft;
     const max = inner.scrollWidth - inner.clientWidth;
     // RTL: scrollLeft <= 0; LTR: scrollLeft >= 0. Use absolute distance.
     let fromRight: number, fromLeft: number;
-    if (sl <= 0) { fromRight = -sl;       fromLeft = max - (-sl); }
-    else         { fromRight = sl;        fromLeft = max - sl; }
+    if (sl <= 0) {
+      fromRight = -sl;
+      fromLeft = max - -sl;
+    } else {
+      fromRight = sl;
+      fromLeft = max - sl;
+    }
     setFadeRight(fromRight > 2);
-    setFadeLeft (fromLeft  > 2);
+    setFadeLeft(fromLeft > 2);
   }, []);
   useEffect(() => {
     if (!open) return;
@@ -816,20 +891,22 @@ export function CampaignAlbum({
   // Scroll active thumb into view when index changes
   useEffect(() => {
     if (!open) return;
-    const inner = stripInner.current; if (!inner) return;
+    const inner = stripInner.current;
+    if (!inner) return;
     const el = inner.querySelector<HTMLElement>(`[data-thumb="${index}"]`);
     el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }, [open, index]);
 
   const stripScrollBy = (sign: 1 | -1) => {
-    const inner = stripInner.current; if (!inner) return;
+    const inner = stripInner.current;
+    if (!inner) return;
     const dist = Math.max(120, inner.clientWidth * 0.8);
     inner.scrollBy({ left: sign * dist, behavior: 'smooth' });
   };
 
   // Honour the user's motion preference for any micro-animation we own.
-  const reduced = typeof window !== 'undefined'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduced =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const counter = useMemo(() => {
     if (!total) return '۰';
@@ -854,30 +931,111 @@ export function CampaignAlbum({
           ariaLabel={slideshow ? 'توقف اسلایدشو (Space)' : 'پخش اسلایدشو (Space)'}
           pressed={slideshow}
         >
-          {slideshow
-            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
-            : <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>}
+          {slideshow ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="5" width="4" height="14" rx="1" />
+              <rect x="14" y="5" width="4" height="14" rx="1" />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="6,4 20,12 6,20" />
+            </svg>
+          )}
         </HudBtn>
       )}
-      <HudBtn onClick={toggleFs} ariaLabel={isFs ? 'خروج از تمام‌صفحه (F)' : 'تمام‌صفحه (F)'} pressed={isFs}>
-        {isFs
-          ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-          : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>}
+      <HudBtn
+        onClick={toggleFs}
+        ariaLabel={isFs ? 'خروج از تمام‌صفحه (F)' : 'تمام‌صفحه (F)'}
+        pressed={isFs}
+      >
+        {isFs ? (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="4 14 10 14 10 20" />
+            <polyline points="20 10 14 10 14 4" />
+            <line x1="14" y1="10" x2="21" y2="3" />
+            <line x1="3" y1="21" x2="10" y2="14" />
+          </svg>
+        ) : (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="15 3 21 3 21 9" />
+            <polyline points="9 21 3 21 3 15" />
+            <line x1="21" y1="3" x2="14" y2="10" />
+            <line x1="3" y1="21" x2="10" y2="14" />
+          </svg>
+        )}
       </HudBtn>
       <HudBtn
         onClick={onCopyUrl}
         ariaLabel={
-          copiedKind === 'image' ? 'تصویر در حافظه کپی شد'
-          : copiedKind === 'url' ? 'نشانی تصویر کپی شد (پشتیبانی کپی مستقیم تصویر در این مرورگر فراهم نیست)'
-          : 'کپی تصویر'
+          copiedKind === 'image'
+            ? 'تصویر در حافظه کپی شد'
+            : copiedKind === 'url'
+              ? 'نشانی تصویر کپی شد (پشتیبانی کپی مستقیم تصویر در این مرورگر فراهم نیست)'
+              : 'کپی تصویر'
         }
       >
-        {copiedKind
-          ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>}
+        {copiedKind ? (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="9" y="9" width="13" height="13" rx="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
       </HudBtn>
       <HudBtn onClick={onDownload} ariaLabel="دانلود تصویر">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
       </HudBtn>
       {current?.url && (
         <a
@@ -885,14 +1043,43 @@ export function CampaignAlbum({
           target="_blank"
           rel="noopener noreferrer"
           aria-label="باز کردن در زبانهٔ جدید"
-          className="inline-flex items-center justify-center w-[30px] h-[30px] sm:w-8 sm:h-8 rounded-full text-white
-                     hover:bg-white/15 transition-colors flex-shrink-0"
+          className="inline-flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15 sm:h-8 sm:w-8"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+          </svg>
         </a>
       )}
-      <HudBtn onClick={() => setHelpOpen((h) => !h)} ariaLabel="میان‌برهای صفحه‌کلید (?)" pressed={helpOpen}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <HudBtn
+        onClick={() => setHelpOpen((h) => !h)}
+        ariaLabel="میان‌برهای صفحه‌کلید (?)"
+        pressed={helpOpen}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
       </HudBtn>
     </>
   );
@@ -900,20 +1087,41 @@ export function CampaignAlbum({
   const zoomControlsRender = (
     <>
       <HudBtn onClick={zoomOut} ariaLabel="کوچک‌نمایی (−)" disabled={zoom <= 1}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
       </HudBtn>
       <button
         type="button"
         onClick={zoomReset}
         aria-label="بازنشانی بزرگ‌نمایی (۰)"
-        className="px-1.5 sm:px-2 h-[26px] sm:h-7 min-w-[38px] sm:min-w-[44px] rounded-full text-white
-                   text-[10.5px] sm:text-[11px] font-extrabold tabular-nums
-                   hover:bg-white/10 transition-colors flex-shrink-0"
+        className="h-[26px] min-w-[38px] flex-shrink-0 rounded-full px-1.5 text-[10.5px] font-extrabold tabular-nums text-white transition-colors hover:bg-white/10 sm:h-7 sm:min-w-[44px] sm:px-2 sm:text-[11px]"
       >
         {`٪${formatPersianNumber(Math.round(zoom * 100))}`}
       </button>
       <HudBtn onClick={zoomIn} ariaLabel="بزرگ‌نمایی (+)" disabled={zoom >= 4}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><line x1="12" y1="5" x2="12" y2="19"/></svg>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <line x1="12" y1="5" x2="12" y2="19" />
+        </svg>
       </HudBtn>
     </>
   );
@@ -957,193 +1165,205 @@ export function CampaignAlbum({
       role="dialog"
       aria-modal="true"
       aria-label={`گالری تصاویر — ${title}`}
-      className="fixed inset-0 z-[110] flex items-center justify-center
-                 bg-ink-900/85 p-2 sm:p-5
-                 animate-[albumFadeIn_180ms_ease-out_both]"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      className="fixed inset-0 z-[110] flex animate-[albumFadeIn_180ms_ease-out_both] items-center justify-center bg-ink-900/85 p-2 sm:p-5"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         ref={panelRef}
-        className="relative w-full max-w-[1180px] h-[92vh]
-                   bg-ink-900 rounded-[28px] overflow-hidden flex flex-col
-                   shadow-[0_50px_100px_-25px_rgba(0,0,0,.65)]
-                   animate-[albumPanelIn_220ms_cubic-bezier(.2,.7,.2,1)_both]"
+        className="relative flex h-[92vh] w-full max-w-[1180px] animate-[albumPanelIn_220ms_cubic-bezier(.2,.7,.2,1)_both] flex-col overflow-hidden rounded-[28px] bg-ink-900 shadow-[0_50px_100px_-25px_rgba(0,0,0,.65)]"
       >
-            {/* Slideshow progress bar */}
-            {slideshow && total > 1 && (
-              <div aria-hidden="true" className="absolute top-0 inset-x-0 h-[3px] z-[6] bg-white/10">
-                <div
-                  className="h-full bg-gradient-to-l from-mint-500 to-brand-500 ease-linear"
-                  style={{
-                    width: `${progress * 100}%`,
-                    // Smooth width changes while the loop is running,
-                    // NO transition while paused — otherwise the bar
-                    // visibly slides on hover (because React re-renders
-                    // once with the same `progress` value but a longer
-                    // frame gap has since elapsed).
-                    transition: slideshowPaused ? 'none' : 'width 90ms linear',
-                  }}
-                />
-              </div>
-            )}
+        {/* Slideshow progress bar */}
+        {slideshow && total > 1 && (
+          <div aria-hidden="true" className="absolute inset-x-0 top-0 z-[6] h-[3px] bg-white/10">
+            <div
+              className="h-full bg-gradient-to-l from-mint-500 to-brand-500 ease-linear"
+              style={{
+                width: `${progress * 100}%`,
+                // Smooth width changes while the loop is running,
+                // NO transition while paused — otherwise the bar
+                // visibly slides on hover (because React re-renders
+                // once with the same `progress` value but a longer
+                // frame gap has since elapsed).
+                transition: slideshowPaused ? 'none' : 'width 90ms linear',
+              }}
+            />
+          </div>
+        )}
 
-            {/* Header — fully responsive, no collisions */}
-            <div className="relative z-[5] flex items-center justify-between gap-2 sm:gap-3
-                            px-2.5 sm:px-4 md:px-6 py-2.5 sm:py-3.5
-                            bg-gradient-to-b from-ink-900/95 to-ink-900/0 text-white">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
-                <span className="shrink-0 inline-flex w-[34px] h-[34px] sm:w-10 sm:h-10 rounded-[10px] sm:rounded-xl
-                                 bg-gradient-to-br from-mint-500 to-brand-700 items-center justify-center
-                                 shadow-[0_8px_18px_-6px_rgba(13,128,116,.55)]">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                       stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-                       className="sm:w-5 sm:h-5">
-                    <rect x="3" y="3" width="18" height="18" rx="3"/>
-                    <circle cx="9" cy="9" r="2"/>
-                    <path d="m21 15-5-5L5 21"/>
-                  </svg>
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-[13px] sm:text-[14.5px] md:text-[15.5px] font-extrabold leading-[1.4] truncate">
-                    {title}
-                  </h3>
-                  {resolvedSubtitle?.value && (
-                    /*
-                     * Subtitle line (e.g. "موقعیت: تهران، ایران").
-                     *
-                     * Visible on EVERY size — historically was
-                     * `hidden sm:block` which is why the criminal's
-                     * location was missing on mobile.
-                     *
-                     * Layout guarantees:
-                     *   • parent left column has `min-w-0` +
-                     *     `overflow-hidden` → this row can shrink.
-                     *   • `<span class="truncate">` on the value →
-                     *     overflow becomes an ellipsis (`…`).
-                     *   • `<span shrink-0>` on the "label:" prefix
-                     *     stays intact so the user always sees WHAT
-                     *     the trimmed value represents.
-                     *   • row itself uses `flex min-w-0` so the
-                     *     truncated child respects the container
-                     *     width in every browser (Safari-safe).
-                     *   • right-side counter+close cluster keeps
-                     *     `shrink-0` so it never gets pushed.
-                     */
-                    <p
-                      className="flex items-center gap-1 min-w-0 mt-0.5 sm:mt-0
-                                 text-[12px] sm:text-[12px] text-white/80 font-medium
-                                 leading-[1.4] sm:leading-5"
-                    >
-                      {/* Location pin glyph — a tiny visual anchor
+        {/* Header — fully responsive, no collisions */}
+        <div className="relative z-[5] flex items-center justify-between gap-2 bg-gradient-to-b from-ink-900/95 to-ink-900/0 px-2.5 py-2.5 text-white sm:gap-3 sm:px-4 sm:py-3.5 md:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:gap-3">
+            <span className="inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-mint-500 to-brand-700 shadow-[0_8px_18px_-6px_rgba(13,128,116,.55)] sm:h-10 sm:w-10 sm:rounded-xl">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className="sm:h-5 sm:w-5"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="3" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-5-5L5 21" />
+              </svg>
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate text-[13px] font-extrabold leading-[1.4] sm:text-[14.5px] md:text-[15.5px]">
+                {title}
+              </h3>
+              {resolvedSubtitle?.value && (
+                /*
+                 * Subtitle line (e.g. "موقعیت: تهران، ایران").
+                 *
+                 * Visible on EVERY size — historically was
+                 * `hidden sm:block` which is why the criminal's
+                 * location was missing on mobile.
+                 *
+                 * Layout guarantees:
+                 *   • parent left column has `min-w-0` +
+                 *     `overflow-hidden` → this row can shrink.
+                 *   • `<span class="truncate">` on the value →
+                 *     overflow becomes an ellipsis (`…`).
+                 *   • `<span shrink-0>` on the "label:" prefix
+                 *     stays intact so the user always sees WHAT
+                 *     the trimmed value represents.
+                 *   • row itself uses `flex min-w-0` so the
+                 *     truncated child respects the container
+                 *     width in every browser (Safari-safe).
+                 *   • right-side counter+close cluster keeps
+                 *     `shrink-0` so it never gets pushed.
+                 */
+                <p className="mt-0.5 flex min-w-0 items-center gap-1 text-[12px] font-medium leading-[1.4] text-white/80 sm:mt-0 sm:text-[12px] sm:leading-5">
+                  {/* Location pin glyph — a tiny visual anchor
                           so the subtitle reads instantly as a place,
                           before the user even parses the Persian
                           label. Hidden from screen readers because
                           the following text already carries the
                           semantic meaning. */}
-                      <svg
-                        aria-hidden="true"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                        className="shrink-0 w-3 h-3 sm:w-3.5 sm:h-3.5 text-white/70"
-                      >
-                        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                        <circle cx="12" cy="10" r="3"/>
-                      </svg>
-                      <span className="shrink-0">{resolvedSubtitle.label}:</span>
-                      <span className="truncate min-w-0">{resolvedSubtitle.value}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                <span
-                  aria-live="polite"
-                  className="hidden sm:inline-flex items-center px-3 h-9 rounded-full
-                             bg-white/10 text-white text-[12px] font-extrabold tabular-nums
-                             ring-1 ring-white/15 backdrop-blur"
-                >
-                  {counter}
-                </span>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  aria-label="بستن (Esc)"
-                  className="w-[34px] h-[34px] sm:w-10 sm:h-10 rounded-full bg-white/10 text-white
-                             hover:bg-rose-500 hover:scale-105 active:scale-95
-                             flex items-center justify-center ring-1 ring-white/15 backdrop-blur
-                             transition-all duration-200 shrink-0"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                       stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-3 w-3 shrink-0 text-white/70 sm:h-3.5 sm:w-3.5"
+                  >
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                    <circle cx="12" cy="10" r="3" />
                   </svg>
-                </button>
-              </div>
+                  <span className="shrink-0">{resolvedSubtitle.label}:</span>
+                  <span className="min-w-0 truncate">{resolvedSubtitle.value}</span>
+                </p>
+              )}
             </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <span
+              aria-live="polite"
+              className="hidden h-9 items-center rounded-full bg-white/10 px-3 text-[12px] font-extrabold tabular-nums text-white ring-1 ring-white/15 backdrop-blur sm:inline-flex"
+            >
+              {counter}
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="بستن (Esc)"
+              className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/15 backdrop-blur transition-all duration-200 hover:scale-105 hover:bg-rose-500 active:scale-95 sm:h-10 sm:w-10"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+        </div>
 
-            {/* Stage — hover-to-pause is scoped to THIS region only, so
+        {/* Stage — hover-to-pause is scoped to THIS region only, so
                 resting the cursor on the title / HUD / filmstrip never
                 freezes the slideshow. */}
+        <div
+          ref={stageRef}
+          className="relative flex-1 overflow-hidden"
+          style={{ perspective: '1400px', perspectiveOrigin: '50% 50%' }}
+          onWheel={onWheel}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          // Hover-to-pause is scoped to the CENTRE IMAGE only —
+          // onPointerMove hit-tests the cursor against the
+          // picture's bounding rect and toggles `hovering` from
+          // there. Empty backdrop / letterbox / side cards do
+          // nothing to the slideshow.
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+
+          onDoubleClick={onDoubleClick}
+        >
+          {current?.url && (
+            /*
+             * Cinematic backdrop — blurred version of the current
+             * picture. Blur radius dropped from 48px → 24px: the
+             * visual difference at that scale is imperceptible
+             * (both look like abstract colour clouds) but the GPU
+             * cost of `filter: blur(N)` scales roughly with N² of
+             * pixels touched → halving N is ~4× faster on the
+             * compositor. This is the single biggest source of
+             * open-lag on mid-range phones. `will-change: filter`
+             * is deliberately absent — the value never animates,
+             * so promoting the layer would just waste RAM.
+             */
             <div
-              ref={stageRef}
-              className="relative flex-1 overflow-hidden"
-              style={{ perspective: '1400px', perspectiveOrigin: '50% 50%' }}
-              onWheel={onWheel}
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
-              // Hover-to-pause is scoped to the CENTRE IMAGE only —
-              // onPointerMove hit-tests the cursor against the
-              // picture's bounding rect and toggles `hovering` from
-              // there. Empty backdrop / letterbox / side cards do
-              // nothing to the slideshow.
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                backgroundImage: `url("${current.url}")`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                filter: 'blur(24px) saturate(1.35) brightness(.55)',
+                transform: 'scale(1.08)',
+              }}
+            />
+          )}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(ellipse at center, rgba(0,0,0,0) 50%, rgba(0,0,0,.55) 100%)',
+            }}
+          />
 
-              onDoubleClick={onDoubleClick}
-            >
-              {current?.url && (
-                /*
-                 * Cinematic backdrop — blurred version of the current
-                 * picture. Blur radius dropped from 48px → 24px: the
-                 * visual difference at that scale is imperceptible
-                 * (both look like abstract colour clouds) but the GPU
-                 * cost of `filter: blur(N)` scales roughly with N² of
-                 * pixels touched → halving N is ~4× faster on the
-                 * compositor. This is the single biggest source of
-                 * open-lag on mid-range phones. `will-change: filter`
-                 * is deliberately absent — the value never animates,
-                 * so promoting the layer would just waste RAM.
-                 */
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    backgroundImage: `url("${current.url}")`,
-                    backgroundSize: 'cover', backgroundPosition: 'center',
-                    filter: 'blur(24px) saturate(1.35) brightness(.55)',
-                    transform: 'scale(1.08)',
-                  }}
-                />
-              )}
-              <div
-                aria-hidden="true"
-                className="absolute inset-0 pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 50%, rgba(0,0,0,.55) 100%)' }}
-              />
-
-              {loading ? (
-                <div className="absolute inset-0 flex items-center justify-center text-white/85"><Spinner/></div>
-              ) : total === 0 ? (
-                <div className="absolute inset-0 flex items-center justify-center text-white/80 text-[13px] font-medium">
-                  تصویری برای نمایش وجود ندارد.
-                </div>
-              ) : (
-                <>
-                  {/* ── Coverflow Carousel ─────────────────────────────
+          {loading ? (
+            <div className="absolute inset-0 flex items-center justify-center text-white/85">
+              <Spinner />
+            </div>
+          ) : total === 0 ? (
+            <div className="absolute inset-0 flex items-center justify-center text-[13px] font-medium text-white/80">
+              تصویری برای نمایش وجود ندارد.
+            </div>
+          ) : (
+            <>
+              {/* ── Coverflow Carousel ─────────────────────────────
                       Only cards within ±2 of the active index are ever
                       rendered — anything further just doesn't need to
                       exist in the DOM. Previous versions iterated the
@@ -1157,100 +1377,105 @@ export function CampaignAlbum({
                       lag. The filter below builds only the visible
                       window (≤5 nodes) so open-time is bounded and
                       constant regardless of gallery size. */}
-                  <div
-                    className="absolute inset-0"
-                    style={{ transformStyle: 'preserve-3d' }}
-                  >
-                    {images
-                      .map((img, i) => {
-                        // shortest signed distance on a circular index space
-                        let d = i - index;
-                        if      (d >  total / 2) d -= total;
-                        else if (d < -total / 2) d += total;
-                        return { img, i, d };
-                      })
-                      .filter(({ d }) => Math.abs(d) <= 2)
-                      .map(({ img, i, d }) => {
-                      const abs = Math.abs(d);
-                      const mounted = abs <= 2;
-                      const side = d === 0 ? 0 : (d > 0 ? 1 : -1);
-                      // Geometry table — mirrors the template build for
-                      // a pixel-identical experience between preview and
-                      // production.
-                      const SPEC = [
-                        { x:  0,  z:    0, ry:   0,  scale: 1.00, opacity: 1.00, blur: 0 },
-                        { x: 42,  z: -180, ry: -42,  scale: 0.78, opacity: 0.88, blur: 0 },
-                        { x: 70,  z: -360, ry: -60,  scale: 0.62, opacity: 0.55, blur: 1 },
-                      ];
-                      const s = mounted ? SPEC[abs] : SPEC[2];
-                      const tx     = s.x  * side;
-                      const ry     = s.ry * side;
-                      const tz     = s.z;
-                      const scale  = mounted ? s.scale : 0.35;
-                      const opac   = mounted ? s.opacity : 0;
-                      const filter = s.blur > 0 || !mounted
-                        ? `blur(${mounted ? s.blur : 2}px) brightness(${mounted ? .78 : .6})`
+              <div className="absolute inset-0" style={{ transformStyle: 'preserve-3d' }}>
+                {images
+                  .map((img, i) => {
+                    // shortest signed distance on a circular index space
+                    let d = i - index;
+                    if (d > total / 2) d -= total;
+                    else if (d < -total / 2) d += total;
+                    return { img, i, d };
+                  })
+                  .filter(({ d }) => Math.abs(d) <= 2)
+                  .map(({ img, i, d }) => {
+                    const abs = Math.abs(d);
+                    const mounted = abs <= 2;
+                    const side = d === 0 ? 0 : d > 0 ? 1 : -1;
+                    // Geometry table — mirrors the template build for
+                    // a pixel-identical experience between preview and
+                    // production.
+                    const SPEC = [
+                      { x: 0, z: 0, ry: 0, scale: 1.0, opacity: 1.0, blur: 0 },
+                      { x: 42, z: -180, ry: -42, scale: 0.78, opacity: 0.88, blur: 0 },
+                      { x: 70, z: -360, ry: -60, scale: 0.62, opacity: 0.55, blur: 1 },
+                    ];
+                    const s = mounted ? SPEC[abs] : SPEC[2];
+                    const tx = s.x * side;
+                    const ry = s.ry * side;
+                    const tz = s.z;
+                    const scale = mounted ? s.scale : 0.35;
+                    const opac = mounted ? s.opacity : 0;
+                    const filter =
+                      s.blur > 0 || !mounted
+                        ? `blur(${mounted ? s.blur : 2}px) brightness(${mounted ? 0.78 : 0.6})`
                         : 'blur(0) brightness(1)';
-                      const isCenter = d === 0;
-                      const isSide   = mounted && !isCenter;
-                      return (
-                        /*
-                         * Was <motion.div> with a Framer spring — now a
-                         * plain <div> with a CSS transition. Reason:
-                         * with up to 5 cards mounted, Framer schedules
-                         * 5 independent spring integrators on the main
-                         * thread on every navigation, which is exactly
-                         * what makes the coverflow feel "chuggy" on
-                         * mid-range devices. A CSS transition on
-                         * transform + opacity + filter runs entirely
-                         * on the compositor thread — the same 5 cards
-                         * animate in parallel with zero JS cost per
-                         * frame. The cubic-bezier below is tuned to
-                         * match the previous spring feel (fast start,
-                         * gentle settle) so the visual result is
-                         * indistinguishable.
-                         */
-                        <div
-                          key={`cf-${i}`}
-                          className="absolute inset-0 flex items-center justify-center select-none"
-                          style={{
-                            transformStyle: 'preserve-3d',
-                            transformOrigin: 'center center',
-                            // Only side cards need to be clickable (to
-                            // jump). The center card must be transparent
-                            // to pointers so the HUD (z-[7]) and the
-                            // prev/next buttons (z-[6]) that overlap it
-                            // stay clickable. Stage-level pointerDown
-                            // still hits us for pan/swipe on the center.
-                            pointerEvents: isSide ? 'auto' : 'none',
-                            cursor: isSide ? 'pointer'
-                              : zoom > 1 ? (panStartRef.current ? 'grabbing' : 'grab') : 'zoom-in',
-                            touchAction: zoom > 1 ? 'none' : 'pan-y',
-                            // Keep coverflow BELOW the HUD (z-[7]) and the
-                            // prev/next buttons (z-[6]) at all times.
-                            zIndex: 5 - abs,
-                            // `will-change` promotes the layer to its
-                            // own compositor tile — cheap for the tile
-                            // that's actually animating, but expensive
-                            // as memory. Only the center card gets it
-                            // because it's the one the ken-burns and
-                            // zoom/pan gestures touch every frame.
-                            willChange: isCenter ? 'transform, opacity, filter' : 'auto',
-                            transform: `translate3d(${tx}%, 0, ${tz}px) rotateY(${ry}deg) scale(${scale})`,
-                            opacity: opac,
-                            filter,
-                            transition: reduced
-                              ? 'none'
-                              : 'transform 240ms cubic-bezier(.2,.7,.2,1), opacity 240ms ease-out, filter 240ms ease-out',
-                          }}
-                          onClick={() => {
-                            if (isSide) goTo(i, side > 0 ? -1 : 1);
-                          }}
-                        >
-                          {isCenter && !imgReady && (
-                            <div className="absolute inset-0 flex items-center justify-center text-white/70"><Spinner/></div>
-                          )}
-                          {/* Center card gets pan/zoom + (optional) Ken-Burns
+                    const isCenter = d === 0;
+                    const isSide = mounted && !isCenter;
+                    return (
+                      /*
+                       * Was <motion.div> with a Framer spring — now a
+                       * plain <div> with a CSS transition. Reason:
+                       * with up to 5 cards mounted, Framer schedules
+                       * 5 independent spring integrators on the main
+                       * thread on every navigation, which is exactly
+                       * what makes the coverflow feel "chuggy" on
+                       * mid-range devices. A CSS transition on
+                       * transform + opacity + filter runs entirely
+                       * on the compositor thread — the same 5 cards
+                       * animate in parallel with zero JS cost per
+                       * frame. The cubic-bezier below is tuned to
+                       * match the previous spring feel (fast start,
+                       * gentle settle) so the visual result is
+                       * indistinguishable.
+                       */
+                      <div
+                        key={`cf-${i}`}
+                        className="absolute inset-0 flex select-none items-center justify-center"
+                        style={{
+                          transformStyle: 'preserve-3d',
+                          transformOrigin: 'center center',
+                          // Only side cards need to be clickable (to
+                          // jump). The center card must be transparent
+                          // to pointers so the HUD (z-[7]) and the
+                          // prev/next buttons (z-[6]) that overlap it
+                          // stay clickable. Stage-level pointerDown
+                          // still hits us for pan/swipe on the center.
+                          pointerEvents: isSide ? 'auto' : 'none',
+                          cursor: isSide
+                            ? 'pointer'
+                            : zoom > 1
+                              ? panStartRef.current
+                                ? 'grabbing'
+                                : 'grab'
+                              : 'zoom-in',
+                          touchAction: zoom > 1 ? 'none' : 'pan-y',
+                          // Keep coverflow BELOW the HUD (z-[7]) and the
+                          // prev/next buttons (z-[6]) at all times.
+                          zIndex: 5 - abs,
+                          // `will-change` promotes the layer to its
+                          // own compositor tile — cheap for the tile
+                          // that's actually animating, but expensive
+                          // as memory. Only the center card gets it
+                          // because it's the one the ken-burns and
+                          // zoom/pan gestures touch every frame.
+                          willChange: isCenter ? 'transform, opacity, filter' : 'auto',
+                          transform: `translate3d(${tx}%, 0, ${tz}px) rotateY(${ry}deg) scale(${scale})`,
+                          opacity: opac,
+                          filter,
+                          transition: reduced
+                            ? 'none'
+                            : 'transform 240ms cubic-bezier(.2,.7,.2,1), opacity 240ms ease-out, filter 240ms ease-out',
+                        }}
+                        onClick={() => {
+                          if (isSide) goTo(i, side > 0 ? -1 : 1);
+                        }}
+                      >
+                        {isCenter && !imgReady && (
+                          <div className="absolute inset-0 flex items-center justify-center text-white/70">
+                            <Spinner />
+                          </div>
+                        )}
+                        {/* Center card gets pan/zoom + (optional) Ken-Burns
 
                               Every <img> lives at its own `key` derived from
                               the CURRENT active index — that way, whenever
@@ -1262,94 +1487,101 @@ export function CampaignAlbum({
                               `imgReady = true` without ever waiting for a
                               second `onLoad` event that browsers famously
                               skip for cached responses.                    */}
-                          {isCenter && slideshow && zoom === 1 && !reduced ? (
-                            // Ken-Burns drift SYNCED to the progress bar.
-                            //
-                            // The transform is derived DIRECTLY from the
-                            // `progress` state (0 → 1 over the 5.4 s
-                            // slide life). Because `progress` freezes
-                            // the instant the RAF loop pauses (on
-                            // hover / help / zoom), the transform
-                            // freezes with it — pixel-perfect lock-step,
-                            // no CSS animation-play-state races, no
-                            // Framer clock to fight.
-                            //
-                            // Ease-out curve is applied to `progress`
-                            // via a smoothstep-ish quadratic so the
-                            // drift decelerates naturally, matching the
-                            // Framer feel it replaces.
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              key={`img-kb-${index}`}
-                              src={img.url}
-                              alt={img.alt || title}
-                              draggable={false}
-                              ref={(el) => {
-                                centerImgRef.current = el;
-                                if (el && el.complete && el.naturalWidth > 0) {
-                                  setImgReady(true);
-                                }
-                              }}
-                              onLoad={() => setImgReady(true)}
-                              onError={() => setImgReady(true)}
-                              className="max-w-[86%] sm:max-w-[94%] max-h-[82%] sm:max-h-[88%] object-contain pointer-events-none
-                                         drop-shadow-[0_20px_50px_rgba(0,0,0,.55)] rounded-[14px]"
-                              style={(() => {
-                                // ease-out (1 - (1-p)^2) makes the drift
-                                // fast at first and settle at the end,
-                                // which matches the eye's slideshow
-                                // rhythm better than a linear ramp.
-                                const eased = 1 - Math.pow(1 - progress, 2);
-                                const scale =  1     + 0.06 * eased;
-                                const tx    = -1.2   * eased; // %
-                                const ty    = -0.8   * eased; // %
-                                return {
-                                  transformOrigin: 'center center',
-                                  transform: `scale(${scale}) translate3d(${tx}%, ${ty}%, 0)`,
-                                  opacity: imgReady ? 1 : 0,
-                                  transition: 'opacity .3s',
-                                  willChange: 'transform',
-                                };
-                              })()}
-                            />
-                          ) : (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              key={isCenter ? `img-center-${index}` : `img-side-${i}`}
-                              src={img.url}
-                              alt={img.alt || title}
-                              draggable={false}
-                              loading={isCenter ? 'eager' : 'lazy'}
-                              decoding="async"
-                              // Cached-image callback (see comment above)
-                              // + capture centerImgRef so the stage's
-                              // pointer-move handler can hit-test the
-                              // hover-pause hotspot against the picture
-                              // rather than the whole modal.
-                              ref={isCenter ? (el) => {
-                                centerImgRef.current = el;
-                                if (el && el.complete && el.naturalWidth > 0) {
-                                  setImgReady(true);
-                                }
-                              } : undefined}
-                              onLoad={isCenter ? () => setImgReady(true) : undefined}
-                              onError={isCenter ? () => setImgReady(true) : undefined}
-                              className="max-w-[86%] sm:max-w-[94%] max-h-[82%] sm:max-h-[88%] object-contain pointer-events-none
-                                         drop-shadow-[0_20px_50px_rgba(0,0,0,.55)] rounded-[14px]"
-                              style={isCenter ? {
-                                transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+                        {isCenter && slideshow && zoom === 1 && !reduced ? (
+                          // Ken-Burns drift SYNCED to the progress bar.
+                          //
+                          // The transform is derived DIRECTLY from the
+                          // `progress` state (0 → 1 over the 5.4 s
+                          // slide life). Because `progress` freezes
+                          // the instant the RAF loop pauses (on
+                          // hover / help / zoom), the transform
+                          // freezes with it — pixel-perfect lock-step,
+                          // no CSS animation-play-state races, no
+                          // Framer clock to fight.
+                          //
+                          // Ease-out curve is applied to `progress`
+                          // via a smoothstep-ish quadratic so the
+                          // drift decelerates naturally, matching the
+                          // Framer feel it replaces.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={`img-kb-${index}`}
+                            src={img.url}
+                            alt={img.alt || title}
+                            draggable={false}
+                            ref={(el) => {
+                              centerImgRef.current = el;
+                              if (el && el.complete && el.naturalWidth > 0) {
+                                setImgReady(true);
+                              }
+                            }}
+                            onLoad={() => setImgReady(true)}
+                            onError={() => setImgReady(true)}
+                            className="pointer-events-none max-h-[82%] max-w-[86%] rounded-[14px] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,.55)] sm:max-h-[88%] sm:max-w-[94%]"
+                            style={(() => {
+                              // ease-out (1 - (1-p)^2) makes the drift
+                              // fast at first and settle at the end,
+                              // which matches the eye's slideshow
+                              // rhythm better than a linear ramp.
+                              const eased = 1 - Math.pow(1 - progress, 2);
+                              const scale = 1 + 0.06 * eased;
+                              const tx = -1.2 * eased; // %
+                              const ty = -0.8 * eased; // %
+                              return {
                                 transformOrigin: 'center center',
-                                transition: 'transform .25s cubic-bezier(.22,1,.36,1), opacity .3s',
+                                transform: `scale(${scale}) translate3d(${tx}%, ${ty}%, 0)`,
                                 opacity: imgReady ? 1 : 0,
-                              } : { opacity: 1 }}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                                transition: 'opacity .3s',
+                                willChange: 'transform',
+                              };
+                            })()}
+                          />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={isCenter ? `img-center-${index}` : `img-side-${i}`}
+                            src={img.url}
+                            alt={img.alt || title}
+                            draggable={false}
+                            loading={isCenter ? 'eager' : 'lazy'}
+                            decoding="async"
+                            // Cached-image callback (see comment above)
+                            // + capture centerImgRef so the stage's
+                            // pointer-move handler can hit-test the
+                            // hover-pause hotspot against the picture
+                            // rather than the whole modal.
+                            ref={
+                              isCenter
+                                ? (el) => {
+                                    centerImgRef.current = el;
+                                    if (el && el.complete && el.naturalWidth > 0) {
+                                      setImgReady(true);
+                                    }
+                                  }
+                                : undefined
+                            }
+                            onLoad={isCenter ? () => setImgReady(true) : undefined}
+                            onError={isCenter ? () => setImgReady(true) : undefined}
+                            className="pointer-events-none max-h-[82%] max-w-[86%] rounded-[14px] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,.55)] sm:max-h-[88%] sm:max-w-[94%]"
+                            style={
+                              isCenter
+                                ? {
+                                    transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+                                    transformOrigin: 'center center',
+                                    transition:
+                                      'transform .25s cubic-bezier(.22,1,.36,1), opacity .3s',
+                                    opacity: imgReady ? 1 : 0,
+                                  }
+                                : { opacity: 1 }
+                            }
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
 
-                  {/* ─────────────────────────────────────────────────
+              {/* ─────────────────────────────────────────────────
                       Hover-pause hotspot — a transparent overlay sized
                       to cover the CENTRE image only. Sits at STAGE
                       level (a sibling of the coverflow, NOT a child of
@@ -1367,317 +1599,342 @@ export function CampaignAlbum({
                       cursor movements over the letterboxed backdrop
                       never trigger a pause.
                      ────────────────────────────────────────────── */}
-                  {slideshow && zoom === 1 && (
-                    <div
-                      aria-hidden="true"
-                      onMouseEnter={() => setHovering(true)}
-                      onMouseLeave={() => setHovering(false)}
-                      // Forward gesture events to the stage's own
-                      // handlers so pan / swipe / double-click still
-                      // work when they land on this transparent
-                      // overlay. onClick isn't intercepted by the
-                      // stage (only pointerDown drives swipe), so
-                      // we don't need onClick delegation here.
-                      onPointerDown={onPointerDown}
-                      onPointerMove={onPointerMove}
-                      onPointerUp={onPointerUp}
-                      onPointerCancel={onPointerUp}
-                      onDoubleClick={onDoubleClick}
-                      onWheel={onWheel}
-                      className="album-hover-hotspot absolute z-[3]"
-                      style={{
-                        top:    '10%',
-                        bottom: '14%',
-                        left:   '7%',
-                        right:  '7%',
-                        pointerEvents: 'auto',
-                        cursor: zoom > 1 ? 'grab' : 'zoom-in',
-                        background: 'transparent',
-                      }}
-                    />
-                  )}
+              {slideshow && zoom === 1 && (
+                <div
+                  aria-hidden="true"
+                  onMouseEnter={() => setHovering(true)}
+                  onMouseLeave={() => setHovering(false)}
+                  // Forward gesture events to the stage's own
+                  // handlers so pan / swipe / double-click still
+                  // work when they land on this transparent
+                  // overlay. onClick isn't intercepted by the
+                  // stage (only pointerDown drives swipe), so
+                  // we don't need onClick delegation here.
+                  onPointerDown={onPointerDown}
+                  onPointerMove={onPointerMove}
+                  onPointerUp={onPointerUp}
+                  onPointerCancel={onPointerUp}
+                  onDoubleClick={onDoubleClick}
+                  onWheel={onWheel}
+                  className="album-hover-hotspot absolute z-[3]"
+                  style={{
+                    top: '10%',
+                    bottom: '14%',
+                    left: '7%',
+                    right: '7%',
+                    pointerEvents: 'auto',
+                    cursor: zoom > 1 ? 'grab' : 'zoom-in',
+                    background: 'transparent',
+                  }}
+                />
+              )}
 
-                  {/* Edge nav buttons */}
-                  {total > 1 && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={prev}
-                        aria-label="تصویر قبلی (→)"
-                        className="album-nav absolute top-1/2 right-2 sm:right-4 -translate-y-1/2 z-[6]
-                                   w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/10 text-white
-                                   hover:bg-white hover:text-ink-900 hover:scale-110 active:scale-95
-                                   flex items-center justify-center ring-1 ring-white/20 backdrop-blur-md
-                                   shadow-[0_10px_24px_-6px_rgba(0,0,0,.55)] transition-all duration-200"
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                             strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-                             className="sm:w-[22px] sm:h-[22px]"><polyline points="9 6 15 12 9 18"/></svg>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={next}
-                        aria-label="تصویر بعدی (←)"
-                        className="album-nav absolute top-1/2 left-2 sm:left-4 -translate-y-1/2 z-[6]
-                                   w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/10 text-white
-                                   hover:bg-white hover:text-ink-900 hover:scale-110 active:scale-95
-                                   flex items-center justify-center ring-1 ring-white/20 backdrop-blur-md
-                                   shadow-[0_10px_24px_-6px_rgba(0,0,0,.55)] transition-all duration-200"
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                             strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-                             className="sm:w-[22px] sm:h-[22px]"><polyline points="15 18 9 12 15 6"/></svg>
-                      </button>
-                    </>
-                  )}
-
-                  {/* Mobile counter */}
-                  <span
-                    className="sm:hidden absolute top-3 left-1/2 -translate-x-1/2 z-[6]
-                               inline-flex items-center px-3 h-7 rounded-full
-                               bg-black/60 text-white text-[11.5px] font-extrabold tabular-nums
-                               ring-1 ring-white/15 backdrop-blur"
+              {/* Edge nav buttons */}
+              {total > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={prev}
+                    aria-label="تصویر قبلی (→)"
+                    className="album-nav absolute right-2 top-1/2 z-[6] flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white shadow-[0_10px_24px_-6px_rgba(0,0,0,.55)] ring-1 ring-white/20 backdrop-blur-md transition-all duration-200 hover:scale-110 hover:bg-white hover:text-ink-900 active:scale-95 sm:right-4 sm:h-12 sm:w-12"
                   >
-                    {counter}
-                  </span>
-
-                  {/* Caption */}
-                  {current?.alt && (
-                    <div
-                      className="absolute bottom-24 sm:bottom-[104px] inset-x-0 z-[5] flex justify-center px-3 sm:px-4 pointer-events-none"
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                       aria-hidden="true"
+                      className="sm:h-[22px] sm:w-[22px]"
                     >
-                      <motion.span
-                        key={`cap-${index}`}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className="max-w-[92%] text-center px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full
-                                   bg-black/55 text-white text-[11.5px] sm:text-[12.5px] font-medium
-                                   ring-1 ring-white/15 backdrop-blur-md line-clamp-2 leading-6"
-                      >
-                        {current.alt}
-                      </motion.span>
-                    </div>
-                  )}
+                      <polyline points="9 6 15 12 9 18" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={next}
+                    aria-label="تصویر بعدی (←)"
+                    className="album-nav absolute left-2 top-1/2 z-[6] flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white shadow-[0_10px_24px_-6px_rgba(0,0,0,.55)] ring-1 ring-white/20 backdrop-blur-md transition-all duration-200 hover:scale-110 hover:bg-white hover:text-ink-900 active:scale-95 sm:left-4 sm:h-12 sm:w-12"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className="sm:h-[22px] sm:w-[22px]"
+                    >
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                </>
+              )}
 
-                  {/* ── Unified HUD — ALWAYS bottom-centered ────────
+              {/* Mobile counter */}
+              <span className="absolute left-1/2 top-3 z-[6] inline-flex h-7 -translate-x-1/2 items-center rounded-full bg-black/60 px-3 text-[11.5px] font-extrabold tabular-nums text-white ring-1 ring-white/15 backdrop-blur sm:hidden">
+                {counter}
+              </span>
+
+              {/* Caption */}
+              {current?.alt && (
+                <div
+                  className="pointer-events-none absolute inset-x-0 bottom-24 z-[5] flex justify-center px-3 sm:bottom-[104px] sm:px-4"
+                  aria-hidden="true"
+                >
+                  <motion.span
+                    key={`cap-${index}`}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="line-clamp-2 max-w-[92%] rounded-full bg-black/55 px-3.5 py-1.5 text-center text-[11.5px] font-medium leading-6 text-white ring-1 ring-white/15 backdrop-blur-md sm:px-4 sm:py-2 sm:text-[12.5px]"
+                  >
+                    {current.alt}
+                  </motion.span>
+                </div>
+              )}
+
+              {/* ── Unified HUD — ALWAYS bottom-centered ────────
                       Mobile + desktop: a single floating pill containing
                       zoom controls + slideshow + fullscreen + copy +
                       download + open-original + help.
                       No left-anchored bar (was redundant — every action is
                       reachable from this one place).
                    */}
-                  <div
-                    // `album-hud` is matched by the stage pointerDown
-                    // handler's `.closest()` selector so clicking a HUD
-                    // button never fires the pan/swipe path underneath.
-                    // `onPointerDown` stopPropagation is a belt-and-braces
-                    // safeguard in case the CSS selector ever gets renamed
-                    // — the buttons stay clickable regardless.
-                    className="album-hud absolute z-[7] bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2
-                               inline-flex items-center gap-1 sm:gap-1.5 p-[5px] sm:p-1.5 rounded-full
-                               bg-black/55 ring-1 ring-white/15 backdrop-blur
-                               max-w-[calc(100%-1rem)] overflow-x-auto no-scrollbar"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onPointerUp={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {zoomControlsRender}
-                    <span aria-hidden="true" className="w-px h-[18px] bg-white/18 mx-0.5 shrink-0" />
-                    {hudControlsRender}
-                  </div>
+              <div
+                // `album-hud` is matched by the stage pointerDown
+                // handler's `.closest()` selector so clicking a HUD
+                // button never fires the pan/swipe path underneath.
+                // `onPointerDown` stopPropagation is a belt-and-braces
+                // safeguard in case the CSS selector ever gets renamed
+                // — the buttons stay clickable regardless.
+                className="album-hud no-scrollbar absolute bottom-2 left-1/2 z-[7] inline-flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-full bg-black/55 p-[5px] ring-1 ring-white/15 backdrop-blur sm:bottom-3 sm:gap-1.5 sm:p-1.5"
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {zoomControlsRender}
+                <span aria-hidden="true" className="bg-white/18 mx-0.5 h-[18px] w-px shrink-0" />
+                {hudControlsRender}
+              </div>
 
-                  {/* Dot indicator (≤ 8) — desktop only */}
-                  {total > 1 && total <= 8 && (
-                    <div className="album-dots hidden sm:flex absolute z-[5] bottom-[72px] left-1/2 -translate-x-1/2 items-center gap-1.5">
-                      {images.map((_, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => goTo(i)}
-                          aria-label={`نمایش تصویر ${formatPersianNumber(i + 1)}`}
-                          aria-current={i === index}
-                          className={`h-1.5 rounded-full transition-all duration-200
-                                      ${i === index ? 'w-6 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/70'}`}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </>
+              {/* Dot indicator (≤ 8) — desktop only */}
+              {total > 1 && total <= 8 && (
+                <div className="album-dots absolute bottom-[72px] left-1/2 z-[5] hidden -translate-x-1/2 items-center gap-1.5 sm:flex">
+                  {images.map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => goTo(i)}
+                      aria-label={`نمایش تصویر ${formatPersianNumber(i + 1)}`}
+                      aria-current={i === index}
+                      className={`h-1.5 rounded-full transition-all duration-200 ${i === index ? 'w-6 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/70'}`}
+                    />
+                  ))}
+                </div>
               )}
-            </div>
+            </>
+          )}
+        </div>
 
-            {/* Filmstrip — centered when fits, scroll arrows + edge fades when overflows.
+        {/* Filmstrip — centered when fits, scroll arrows + edge fades when overflows.
                 `backdrop-blur` removed: the surface is already 95%
                 opaque ink so blurring anything behind it is
                 imperceptible — but the compositor still has to run
                 the shader every frame. Zero-cost win. */}
-            {total > 1 && !loading && (
-              <div className="relative z-[5] bg-ink-900/95 border-t border-white/10 px-2 sm:px-4 py-2.5 sm:py-3">
-                <div
-                  ref={stripScroll}
-                  className={`relative overflow-hidden
-                              ${stripOverflow ? 'has-overflow' : ''}
-                              ${fadeRight ? 'fade-right' : ''}
-                              ${fadeLeft  ? 'fade-left'  : ''}`}
-                >
-                  {/* Edge fades — pure CSS via inline pseudo-element fallback (Tailwind has no ::before util that takes gradient; we use absolute spans) */}
-                  <span
-                    aria-hidden="true"
-                    className={`absolute top-0 bottom-0 right-0 w-12 z-[2] pointer-events-none transition-opacity duration-200
-                                ${fadeRight ? 'opacity-100' : 'opacity-0'}`}
-                    style={{ background: 'linear-gradient(to left, rgba(15,20,32,.95), rgba(15,20,32,0))' }}
-                  />
-                  <span
-                    aria-hidden="true"
-                    className={`absolute top-0 bottom-0 left-0 w-12 z-[2] pointer-events-none transition-opacity duration-200
-                                ${fadeLeft ? 'opacity-100' : 'opacity-0'}`}
-                    style={{ background: 'linear-gradient(to right, rgba(15,20,32,.95), rgba(15,20,32,0))' }}
-                  />
+        {total > 1 && !loading && (
+          <div className="relative z-[5] border-t border-white/10 bg-ink-900/95 px-2 py-2.5 sm:px-4 sm:py-3">
+            <div
+              ref={stripScroll}
+              className={`relative overflow-hidden ${stripOverflow ? 'has-overflow' : ''} ${fadeRight ? 'fade-right' : ''} ${fadeLeft ? 'fade-left' : ''}`}
+            >
+              {/* Edge fades — pure CSS via inline pseudo-element fallback (Tailwind has no ::before util that takes gradient; we use absolute spans) */}
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none absolute bottom-0 right-0 top-0 z-[2] w-12 transition-opacity duration-200 ${fadeRight ? 'opacity-100' : 'opacity-0'}`}
+                style={{
+                  background: 'linear-gradient(to left, rgba(15,20,32,.95), rgba(15,20,32,0))',
+                }}
+              />
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none absolute bottom-0 left-0 top-0 z-[2] w-12 transition-opacity duration-200 ${fadeLeft ? 'opacity-100' : 'opacity-0'}`}
+                style={{
+                  background: 'linear-gradient(to right, rgba(15,20,32,.95), rgba(15,20,32,0))',
+                }}
+              />
 
-                  {/* Scroll arrows — only when overflowing */}
-                  {stripOverflow && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => stripScrollBy( 1)}   // RTL: positive scrollLeft = right
-                        aria-label="جابه‌جایی نوار به راست"
-                        className="absolute top-1/2 right-1 -translate-y-1/2 z-[3] w-[30px] h-[30px] rounded-full
-                                   bg-white/10 text-white border-0 flex items-center justify-center cursor-pointer
-                                   ring-1 ring-white/20 backdrop-blur shadow-[0_6px_14px_-4px_rgba(0,0,0,.5)]
-                                   hover:bg-white hover:text-ink-900 hover:scale-105 active:scale-95 transition-all duration-200"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                             strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <polyline points="9 6 15 12 9 18"/>
-                        </svg>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => stripScrollBy(-1)}
-                        aria-label="جابه‌جایی نوار به چپ"
-                        className="absolute top-1/2 left-1 -translate-y-1/2 z-[3] w-[30px] h-[30px] rounded-full
-                                   bg-white/10 text-white border-0 flex items-center justify-center cursor-pointer
-                                   ring-1 ring-white/20 backdrop-blur shadow-[0_6px_14px_-4px_rgba(0,0,0,.5)]
-                                   hover:bg-white hover:text-ink-900 hover:scale-105 active:scale-95 transition-all duration-200"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                             strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <polyline points="15 18 9 12 15 6"/>
-                        </svg>
-                      </button>
-                    </>
-                  )}
-
-                  <div
-                    ref={stripInner}
-                    dir="rtl"
-                    className={`flex gap-2 overflow-x-auto py-1 no-scrollbar
-                                ${stripOverflow ? 'justify-start' : 'justify-center'}`}
-                    style={{ scrollbarWidth: 'none', scrollBehavior: 'smooth', scrollSnapType: 'x mandatory' }}
+              {/* Scroll arrows — only when overflowing */}
+              {stripOverflow && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => stripScrollBy(1)} // RTL: positive scrollLeft = right
+                    aria-label="جابه‌جایی نوار به راست"
+                    className="absolute right-1 top-1/2 z-[3] flex h-[30px] w-[30px] -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-0 bg-white/10 text-white shadow-[0_6px_14px_-4px_rgba(0,0,0,.5)] ring-1 ring-white/20 backdrop-blur transition-all duration-200 hover:scale-105 hover:bg-white hover:text-ink-900 active:scale-95"
                   >
-                    {images.map((img, i) => {
-                      const active = i === index;
-                      return (
-                        <button
-                          type="button"
-                          key={`${img.url}-${i}`}
-                          data-thumb={i}
-                          onClick={() => goTo(i)}
-                          aria-label={`نمایش تصویر ${formatPersianNumber(i + 1)}`}
-                          aria-current={active}
-                          className={`relative shrink-0 rounded-[12px] sm:rounded-[14px] overflow-hidden
-                                      transition-all duration-200
-                                      ${active
-                                        ? 'ring-2 ring-mint-500 scale-[1.05] shadow-[0_12px_28px_-8px_rgba(37,197,186,.55)]'
-                                        : 'ring-1 ring-white/15 hover:ring-mint-300 hover:scale-[1.03] opacity-70 hover:opacity-100'}`}
-                          style={{ width: 72, height: 54, scrollSnapAlign: 'center' }}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={img.url} alt="" loading="lazy"
-                            className="w-full h-full object-cover"
-                          />
-                          <span
-                            aria-hidden="true"
-                            className={`absolute top-1 right-1 px-1 h-4 rounded text-[9px]
-                                        font-extrabold tabular-nums ring-1 ring-white/15
-                                        ${active ? 'bg-mint-500 text-ink-900' : 'bg-black/55 text-white backdrop-blur-sm'}`}
-                          >
-                            {formatPersianNumber(i + 1)}
-                          </span>
-                          {active && (
-                            <span
-                              aria-hidden="true"
-                              className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-l from-mint-500 to-brand-500"
-                            />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Help overlay */}
-            <AnimatePresence>
-              {helpOpen && (
-                <motion.div
-                  key="help"
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="absolute inset-0 z-[20] bg-black/70 backdrop-blur-md flex items-center justify-center p-6"
-                  onClick={() => setHelpOpen(false)}
-                >
-                  <motion.div
-                    initial={{ y: 16, opacity: 0, scale: 0.96 }}
-                    animate={{ y: 0,  opacity: 1, scale: 1 }}
-                    exit={{ y: 8, opacity: 0, scale: 0.98 }}
-                    transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="max-w-[440px] w-full bg-white rounded-[20px] p-5 md:p-6
-                               text-ink-900 shadow-[0_30px_60px_-12px_rgba(0,0,0,.6)]"
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polyline points="9 6 15 12 9 18" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => stripScrollBy(-1)}
+                    aria-label="جابه‌جایی نوار به چپ"
+                    className="absolute left-1 top-1/2 z-[3] flex h-[30px] w-[30px] -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-0 bg-white/10 text-white shadow-[0_6px_14px_-4px_rgba(0,0,0,.5)] ring-1 ring-white/20 backdrop-blur transition-all duration-200 hover:scale-105 hover:bg-white hover:text-ink-900 active:scale-95"
                   >
-                    <div className="flex items-center gap-3 mb-4">
-                      <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700
-                                       text-white flex items-center justify-center">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <circle cx="12" cy="12" r="10"/>
-                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                          <line x1="12" y1="17" x2="12.01" y2="17"/>
-                        </svg>
-                      </span>
-                      <div>
-                        <h4 className="text-[15px] font-extrabold">میان‌برهای صفحه‌کلید</h4>
-                        <p className="text-[12px] text-ink-500 font-medium">برای کاوش سریع‌تر گالری</p>
-                      </div>
-                    </div>
-                    <ul className="grid grid-cols-1 gap-2 text-[13px]">
-                      <Kbd k="→"               l="تصویر قبلی" />
-                      <Kbd k="←"               l="تصویر بعدی" />
-                      <Kbd k="Space"           l="پخش / توقف اسلایدشو" />
-                      <Kbd k="F"               l="ورود / خروج تمام‌صفحه" />
-                      <Kbd k="+ / − / 0"       l="بزرگ‌نمایی / کوچک‌نمایی / بازنشانی" />
-                      <Kbd k="دابل‌کلیک"        l="تغییر سریع بزرگ‌نمایی" />
-                      <Kbd k="Ctrl + چرخش ماوس" l="بزرگ‌نمایی پیوسته" />
-                      <Kbd k="کشیدن انگشت"      l="جابه‌جایی بین تصاویر" />
-                      <Kbd k="Esc"             l="بستن یا بازنشانی" />
-                    </ul>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                </>
+              )}
+
+              <div
+                ref={stripInner}
+                dir="rtl"
+                className={`no-scrollbar flex gap-2 overflow-x-auto py-1 ${stripOverflow ? 'justify-start' : 'justify-center'}`}
+                style={{
+                  scrollbarWidth: 'none',
+                  scrollBehavior: 'smooth',
+                  scrollSnapType: 'x mandatory',
+                }}
+              >
+                {images.map((img, i) => {
+                  const active = i === index;
+                  return (
                     <button
                       type="button"
-                      onClick={() => setHelpOpen(false)}
-                      className="mt-5 w-full h-11 rounded-xl bg-brand-500 hover:bg-brand-600 active:bg-brand-700
-                                 text-white font-extrabold text-[13px] transition-colors"
+                      key={`${img.url}-${i}`}
+                      data-thumb={i}
+                      onClick={() => goTo(i)}
+                      aria-label={`نمایش تصویر ${formatPersianNumber(i + 1)}`}
+                      aria-current={active}
+                      className={`relative shrink-0 overflow-hidden rounded-[12px] transition-all duration-200 sm:rounded-[14px] ${
+                        active
+                          ? 'scale-[1.05] shadow-[0_12px_28px_-8px_rgba(37,197,186,.55)] ring-2 ring-mint-500'
+                          : 'hover:ring-mint-300 opacity-70 ring-1 ring-white/15 hover:scale-[1.03] hover:opacity-100'
+                      }`}
+                      style={{ width: 72, height: 54, scrollSnapAlign: 'center' }}
                     >
-                      فهمیدم
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img.url}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                      <span
+                        aria-hidden="true"
+                        className={`absolute right-1 top-1 h-4 rounded px-1 text-[9px] font-extrabold tabular-nums ring-1 ring-white/15 ${active ? 'bg-mint-500 text-ink-900' : 'bg-black/55 text-white backdrop-blur-sm'}`}
+                      >
+                        {formatPersianNumber(i + 1)}
+                      </span>
+                      {active && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-l from-mint-500 to-brand-500"
+                        />
+                      )}
                     </button>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Help overlay */}
+        <AnimatePresence>
+          {helpOpen && (
+            <motion.div
+              key="help"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[20] flex items-center justify-center bg-black/70 p-6 backdrop-blur-md"
+              onClick={() => setHelpOpen(false)}
+            >
+              <motion.div
+                initial={{ y: 16, opacity: 0, scale: 0.96 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: 8, opacity: 0, scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-[440px] rounded-[20px] bg-white p-5 text-ink-900 shadow-[0_30px_60px_-12px_rgba(0,0,0,.6)] md:p-6"
+              >
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                  </span>
+                  <div>
+                    <h4 className="text-[15px] font-extrabold">میان‌برهای صفحه‌کلید</h4>
+                    <p className="text-[12px] font-medium text-ink-500">برای کاوش سریع‌تر گالری</p>
+                  </div>
+                </div>
+                <ul className="grid grid-cols-1 gap-2 text-[13px]">
+                  <Kbd k="→" l="تصویر قبلی" />
+                  <Kbd k="←" l="تصویر بعدی" />
+                  <Kbd k="Space" l="پخش / توقف اسلایدشو" />
+                  <Kbd k="F" l="ورود / خروج تمام‌صفحه" />
+                  <Kbd k="+ / − / 0" l="بزرگ‌نمایی / کوچک‌نمایی / بازنشانی" />
+                  <Kbd k="دابل‌کلیک" l="تغییر سریع بزرگ‌نمایی" />
+                  <Kbd k="Ctrl + چرخش ماوس" l="بزرگ‌نمایی پیوسته" />
+                  <Kbd k="کشیدن انگشت" l="جابه‌جایی بین تصاویر" />
+                  <Kbd k="Esc" l="بستن یا بازنشانی" />
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => setHelpOpen(false)}
+                  className="mt-5 h-11 w-full rounded-xl bg-brand-500 text-[13px] font-extrabold text-white transition-colors hover:bg-brand-600 active:bg-brand-700"
+                >
+                  فهمیدم
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -1691,11 +1948,9 @@ export function CampaignAlbum({
 
 function Kbd({ k, l }: { k: string; l: string }) {
   return (
-    <li className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-ink-50">
-      <span className="text-ink-700 font-medium">{l}</span>
-      <kbd className="font-mono text-[11.5px] font-extrabold text-ink-900
-                      bg-white px-2 py-0.5 rounded-md ring-1 ring-ink-200
-                      shadow-[0_1px_0_rgba(0,0,0,.06)]">
+    <li className="flex items-center justify-between gap-3 rounded-lg bg-ink-50 px-3 py-2">
+      <span className="font-medium text-ink-700">{l}</span>
+      <kbd className="rounded-md bg-white px-2 py-0.5 font-mono text-[11.5px] font-extrabold text-ink-900 shadow-[0_1px_0_rgba(0,0,0,.06)] ring-1 ring-ink-200">
         {k}
       </kbd>
     </li>
@@ -1704,9 +1959,14 @@ function Kbd({ k, l }: { k: string; l: string }) {
 
 function Spinner() {
   return (
-    <svg className="w-8 h-8 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg className="h-8 w-8 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
-      <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path
+        d="M22 12a10 10 0 0 0-10-10"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

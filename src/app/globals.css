@@ -11,27 +11,29 @@
   --font-vazir: 'Vazirmatn', 'Tahoma', sans-serif;
 
   /* Brand — eyedropped from designer's mockup */
-  --brand-50:  #E6F3F1;
-  --brand-100: #C2E0DB;
-  --brand-500: #0D8074;
-  --brand-600: #0A6E64;
-  --brand-700: #085C54;
+  --brand-50: #e6f3f1;
+  --brand-100: #c2e0db;
+  --brand-500: #0d8074;
+  --brand-600: #0a6e64;
+  --brand-700: #085c54;
   --brand-900: #053832;
-  --mint-500:  #25C5BA;
-  --accent-500: #FF6B1A;
-  --gold-500:  #FFB033;
-  --ink-50:    #F5F8FA;
-  --ink-100:   #EAEEF2;
-  --ink-200:   #D9DEE5;
-  --ink-500:   #6B7480;
-  --ink-700:   #2E3644;
-  --ink-900:   #0F1420;
+  --mint-500: #25c5ba;
+  --accent-500: #ff6b1a;
+  --gold-500: #ffb033;
+  --ink-50: #f5f8fa;
+  --ink-100: #eaeef2;
+  --ink-200: #d9dee5;
+  --ink-500: #6b7480;
+  --ink-700: #2e3644;
+  --ink-900: #0f1420;
 
   --radius: 1rem;
 }
 
 @layer base {
-  * { -webkit-tap-highlight-color: transparent; }
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
 
   html {
     scroll-behavior: smooth;
@@ -61,20 +63,31 @@
   /* Never let images / videos / SVGs push their parent wider than the
      viewport by their intrinsic size — critical on mobile where a stray
      unconstrained media element is the #1 cause of a horizontal scroll. */
-  img, video, svg, iframe, canvas, embed, object {
+  img,
+  video,
+  svg,
+  iframe,
+  canvas,
+  embed,
+  object {
     max-width: 100%;
   }
 
   /* Persian numerals + Latin numerals harmony */
-  .tabular-nums { font-variant-numeric: tabular-nums; }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
 
   /* Better focus rings (a11y) */
   :where(a, button, input, textarea, select, [tabindex]):focus-visible {
-    @apply outline-none ring-2 ring-brand-500/70 ring-offset-2 ring-offset-white rounded-md;
+    @apply rounded-md outline-none ring-2 ring-brand-500/70 ring-offset-2 ring-offset-white;
   }
 
   /* Selection */
-  ::selection { background: rgba(31, 138, 122, 0.20); color: var(--brand-900); }
+  ::selection {
+    background: rgba(31, 138, 122, 0.2);
+    color: var(--brand-900);
+  }
 
   /* ── Page scrollbar — invisible, but scroll still works ──────────────
    *
@@ -99,19 +112,24 @@
    *  overrides inside components keep working exactly as before.
    */
   html {
-    scrollbar-width: none;              /* Firefox                */
-    -ms-overflow-style: none;           /* Legacy Edge / IE 10+   */
+    scrollbar-width: none; /* Firefox                */
+    -ms-overflow-style: none; /* Legacy Edge / IE 10+   */
   }
   html::-webkit-scrollbar,
   body::-webkit-scrollbar {
     width: 0;
     height: 0;
-    display: none;                      /* Chromium / Safari      */
+    display: none; /* Chromium / Safari      */
   }
 
   /* Headings */
-  h1, h2, h3, h4, h5, h6 {
-    @apply text-ink-900 font-bold tracking-tight;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold tracking-tight text-ink-900;
     line-height: 1.3;
   }
 }
@@ -123,54 +141,58 @@
 
   /* Buttons */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold
-           transition-all duration-200 select-none whitespace-nowrap
-           focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-brand-500 text-white shadow-soft hover:bg-brand-600 hover:shadow-card
-           active:translate-y-px;
+    @apply btn bg-brand-500 text-white shadow-soft hover:bg-brand-600 hover:shadow-card active:translate-y-px;
   }
   .btn-accent {
-    @apply btn bg-accent-500 text-ink-900 shadow-soft hover:bg-accent-400 hover:shadow-card
-           active:translate-y-px;
+    @apply btn bg-accent-500 text-ink-900 shadow-soft hover:bg-accent-400 hover:shadow-card active:translate-y-px;
   }
   .btn-outline {
-    @apply btn border-2 border-brand-500 text-brand-600 bg-white hover:bg-brand-50;
+    @apply btn border-2 border-brand-500 bg-white text-brand-600 hover:bg-brand-50;
   }
   .btn-ghost {
     @apply btn text-ink-700 hover:bg-ink-100;
   }
-  .btn-sm { @apply h-9 px-4 text-sm; }
-  .btn-md { @apply h-11 px-5 text-[15px]; }
-  .btn-lg { @apply h-13 px-7 text-base; }
+  .btn-sm {
+    @apply h-9 px-4 text-sm;
+  }
+  .btn-md {
+    @apply h-11 px-5 text-[15px];
+  }
+  .btn-lg {
+    @apply h-13 px-7 text-base;
+  }
 
   /* Card */
   .card {
-    @apply bg-white rounded-2xl shadow-soft border border-ink-100/70
-           transition-all duration-300 hover:shadow-card hover:-translate-y-0.5;
+    @apply rounded-2xl border border-ink-100/70 bg-white shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card;
   }
 
   /* Glass header */
   .glass {
-    @apply backdrop-blur-xl bg-white/75 border border-white/30;
+    @apply border border-white/30 bg-white/75 backdrop-blur-xl;
   }
 
   /* Section title eyebrow */
   .eyebrow {
-    @apply inline-flex items-center gap-2 text-sm font-semibold text-brand-600
-           bg-brand-50 px-3 py-1.5 rounded-full;
+    @apply inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-600;
   }
 
   /* Shimmer skeleton */
   .skeleton {
-    @apply rounded-lg bg-gradient-to-l from-ink-100 via-ink-200 to-ink-100
-           bg-[length:200%_100%] animate-shimmer;
+    @apply animate-shimmer rounded-lg bg-gradient-to-l from-ink-100 via-ink-200 to-ink-100 bg-[length:200%_100%];
   }
 
   /* Gradient text */
   .text-gradient-brand {
-    background: linear-gradient(120deg, var(--brand-600) 0%, var(--brand-500) 60%, var(--accent-500) 110%);
+    background: linear-gradient(
+      120deg,
+      var(--brand-600) 0%,
+      var(--brand-500) 60%,
+      var(--accent-500) 110%
+    );
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -180,15 +202,26 @@
 
 @layer utilities {
   /* Hide scrollbar but keep scroll (for horizontal chip rows) */
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 
   /* Aspect helper */
-  .aspect-card { aspect-ratio: 4 / 5; }
-  .aspect-hero { aspect-ratio: 16 / 9; }
+  .aspect-card {
+    aspect-ratio: 4 / 5;
+  }
+  .aspect-hero {
+    aspect-ratio: 16 / 9;
+  }
 
   /* Section padding */
-  .section-y { @apply py-16 md:py-20 lg:py-24; }
+  .section-y {
+    @apply py-16 md:py-20 lg:py-24;
+  }
 
   /* ─────────────────────────────────────────────────────────────
    *  Alternating section surface
@@ -206,18 +239,20 @@
    *  overlaid with a 3% dotted noise so it never reads as flat
    *  grey — feels *considered* even on 4K displays. */
   .section-alt {
-    background-color: #F4F6F9;
+    background-color: #f4f6f9;
     background-image:
       radial-gradient(circle at 1px 1px, rgba(15, 20, 32, 0.045) 1px, transparent 1px),
-      linear-gradient(180deg, #F2F5F8 0%, #F5F7FA 50%, #F2F5F8 100%);
-    background-size: 22px 22px, 100% 100%;
+      linear-gradient(180deg, #f2f5f8 0%, #f5f7fa 50%, #f2f5f8 100%);
+    background-size:
+      22px 22px,
+      100% 100%;
     background-repeat: repeat, no-repeat;
     /* Two hairline separators (top + bottom) draw the "chapter"
        transition without a hard edge — each rule fades to
        transparent at the sides so it never looks like a hard
        stroke crossing the viewport. */
     box-shadow:
-      inset 0  1px 0 rgba(15, 20, 32, 0.04),
+      inset 0 1px 0 rgba(15, 20, 32, 0.04),
       inset 0 -1px 0 rgba(15, 20, 32, 0.04);
     position: relative;
   }
@@ -237,11 +272,15 @@
   }
   .section-alt::before {
     top: 0;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 100%);
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.7) 0%,
+      rgba(255, 255, 255, 0) 100%
+    );
   }
   .section-alt::after {
     bottom: 0;
-    background: linear-gradient(to top,    rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 100%);
+    background: linear-gradient(to top, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 100%);
   }
   /* Keep every direct child of a .section-alt above the top/bottom
      fade pseudo-elements so real content is never dimmed by them.
@@ -269,12 +308,20 @@
    * anchor like #warfund / #justice scrolls a section into view, we
    * pull it down by that amount so the section title isn't tucked
    * under the sticky header. */
-  section[id] { scroll-margin-top: 88px; }
-  @media (min-width: 768px) { section[id] { scroll-margin-top: 96px; } }
+  section[id] {
+    scroll-margin-top: 88px;
+  }
+  @media (min-width: 768px) {
+    section[id] {
+      scroll-margin-top: 96px;
+    }
+  }
 
   /* Reduce motion */
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
@@ -293,44 +340,50 @@
 .participate-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 26px; height: 26px;
+  width: 26px;
+  height: 26px;
   border-radius: 9999px;
   background: #fff;
-  border: 3px solid #0D8074;
-  box-shadow: 0 6px 14px -4px rgba(13, 128, 116, .55);
+  border: 3px solid #0d8074;
+  box-shadow: 0 6px 14px -4px rgba(13, 128, 116, 0.55);
   cursor: grab;
-  transition: transform .15s;
+  transition: transform 0.15s;
 }
 .participate-range::-webkit-slider-thumb:active {
   cursor: grabbing;
   transform: scale(1.08);
 }
 .participate-range::-moz-range-thumb {
-  width: 26px; height: 26px;
+  width: 26px;
+  height: 26px;
   border-radius: 9999px;
   background: #fff;
-  border: 3px solid #0D8074;
-  box-shadow: 0 6px 14px -4px rgba(13, 128, 116, .55);
+  border: 3px solid #0d8074;
+  box-shadow: 0 6px 14px -4px rgba(13, 128, 116, 0.55);
   cursor: grab;
 }
 .participate-range:focus-visible::-webkit-slider-thumb {
-  outline: 3px solid rgba(13, 128, 116, .35);
+  outline: 3px solid rgba(13, 128, 116, 0.35);
   outline-offset: 2px;
 }
 
 /* ── GlobalSearch — quiet scrollbar inside the suggestions panel ────── */
 .custom-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(94, 104, 120, .35) transparent;
+  scrollbar-color: rgba(94, 104, 120, 0.35) transparent;
 }
-.custom-scroll::-webkit-scrollbar { width: 6px; }
-.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
 .custom-scroll::-webkit-scrollbar-thumb {
-  background: rgba(94, 104, 120, .25);
+  background: rgba(94, 104, 120, 0.25);
   border-radius: 9999px;
 }
 .custom-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(94, 104, 120, .45);
+  background: rgba(94, 104, 120, 0.45);
 }
 
 /* ── GlobalSearch — kill native <input type="search"> affordances ──── */
@@ -381,12 +434,22 @@
    are the ONLY two the browser can promote to the compositor
    without triggering layout / paint on every frame. */
 @keyframes albumFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes albumPanelIn {
-  from { opacity: 0; transform: translateY(12px) scale(.96); }
-  to   { opacity: 1; transform: translateY(0)    scale(1);   }
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
