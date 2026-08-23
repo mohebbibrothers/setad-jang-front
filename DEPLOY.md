@@ -181,7 +181,7 @@ ever required for a frontend-only rollback.
 از روی لپ‌تاپ (بدون ssh کردن دستی):
 
 ```bash
-ssh -p 2233 root@37.152.191.90 'cd /var/www/besat-front && ./update-front.sh'
+ssh -p 2233 root@37.152.191.90 'cd /opt/sites/besat/frontend/repo && ./update-front.sh'
 ```
 
 ### فلگ‌های مفید
@@ -208,11 +208,15 @@ SYSTEMD_UNIT=besat-front  ./update-front.sh
 RESTART_CMD='sudo systemctl restart besat-front' ./update-front.sh
 ```
 
+**پورت** هاردکد نشده: اسکریپت اول `PORT` را از env ثبت‌شده در pm2 می‌خواند،
+بعد از سوکتِ واقعیِ باز شده توسط پراسس، و در نهایت `3000` را فرض می‌کند.
+برای override دستی: `PORT=3100 ./update-front.sh`
+
 برای دائمی‌کردن، یک بار در `~/.bashrc` سرور:
 
 ```bash
 export PM2_APP=besat-front
-alias upfront='cd /var/www/besat-front && ./update-front.sh'
+alias upfront='cd /opt/sites/besat/frontend/repo && ./update-front.sh'
 ```
 
 لاگ هر دیپلوی در `.deploy/logs/` نگه داشته می‌شود (۲۰ اجرای آخر).

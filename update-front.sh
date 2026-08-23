@@ -44,8 +44,12 @@ SYSTEMD_UNIT="${SYSTEMD_UNIT:-}"           # خالی = تشخیص خودکار
 COMPOSE_SERVICE="${COMPOSE_SERVICE:-frontend}"
 RESTART_CMD="${RESTART_CMD:-}"             # اگر ست شود، اولویت مطلق دارد
 
-PORT="${PORT:-3000}"
-LOCAL_HEALTH_URL="${LOCAL_HEALTH_URL:-http://127.0.0.1:${PORT}/}"
+# پورت را هاردکد نمی‌کنیم: اگر کاربر ست نکرده باشد، از pm2 / سوکت‌های باز
+# کشفش می‌کنیم (روی سرور بعثت فرانت روی ۳۰۰۰ نیست).
+PORT_EXPLICIT=0; [[ -n "${PORT:-}" ]] && PORT_EXPLICIT=1
+PORT="${PORT:-}"
+LOCAL_HEALTH_URL_EXPLICIT=0; [[ -n "${LOCAL_HEALTH_URL:-}" ]] && LOCAL_HEALTH_URL_EXPLICIT=1
+LOCAL_HEALTH_URL="${LOCAL_HEALTH_URL:-}"
 PUBLIC_HEALTH_URL="${PUBLIC_HEALTH_URL:-https://besat.me/}"
 API_HEALTH_URL="${API_HEALTH_URL:-https://besat.me/api/v1/health/}"
 
@@ -113,7 +117,7 @@ besat.me frontend updater v${SCRIPT_VERSION}
   SYSTEMD_UNIT=besat-front           نام یونیت systemd (بدون .service)
   COMPOSE_SERVICE=${COMPOSE_SERVICE}          نام سرویس در docker compose
   RESTART_CMD='...'                  دستور ری‌استارت دلخواه (اولویت اول)
-  PORT=${PORT}
+  PORT=<n>                           پورت فرانت (پیش‌فرض: کشف خودکار از pm2)
   NPM_FLAGS='--legacy-peer-deps'     فلگ اضافه برای npm
   PUBLIC_HEALTH_REQUIRED=1           خطای هلث دامنه هم باعث rollback شود
   HEALTH_RETRIES=${HEALTH_RETRIES}  HEALTH_INTERVAL=${HEALTH_INTERVAL}
@@ -142,7 +146,7 @@ while (($#)); do
 done
 
 [[ "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]] || die "نام برنچ نامعتبر: $BRANCH"
-[[ "$PORT"   =~ ^[0-9]+$           ]] || die "PORT باید عدد باشد"
+if [[ -n "$PORT" && ! "$PORT" =~ ^[0-9]+$ ]]; then die "PORT باید عدد باشد"; fi
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  تعیین مسیر پروژه (و clone در اولین اجرا)
@@ -151,7 +155,7 @@ if [[ -z "$APP_DIR" ]]; then
   if git -C "$SCRIPT_DIR" rev-parse --show-toplevel >/dev/null 2>&1; then
     APP_DIR="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
   else
-    APP_DIR="/var/www/besat-front"
+    APP_DIR="/opt/sites/besat/frontend/repo"
   fi
 fi
 
@@ -200,6 +204,7 @@ fi
 #  ابزارها
 # ──────────────────────────────────────────────────────────────────────────────
 MANAGER=""
+PORT_SOURCE="صریح"
 detect_manager() {
   if [[ -n "$RESTART_CMD" ]]; then MANAGER="custom"; return; fi
   if command -v pm2 >/dev/null 2>&1 && pm2 describe "$PM2_APP" >/dev/null 2>&1; then
@@ -250,6 +255,45 @@ install_deps() {
 
   warn "lockfile با package.json همگام نیست — npm install --legacy-peer-deps"
   npm install "${flags[@]}" --legacy-peer-deps
+}
+
+# پورتی که pm2 در env اپ ثبت کرده
+pm2_env_port() {
+  command -v pm2 >/dev/null 2>&1 || return 1
+  command -v node >/dev/null 2>&1 || return 1
+  pm2 jlist 2>/dev/null | node -e '
+    let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>{
+      try {
+        const list = JSON.parse(s);
+        const app  = list.find(x => x.name === process.argv[1]);
+        const env  = (app && app.pm2_env && app.pm2_env.env) || {};
+        const port = env.PORT || env.port || "";
+        if (String(port).match(/^[0-9]+$/)) process.stdout.write(String(port));
+      } catch (_) {}
+    });' "$PM2_APP" 2>/dev/null
+}
+
+# پورتی که پراسسِ pm2 عملاً رویش LISTEN کرده
+pm2_listen_port() {
+  command -v pm2 >/dev/null 2>&1 || return 1
+  local pid
+  pid="$(pm2 pid "$PM2_APP" 2>/dev/null | tr -dc '0-9')"
+  [[ -n "$pid" && "$pid" != "0" ]] || return 1
+  if command -v ss >/dev/null 2>&1; then
+    ss -ltnpH 2>/dev/null | awk -v pat="pid=${pid}," '
+      $0 ~ pat { n = split($4, a, ":"); print a[n]; exit }'
+  fi
+}
+
+# ترتیب کشف پورت: PORT صریح → env داخل pm2 → سوکت واقعیِ پراسس → 3000
+resolve_port() {
+  if ((PORT_EXPLICIT)); then return 0; fi
+  local p
+  p="$(pm2_env_port || true)"
+  if [[ "$p" =~ ^[0-9]+$ ]]; then PORT="$p"; PORT_SOURCE="pm2 env"; return 0; fi
+  p="$(pm2_listen_port || true)"
+  if [[ "$p" =~ ^[0-9]+$ ]]; then PORT="$p"; PORT_SOURCE="سوکت باز پراسس"; return 0; fi
+  PORT=3000; PORT_SOURCE="پیش‌فرض"
 }
 
 http_ok() {
@@ -311,6 +355,8 @@ trap 'on_error $LINENO' ERR
 #  مسیرهای کوتاه: --status / --rollback
 # ──────────────────────────────────────────────────────────────────────────────
 detect_manager
+resolve_port
+if ((!LOCAL_HEALTH_URL_EXPLICIT)); then LOCAL_HEALTH_URL="http://127.0.0.1:${PORT}/"; fi
 
 if ((SHOW_STATUS)); then
   banner
@@ -319,6 +365,7 @@ if ((SHOW_STATUS)); then
   printf '  %sکامیت%s          %s  %s\n' "$D" "$R" "$(git rev-parse --short HEAD)" "$(git log -1 --format=%s | cut -c1-55)"
   printf '  %sتاریخ کامیت%s    %s\n'    "$D" "$R" "$(git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M')"
   printf '  %smanager%s        %s%s\n'  "$D" "$R" "$MANAGER" "$([[ $MANAGER == systemd ]] && printf ' (%s)' "$SYSTEMD_UNIT")"
+  printf '  %sپورت%s           %s  %s(%s)%s\n' "$D" "$R" "$PORT" "$D" "$PORT_SOURCE" "$R"
   printf '  %sآخرین نسخه سالم%s %s\n'   "$D" "$R" "$(cat "$LAST_GOOD_FILE" 2>/dev/null | cut -c1-8 || echo '—')"
   printf '  %sهلث محلی%s       %s\n'    "$D" "$R" "$(http_ok "$LOCAL_HEALTH_URL"  || echo 'در دسترس نیست')"
   printf '  %sهلث دامنه%s      %s\n'    "$D" "$R" "$(http_ok "$PUBLIC_HEALTH_URL" || echo 'در دسترس نیست')"
@@ -349,6 +396,7 @@ NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
 ok "node $(node -v) · npm v$(npm -v) · git $(git --version | awk '{print $3}')"
 ok "manager: ${B}${MANAGER}${R}$([[ $MANAGER == systemd ]] && printf ' → %s.service' "$SYSTEMD_UNIT")$([[ $MANAGER == pm2* ]] && printf ' → %s' "$PM2_APP")"
 if [[ "$MANAGER" == "none" ]]; then warn "بدون process manager فقط بیلد انجام می‌شود"; fi
+ok "پورت فرانت: ${B}${PORT}${R} ${D}(${PORT_SOURCE})${R} → $LOCAL_HEALTH_URL"
 
 step "دریافت آخرین تغییرات از گیت‌هاب"
 PREV_COMMIT="$(git rev-parse HEAD)"
