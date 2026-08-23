@@ -161,3 +161,58 @@ origin (`https://api.setadjang.ir`).
 `npm run build` produces a deterministic `.next/` directory, so blue/
 green is just two builds + a load-balancer swap. No DB migration is
 ever required for a frontend-only rollback.
+
+---
+
+## 🚀 آپدیت با یک خط دستور (update-front.sh)
+
+روی سرور، داخل پوشه‌ی پروژه:
+
+```bash
+./update-front.sh
+```
+
+همین. اسکریپت به‌ترتیب: آخرین کامیت `main` را از گیت‌هاب می‌گیرد → سورس را
+همگام می‌کند (فایل‌های `.env*` دست‌نخورده) → فقط در صورت تغییر `package-lock.json`
+پکیج‌ها را نصب می‌کند → بیلد پروداکشن می‌گیرد → سرویس را ری‌استارت می‌کند →
+سلامت محلی/دامنه/بک‌اند را چک می‌کند → و اگر هر مرحله‌ای شکست بخورد
+**خودکار به آخرین بیلد سالم برمی‌گردد**.
+
+از روی لپ‌تاپ (بدون ssh کردن دستی):
+
+```bash
+ssh -p 2233 root@37.152.191.90 'cd /var/www/besat-front && ./update-front.sh'
+```
+
+### فلگ‌های مفید
+
+| دستور | کار |
+| --- | --- |
+| `./update-front.sh` | آپدیت معمولی (اگر کامیت جدیدی نباشد، چیزی بیلد نمی‌شود) |
+| `./update-front.sh --force` | بیلد مجدد اجباری |
+| `./update-front.sh --status` | وضعیت فعلی: کامیت، manager، هلث محلی/دامنه/بک‌اند |
+| `./update-front.sh --rollback` | برگشت فوری به آخرین نسخه‌ی سالم |
+| `./update-front.sh --dry-run` | فقط نمایش نقشه‌ی کار، بدون هیچ تغییر |
+| `./update-front.sh --deps` | نصب اجباری وابستگی‌ها |
+| `./update-front.sh --no-health` | رد کردن health-check |
+| `./update-front.sh -q` | خروجی حداقلی (مناسب cron) |
+
+### تنظیمات محیطی
+
+اسکریپت `pm2` / `systemd` / `docker compose` را خودش تشخیص می‌دهد. اگر
+سرویس اسم دیگری دارد:
+
+```bash
+PM2_APP=besat-front       ./update-front.sh
+SYSTEMD_UNIT=besat-front  ./update-front.sh
+RESTART_CMD='sudo systemctl restart besat-front' ./update-front.sh
+```
+
+برای دائمی‌کردن، یک بار در `~/.bashrc` سرور:
+
+```bash
+export PM2_APP=besat-front
+alias upfront='cd /var/www/besat-front && ./update-front.sh'
+```
+
+لاگ هر دیپلوی در `.deploy/logs/` نگه داشته می‌شود (۲۰ اجرای آخر).
