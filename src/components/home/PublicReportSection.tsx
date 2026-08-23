@@ -529,7 +529,6 @@ export function PublicReportSection({
         return [];
       });
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -844,7 +843,9 @@ function Dropzone({
   previews: Preview[];
   onAdd: (f: FileList | File[]) => void;
   onRemove: (i: number) => void;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  // React 19: useRef<T>(null) اکنون RefObject<T | null> برمی‌گرداند،
+  // پس امضای مصرف‌کننده هم باید null را بپذیرد.
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   max: number;
 }) {
   const [hover, setHover] = useState(false);

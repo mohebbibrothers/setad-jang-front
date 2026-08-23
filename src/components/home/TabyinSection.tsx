@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { SmartImage } from '@/components/ui/SmartImage';
 import Link from 'next/link';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SectionTitle } from './SectionTitle';
 import { Icon } from '@/components/icons/Icon';
@@ -168,6 +168,35 @@ function TextIcon({ className = 'w-3 h-3' }: { className?: string }) {
 /*  Helpers                                                                  */
 /* ───────────────────────────────────────────────────────────────────────── */
 
+/* ───────────────────────────────────────────────────────────────────────── */
+/*  Pure item predicates — سطح ماژول                                          */
+/*                                                                            */
+/*  این سه تابع هیچ وابستگی‌ای به state کامپوننت ندارند. نگه‌داشتنشان داخل    */
+/*  بدنه‌ی کامپوننت باعث می‌شد در هر رندر هویت تازه بگیرند و useMemoهای       */
+/*  پایین‌دست عملاً بی‌اثر شوند (و react-hooks/exhaustive-deps هم هشدار دهد).  */
+/*  انتقال به سطح ماژول هم هشدار را حذف می‌کند هم memoization را واقعی.       */
+/* ───────────────────────────────────────────────────────────────────────── */
+
+/** حذف نویسه‌های نامرئی (نیم‌فاصله، ZWJ، BOM، علائم جهت) پیش از سنجش طول */
+function stripInvisibles(s: string | undefined): string {
+  return (s ?? '').replace(/[\u200B-\u200F\u202A-\u202E\u2060\u00A0\uFEFF]/g, '').trim();
+}
+
+/** آیا آیتم متنِ قابل‌خواندن دارد (عنوان یا خلاصه‌ی ناتهی)؟ */
+function hasReadableText(i: TabyinItem): boolean {
+  return stripInvisibles(i.summary).length > 0 || stripInvisibles(i.title).length > 0;
+}
+
+/** آیا اصلاً چیزی برای رندر دارد — کاور، ویدئو یا متن؟ */
+function hasRenderableContent(i: TabyinItem): boolean {
+  return Boolean(i.coverUrl) || Boolean(i.videoUrl) || hasReadableText(i);
+}
+
+/** آیتم‌های «سایر»: نه تصویر، نه ویدئو — ولی متن خواندنی دارند */
+function isTextItem(i: TabyinItem): boolean {
+  return i.mediaType === 'other' && hasReadableText(i);
+}
+
 function formatDuration(s?: number): string {
   if (!s || s <= 0) return '';
   if (s < 60) return `${s.toLocaleString('fa-IR')}″`;
@@ -282,17 +311,6 @@ export function TabyinSection({ items, counts: _ignored }: { items: TabyinItem[]
    *  regardless of tab — and are excluded from every filter,
    *  including "همه", so the four badge numbers add up cleanly.
    */
-  const hasReadableText = (i: TabyinItem) => {
-    const clean = (s: string | undefined) =>
-      (s ?? '')
-        .replace(/[\u200B-\u200F\u202A-\u202E\u2060\u00A0\uFEFF]/g, '')
-        .trim();
-    return clean(i.summary).length > 0 || clean(i.title).length > 0;
-  };
-  const hasRenderableContent = (i: TabyinItem) =>
-    Boolean(i.coverUrl) || Boolean(i.videoUrl) || hasReadableText(i);
-
-  const isTextItem = (i: TabyinItem) => i.mediaType === 'other' && hasReadableText(i);
 
   /*
    * ── Renderable corpus ───────────────────────────────────────

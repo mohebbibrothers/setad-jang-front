@@ -25,7 +25,6 @@
  * ───────────────────────────────────────────────────────────────────────────
  */
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -464,9 +463,6 @@ export function GlobalSearch({
           transition-[box-shadow,ring] duration-300
           flex items-center pl-1.5 pr-3 md:pr-5 py-1.5 gap-2
         `}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={listboxId}
       >
         <span className="shrink-0 w-9 h-9 md:w-10 md:h-10 rounded-full bg-brand-50 text-brand-600
                          flex items-center justify-center" aria-hidden="true">
@@ -483,7 +479,10 @@ export function GlobalSearch({
           onKeyDown={onInputKey}
           placeholder="جست‌وجو در حرکت‌ها، آموزش‌ها، پرونده‌ها، روایت‌ها…"
           aria-label="جست‌وجوی سراسری"
+          role="combobox"
           aria-autocomplete="list"
+          aria-haspopup="listbox"
+          aria-expanded={open}
           aria-controls={listboxId}
           aria-activedescendant={active >= 0 ? `${listboxId}-opt-${active}` : undefined}
           dir="rtl"

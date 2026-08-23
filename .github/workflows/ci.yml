@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# یک اجرا در هر شاخه؛ پوش جدید، اجرای قبلی را لغو می‌کند.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  quality:
+    name: کیفیت و بیلد
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: دریافت کد
+        uses: actions/checkout@v4
+
+      - name: نصب Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: نصب وابستگی‌ها
+        # npm ci عمداً بدون --legacy-peer-deps اجرا می‌شود: اگر روزی درخت
+        # وابستگی‌ها دوباره ناسازگار شود، همین‌جا شکست می‌خورد نه سر دیپلوی.
+        run: npm ci --no-audit --no-fund
+
+      - name: قالب‌بندی (prettier)
+        run: npm run format:check
+
+      - name: لینت (eslint)
+        run: npm run lint
+
+      - name: بررسی نوع‌ها (tsc)
+        run: npm run typecheck
+
+      - name: تست‌ها با پوشش
+        run: npm run test:coverage
+
+      - name: بیلد پروداکشن
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SITE_URL: https://besat.me
+          NEXT_PUBLIC_API_URL: https://besat.me
+
+      - name: بارگذاری گزارش پوشش
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  api-contract:
+    name: هم‌گامی تایپ‌ها با اسکیمای زنده
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # فقط دستی اجرا می‌شود: رانرهای گیت‌هاب به besat.me دسترسی ندارند
+    # (سرور IPهای خارج را می‌بندد)، پس این جاب نباید CI را قرمز کند.
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+
+      - name: بازتولید تایپ‌ها از اسکیمای زنده
+        run: npm run api:types
+
+      - name: شکست در صورت عقب‌ماندن تایپ‌های کامیت‌شده
+        run: |
+          if ! git diff --quiet -- src/types/api.ts; then
+            echo "::error::قرارداد API تغییر کرده ولی src/types/api.ts به‌روز نشده."
+            echo "اجرا کن: npm run api:types && git commit src/types/api.ts"
+            git --no-pager diff --stat -- src/types/api.ts
+            exit 1
+          fi
+          echo "تایپ‌ها با اسکیمای زنده هم‌گام‌اند."

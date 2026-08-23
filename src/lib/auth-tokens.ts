@@ -130,8 +130,21 @@ let inFlight: Promise<string | null> | null = null;
 
 /**
  * Attempt to exchange the stored refresh token for a fresh access token.
- * Returns the new access token on success, or `null` if the refresh
- * fails (which should trigger a logout/redirect at the call site).
+ * Returns the new access token on success, or `null` if the refresh failed.
+ *
+ * Failure taxonomy — this distinction matters
+ * ────────────────────────────────────────────
+ *  • DEFINITIVE (401 / 403, or a 2xx that carries no `access`):
+ *    the refresh token is dead. We purge the store immediately so that
+ *    every other caller — `api.ts`, `useAuth`, a second tab — instantly
+ *    sees a signed-out state instead of re-trying with a token that can
+ *    never succeed again.
+ *
+ *  • TRANSIENT (network error, timeout, 5xx):
+ *    the token is probably still valid and the user is merely offline or
+ *    the backend is restarting. We keep the tokens so the session survives
+ *    and the next call can retry. Logging someone out because of a blip
+ *    would be user-hostile.
  */
 export async function refreshAccessToken(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
@@ -152,12 +165,26 @@ export async function refreshAccessToken(): Promise<string | null> {
         },
         body: JSON.stringify({ refresh }),
       });
-      if (!res.ok) return null;
+
+      if (!res.ok) {
+        // 401/403 → refresh token rejected for good. Anything else (5xx,
+        // 429, gateway errors) is treated as transient.
+        if (res.status === 401 || res.status === 403) clearTokens();
+        return null;
+      }
+
       const envelope = await res.json().catch(() => null);
       const data = envelope?.data ?? envelope;
       const newAccess: string | undefined = data?.access;
       const newRefresh: string = data?.refresh ?? refresh;
-      if (!newAccess) return null;
+
+      if (!newAccess) {
+        // A 2xx without an access token means the contract broke or the
+        // session was invalidated server-side — also definitive.
+        clearTokens();
+        return null;
+      }
+
       setTokens({
         access: newAccess,
         refresh: newRefresh,
@@ -165,6 +192,7 @@ export async function refreshAccessToken(): Promise<string | null> {
       });
       return newAccess;
     } catch {
+      // Network-level failure — keep the session, let the caller retry.
       return null;
     }
   })();

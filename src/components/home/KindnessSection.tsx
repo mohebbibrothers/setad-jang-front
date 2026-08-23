@@ -147,26 +147,6 @@ function PlusIcon({ className = 'w-4 h-4' }: { className?: string }) {
   );
 }
 
-/** Chevron-down for the split-action trigger */
-function ChevronDownIcon({ className = 'w-3 h-3' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
-
-/** Tiny left-chevron used inside menu items */
-function ChevronLeftIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  );
-}
-
 /* ───────────────────────────────────────────────────────────────────────── */
 /*  Helpers                                                                  */
 /* ───────────────────────────────────────────────────────────────────────── */

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import type { ReactElement } from 'react';
 
 /**
  * Single source of truth for all line icons used across the site.
@@ -46,7 +47,7 @@ export function Icon({ name, className, label, strokeWidth = 2 }: Props) {
   );
 }
 
-const PATHS: Record<IconName, JSX.Element> = {
+const PATHS: Record<IconName, ReactElement> = {
   'search': (
     <>
       <circle cx="11" cy="11" r="7" />
