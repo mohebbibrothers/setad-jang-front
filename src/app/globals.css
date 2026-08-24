@@ -465,7 +465,7 @@
 @keyframes authViewIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -473,14 +473,33 @@
   }
 }
 
+@keyframes authViewOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
 .auth-view-enter {
-  /* منحنی expo-out: شروعِ تند، فرودِ ابریشمی — حسِ «مورف»، نه «جهش» */
-  animation: authViewIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* ورود: تند و ابریشمی (۱۸۰ms) — هیچ پنجره‌ی «نیم‌خالی» نمی‌ماند */
+  animation: authViewIn 0.18s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  will-change: transform, opacity;
+}
+
+.auth-view-exit {
+  /* خروجِ لایه‌ی قدیمی در کراس‌فید: کوتاه‌تر از ورود تا ردِ آن مزاحم
+     نباشد؛ absolute است و روی چیدمان اثری ندارد */
+  animation: authViewOut 0.14s ease-in both;
   will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-view-enter {
+  .auth-view-enter,
+  .auth-view-exit {
     animation: none;
   }
 }

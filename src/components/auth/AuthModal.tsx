@@ -57,6 +57,13 @@
  *   همیشه overflow-hidden است؛ نوار اعتماد بیرونِ آن قرار گرفت — پس
  *   هنگام ورود به بخشِ بلندتر، ارتفاعِ موقتِ کوچک‌تر هرگز آن را پشتِ
  *   کلیپ پنهان نمی‌کند. سکون = auto: اسکرول‌بار هم فقط با اورفلوِ واقعی.
+ *
+ * v6 — بدون لگ و بدون «انفجار»:
+ *   ۷) ریستِ نما به بعد از تخلیه منتقل شد (نه افکتِ open) — بازشدنِ
+ *      تازه دیگر یک فریمِ «نمایِ قبلی → پرش به login» ندارد؛
+ *   ۸) SwapTransition: کراس‌فیدِ دو نما — قدیمی ۱۴۰ms غیرتعاملی محو و
+ *      جدیدی ۱۸۰ms lift/fade، بدون فریمِ خالی، بدون پاپ؛ لایه‌ی خروجی
+ *      absolute است پس ارتفاع و مورف فقط به نسخه‌ی جدید بستگی دارند.
  * ═══════════════════════════════════════════════════════════════════════
  */
 
@@ -74,6 +81,7 @@ import { LoginView } from './views/LoginView';
 import { SignupView } from './views/SignupView';
 import { ForgotView } from './views/ForgotView';
 import { AuthPanel } from './AuthPanel';
+import { SwapTransition } from './SwapTransition';
 import { Alert } from './ui';
 
 type View = 'login' | 'signup' | 'forgot';
@@ -143,14 +151,19 @@ export function AuthModal({
   const signupDraft = useAuthFlowDraft('signup');
   const forgotDraft = useAuthFlowDraft('forgot');
 
-  // ریستِ سطحِ نما هنگام بازشدن — پیش‌نویسِ فلوها آگاهانه حفظ می‌شود
+  // ریستِ سطحِ نما وقتی مودال «کاملاً» بسته شده (rendered=false) —
+  // نه در لحظه‌ی بازشدن. ریستِ در افکتِ open یعنی اولین رندرِ جلسه‌ی
+  // تازه، نمایِ بسته‌شده‌ی قبلی را یک فریم نشان می‌داد و بعد به login
+  // می‌پرید (همان لگِ «بازشدنِ ناتمام»). با ریستِ بعد از تخلیه، جلسه‌ی
+  // بعدی مستقیماً از نمایِ درست شروع می‌شود — پیش‌نویسِ فلوها آگاهانه
+  // در سشن حفظ می‌ماند.
   useEffect(() => {
-    if (open) {
+    if (!rendered) {
       setView(initialView);
       setNotice(null);
       setWelcomeName(null);
     }
-  }, [open, initialView]);
+  }, [rendered, initialView]);
 
   // قفلِ اسکرول + بازگردانیِ فوکوس — جفت با rendered (تا لایه هست قفل
   // هست؛ تخلیه شد، قفل و فوکوس هر دو آزاد/برگردانده می‌شوند). مالکیتِ
@@ -195,6 +208,10 @@ export function AuthModal({
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [open]);
+
+  // کلیدِ کراس‌فید: هر رویدادِ ناوبری (تب، روش، مرحله) یک swap می‌سازد؛
+  // تایپ/تیک/انتخابِ فیلد کلید را عوض نمی‌کند — یعنی فلش فقط برای جابه‌جایی.
+  const swapKey = `${view}:${loginDraft.method}:${loginDraft.step}:${signupDraft.step}:${forgotDraft.step}`;
 
   const handleSuccess = useCallback((user: AuthUser) => {
     const name =
@@ -372,57 +389,64 @@ export function AuthModal({
                 {/* بسته‌ی اندازه‌گیری — flexcol تا مارجین‌های فرزندان توی
                     جعبه بمانند و اندازه دقیق باشد */}
                 <div ref={bodyHeight.contentRef} className="flex flex-col">
-                  {notice ? (
-                    <div className="mb-4">
-                      <Alert kind="success">{notice}</Alert>
-                    </div>
-                  ) : null}
+                  {/* کراس‌فیدِ تعویضِ نما/روش/مرحله: نسخه‌ی قدیمی absolute
+                      و غیرتعاملی محو می‌شود و جدیدی هم‌زمان وارد — ارتفاع
+                      فقط از نسخه‌ی جدید می‌آید و مورفْ با آن هم‌راستاست */}
+                  <SwapTransition swapKey={swapKey}>
+                    <>
+                      {notice ? (
+                        <div className="mb-4">
+                          <Alert kind="success">{notice}</Alert>
+                        </div>
+                      ) : null}
 
-                  <AuthPanel
-                    id="auth-panel-login"
-                    labelledby="auth-tab-login"
-                    active={view === 'login'}
-                    activeKey={`${loginDraft.method}:${loginDraft.step}`}
-                  >
-                    <LoginView
-                      identifier={identifier}
-                      setIdentifier={setIdentifier}
-                      onSuccess={handleSuccess}
-                      goForgot={(id) => {
-                        if (id?.trim()) setIdentifier(id);
-                        setView('forgot');
-                        setNotice(null);
-                      }}
-                    />
-                  </AuthPanel>
+                      <AuthPanel
+                        id="auth-panel-login"
+                        labelledby="auth-tab-login"
+                        active={view === 'login'}
+                        activeKey={`${loginDraft.method}:${loginDraft.step}`}
+                      >
+                        <LoginView
+                          identifier={identifier}
+                          setIdentifier={setIdentifier}
+                          onSuccess={handleSuccess}
+                          goForgot={(id) => {
+                            if (id?.trim()) setIdentifier(id);
+                            setView('forgot');
+                            setNotice(null);
+                          }}
+                        />
+                      </AuthPanel>
 
-                  <AuthPanel
-                    id="auth-panel-signup"
-                    labelledby="auth-tab-signup"
-                    active={view === 'signup'}
-                    activeKey={signupDraft.step}
-                  >
-                    <SignupView
-                      identifier={identifier}
-                      setIdentifier={setIdentifier}
-                      onSuccess={handleSuccess}
-                      goLogin={() => goLogin()}
-                    />
-                  </AuthPanel>
+                      <AuthPanel
+                        id="auth-panel-signup"
+                        labelledby="auth-tab-signup"
+                        active={view === 'signup'}
+                        activeKey={signupDraft.step}
+                      >
+                        <SignupView
+                          identifier={identifier}
+                          setIdentifier={setIdentifier}
+                          onSuccess={handleSuccess}
+                          goLogin={() => goLogin()}
+                        />
+                      </AuthPanel>
 
-                  {/* نمای بازیابی تب ندارد — با لینک «فراموشی» وارد می‌شود */}
-                  <AuthPanel
-                    id="auth-panel-forgot"
-                    labelledby="auth-modal-title"
-                    active={view === 'forgot'}
-                    activeKey={forgotDraft.step}
-                  >
-                    <ForgotView
-                      identifier={identifier}
-                      setIdentifier={setIdentifier}
-                      goLogin={goLogin}
-                    />
-                  </AuthPanel>
+                      {/* نمای بازیابی تب ندارد — با لینک «فراموشی» وارد می‌شود */}
+                      <AuthPanel
+                        id="auth-panel-forgot"
+                        labelledby="auth-modal-title"
+                        active={view === 'forgot'}
+                        activeKey={forgotDraft.step}
+                      >
+                        <ForgotView
+                          identifier={identifier}
+                          setIdentifier={setIdentifier}
+                          goLogin={goLogin}
+                        />
+                      </AuthPanel>
+                    </>
+                  </SwapTransition>
                 </div>
               </div>
 

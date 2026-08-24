@@ -16,7 +16,6 @@
  */
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import { cn } from '@/lib/utils';
 
 export function AuthPanel({
   id,
@@ -57,12 +56,12 @@ export function AuthPanel({
     >
       {/*
         wrapper کلیددار: با تغییر activeKey (مرحله یا روش) فقط همین
-        wrapper داخلی ری‌مونت می‌شود تا انیمیشنِ ورودِ نرم دوباره بازی
-        کند — state فلو در سشن زنده می‌ماند و فرم‌ها از همان‌جا پر
-        می‌شوند. سوییچِ تب هم به واسطه‌ی hidden→visible بودنِ پنل،
-        انیمیشنِ CSS را از نو آغاز می‌کند.
+        wrapper داخلی ری‌مونت می‌شود تا DOM و فوکوس تازه شوند — بدون
+        ازدست‌رفتنِ state (که در سشن است). خودِ موشنِ کراس‌فید، بالاتر و
+        یک‌جا در SwapTransitionِ بدنه انجام می‌شود؛ این‌جا عمداً هیچ
+        کلاسِ انیمیشنی نیست تا دو لایه‌ی موشن روی هم نیفتند.
       */}
-      <div key={activeKey} className={cn('space-y-5', active && 'auth-view-enter')}>
+      <div key={activeKey} className="space-y-5">
         {children}
       </div>
     </div>

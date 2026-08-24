@@ -211,6 +211,25 @@ describe('باگ ۱ — قفل‌شدن صفحه پس از بستن مودال (
     expect(region.contains(screen.getByRole('tabpanel'))).toBe(true);
   });
 
+  it('بازشدنِ دوباره پس از بستن روی «ثبت‌نام» مستقیم از «ورود» شروع می‌شود — بدون پرشِ فریمِ اول', () => {
+    render(<Harness />);
+
+    // کاربر روی ثبت‌نام می‌ایستد و می‌بندد
+    fireEvent.click(modalTab('ثبت‌نام'));
+    expect(activePanel().getByText('دریافت کد تأیید')).toBeTruthy();
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'بستن' }));
+    act(() => {
+      vi.advanceTimersByTime(DISPOSE_MS);
+    });
+
+    // بازشدنِ بعدی: از همان لحظه‌ی اول، نمای «ورود» است — نه یک فریم
+    // ثبت‌نام و بعد پرش به ورود
+    fireEvent.click(screen.getByTestId('auth-open-trigger'));
+    const dlg = dialog();
+    expect(within(dlg).getByRole('heading', { name: 'ورود به حساب' })).toBeTruthy();
+    expect(activePanel().getByRole('tab', { name: 'کد یکبارمصرف' })).toBeTruthy();
+  });
+
   it('فوکوس پس از تخلیه‌ی کامل به عنصرِ قبلیِ خارج از مودال برمی‌گردد', () => {
     render(<Harness startOpen={false} />);
     const outside = screen.getByTestId('outside-action');
