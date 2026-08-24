@@ -39,8 +39,10 @@ export const IDENTIFIER_MAX_LENGTH = 254;
 export type IdentifierKind = 'email' | 'phone';
 
 /**
- * Loose payload used by the request-OTP / signup-request endpoints —
- * they only return a message + cooldown/expiry hint, no token data.
+ * Result of the OTP-request endpoints (signup / login / forgot).
+ * Backend returns an EMPTY success envelope (data: null) for these —
+ * the channel message is what matters, so every field here is optional
+ * and the value may be `null` at runtime. UI shows its own microcopy.
  */
 export type AuthChallengeResult = {
   identifier: string;
@@ -48,13 +50,28 @@ export type AuthChallengeResult = {
   cooldown_seconds?: number;
   expires_in?: number;
   message?: string;
+} | null;
+
+export type JwtPair = { access: string; refresh: string };
+
+/**
+ * The exact `data` contract of every successful credential check —
+ * verified against apps/authentication/views.py (LoginPassword /
+ * LoginOTPVerify / SignupVerify):
+ *
+ *   data = { user: <UserMeSerializer>, tokens: { access, refresh } }
+ *
+ * ⚠️ The pair is NESTED under `tokens` — reading `data.access`
+ * directly silently drops the session (login «succeeds» but nothing
+ * is persisted). Guarded by src/lib/auth.test.ts.
+ */
+export type AuthSuccessResult = {
+  user: AuthUser;
+  tokens: JwtPair;
 };
 
-export type TokenResponse = {
-  access: string;
-  refresh: string;
-  user?: AuthUser;
-};
+/** @deprecated kept for import compatibility — use AuthSuccessResult. */
+export type TokenResponse = AuthSuccessResult;
 
 export type AuthUser = {
   id: number | string;
@@ -63,9 +80,12 @@ export type AuthUser = {
   first_name?: string;
   last_name?: string;
   full_name?: string;
+  role?: string;
+  is_email_verified?: boolean;
   is_active?: boolean;
   is_staff?: boolean;
   is_verified?: boolean;
+  date_joined?: string;
   primary_identifier?: string;
   primary_identifier_kind?: IdentifierKind;
   identifiers?: Array<{
@@ -79,6 +99,8 @@ export type AuthUser = {
 };
 
 export type AuthProfile = {
+  /** از ProfileSerializer (source=user.phone_number) */
+  phone_number?: string | null;
   first_name?: string;
   last_name?: string;
   avatar?: string | null;
@@ -87,6 +109,8 @@ export type AuthProfile = {
   city?: string | null;
   national_code?: string | null;
   birth_date?: string | null;
+  gender?: string | null;
+  address?: string | null;
 };
 
 export type AuthSession = {
@@ -105,9 +129,10 @@ export type AuthSession = {
 /*  Persist helper                                                            */
 /* ───────────────────────────────────────────────────────────────────────── */
 
-function persistFromResponse(response: TokenResponse, persist = true): TokenResponse {
-  if (response.access && response.refresh) {
-    setTokens({ access: response.access, refresh: response.refresh, persist });
+function persistFromResponse(response: AuthSuccessResult, persist = true): AuthSuccessResult {
+  const pair = response?.tokens;
+  if (pair?.access && pair?.refresh) {
+    setTokens({ access: pair.access, refresh: pair.refresh, persist });
   }
   return response;
 }
@@ -131,9 +156,9 @@ export async function signupVerify(payload: {
   first_name?: string;
   last_name?: string;
   persist?: boolean;
-}): Promise<TokenResponse> {
+}): Promise<AuthSuccessResult> {
   const { persist = true, ...body } = payload;
-  const response = await apiFetch<TokenResponse>('/auth/signup/verify/', {
+  const response = await apiFetch<AuthSuccessResult>('/auth/signup/verify/', {
     method: 'POST',
     body: JSON.stringify(body),
     skipAuth: true,
@@ -149,9 +174,9 @@ export async function loginPassword(payload: {
   identifier: string;
   password: string;
   persist?: boolean;
-}): Promise<TokenResponse> {
+}): Promise<AuthSuccessResult> {
   const { persist = true, ...body } = payload;
-  const response = await apiFetch<TokenResponse>('/auth/login/password/', {
+  const response = await apiFetch<AuthSuccessResult>('/auth/login/password/', {
     method: 'POST',
     body: JSON.stringify(body),
     skipAuth: true,
@@ -175,9 +200,9 @@ export async function loginOtpVerify(payload: {
   identifier: string;
   code: string;
   persist?: boolean;
-}): Promise<TokenResponse> {
+}): Promise<AuthSuccessResult> {
   const { persist = true, ...body } = payload;
-  const response = await apiFetch<TokenResponse>('/auth/login/otp/verify/', {
+  const response = await apiFetch<AuthSuccessResult>('/auth/login/otp/verify/', {
     method: 'POST',
     body: JSON.stringify(body),
     skipAuth: true,

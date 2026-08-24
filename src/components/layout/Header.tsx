@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
+import { AuthControls } from '@/components/auth/AuthControls';
+import { AuthModal } from '@/components/auth/AuthModal';
 import { TopBar } from './TopBar';
 import { cn } from '@/lib/utils';
 
@@ -51,6 +53,14 @@ function onNavClick(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
 export function Header() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+
+  /** بازکردن مودال احراز هویت — از هر جا (دسکتاپ/موبایل) که آمد،
+   *  شیت موبایل را هم می‌بندد تا دو لایه روی هم نیفتند. */
+  const openAuth = () => {
+    setOpen(false);
+    setAuthOpen(true);
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -101,11 +111,10 @@ export function Header() {
               ))}
             </nav>
 
-            {/* Trailing slot (LTR-end / RTL-start).
-             * The 'ورود / ثبت‌نام' CTA was removed pending its dedicated
-             * /auth/* routes. Re-instate the <Link href="/auth/login">
-             * pill here the moment the auth flow ships. */}
+            {/* Trailing slot — ناحیه‌ی حساب کاربری (پیل ورود | ثبت‌نام
+             * برای مهمان، چیپ کاربر پس از ورود) + دکمه‌ی منوی موبایل. */}
             <div className="mr-auto flex items-center gap-2">
+              <AuthControls onOpen={openAuth} />
               <button
                 type="button"
                 className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-ink-800 transition-colors hover:bg-ink-100 lg:hidden"
@@ -171,10 +180,16 @@ export function Header() {
               </a>
             ))}
           </nav>
-          {/* Mobile 'ورود / ثبت‌نام' pill removed alongside the desktop
-              CTA — see the note at line ~100 above. */}
+          {/* ناحیه‌ی حساب در پایین شیت موبایل — پیل تمام‌عرض برای مهمان
+              و چیپ کاربر (با منوی خروج) پس از ورود. */}
+          <div className="border-t border-ink-100 p-4">
+            <AuthControls variant="block" onOpen={openAuth} />
+          </div>
         </aside>
       </div>
+
+      {/* مودال ورود / ثبت‌نام — یک نمونه‌ی سراسری برای هر دو تریگر */}
+      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
     </>
   );
 }
