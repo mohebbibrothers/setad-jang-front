@@ -337,7 +337,11 @@ export function AuthModal({
             می‌شود تا سوییچِ نما/روش/مرحله «جهش» نداشته باشد. */}
         <div
           className={cn(
-            'overflow-y-auto px-6 pb-6 pt-4 sm:px-7',
+            // حینِ مورف: کلیپ (نه اسکرول) — ارتفاعِ میانی از محتوای مقصد
+            // کوچک‌تر است و auto ناگزیر اسکرول‌بار را فلش می‌زد.
+            // در سکون: auto — اسکرول‌بار فقط و فقط با اورفلوِ واقعی.
+            bodyHeight.isAnimating ? 'overflow-y-hidden' : 'overflow-y-auto',
+            'px-6 pb-6 pt-4 sm:px-7',
             bodyHeight.armed &&
               'transition-[height] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
           )}

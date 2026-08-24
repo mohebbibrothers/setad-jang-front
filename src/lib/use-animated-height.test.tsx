@@ -41,7 +41,12 @@ class FakeResizeObserver {
 function Probe({ active }: { active: boolean }) {
   const ah = useAnimatedHeight(active, 100);
   return (
-    <div data-testid="container" style={ah.style} data-armed={ah.armed || undefined}>
+    <div
+      data-testid="container"
+      style={ah.style}
+      data-armed={ah.armed || undefined}
+      data-animating={ah.isAnimating || undefined}
+    >
       <div ref={ah.contentRef}>محتوای متغیر</div>
     </div>
   );
@@ -133,7 +138,7 @@ describe('useAnimatedHeight — مورفِ نرمِ ارتفاع (اندازه �
     expect(container.style.height).toBe('');
   });
 
-  it('چرخه‌ی کامل: فریز → ترنزیشن به هدف → آزادسازی به auto (ضدِ اسکرول‌بارِ فانتومی)', () => {
+  it('چرخه‌ی کامل: فریز+کلیپ → ترنزیشن به هدف → آزادسازی به auto (ضدِ فلشِ اسکرول‌بار)', () => {
     const { getByTestId } = render(<Probe active />);
     const container = getByTestId('container');
 
@@ -145,20 +150,24 @@ describe('useAnimatedHeight — مورفِ نرمِ ارتفاع (اندازه �
     });
     expect(container.getAttribute('data-armed')).toBe('true');
     expect(container.style.height).toBe(''); // هنوز auto در سکون ✔
+    expect(container.getAttribute('data-animating')).toBeNull(); // کلیپ خاموش ✔
 
-    // تغییرِ محتوا → انیمیشن به ۲۰۰
+    // تغییرِ محتوا → انیمیشن به ۲۰۰ (در کلِ این پنجره کلیپ روشن است
+    // تا ارتفاعِ میانیِ کوچک‌تر هیچ اسکرول‌باری فلش نزند)
     stubContentHeight(container, 200);
     fireMeasure();
     act(() => {
       vi.advanceTimersByTime(16); // فلاشِ rAF
     });
     expect(container.style.height).toBe('200px');
+    expect(container.getAttribute('data-animating')).toBe('true');
 
-    // پایانِ ترنزیشن → آزادسازی: دوباره auto
+    // پایانِ ترنزیشن → آزادسازی: دوباره auto و کلیپ خاموش
     act(() => {
       vi.advanceTimersByTime(320);
     });
     expect(container.style.height).toBe('');
+    expect(container.getAttribute('data-animating')).toBeNull();
     // و در همین سکون، بار دیگر تغییرِ کوچک هم auto می‌ماند
     fireMeasure();
     expect(container.style.height).toBe('');
@@ -181,18 +190,20 @@ describe('useAnimatedHeight — مورفِ نرمِ ارتفاع (اندازه �
     });
     expect(container.style.height).toBe('300px');
 
-    // وسطِ راه هدف عوض می‌شود
+    // وسطِ راه هدف عوض می‌شود — کلیپ در تمامِ این پنجره روشن می‌ماند
     stubContentHeight(container, 250);
     fireMeasure();
     act(() => {
       vi.advanceTimersByTime(16);
     });
     expect(container.style.height).toBe('250px');
+    expect(container.getAttribute('data-animating')).toBe('true');
 
     act(() => {
       vi.advanceTimersByTime(320);
     });
     expect(container.style.height).toBe('');
+    expect(container.getAttribute('data-animating')).toBeNull();
   });
 
   it('نویزِ زیرپیکسلی (کمتر از ۰٫۵) انیمیشنی برنمی‌انگیزد', () => {
@@ -231,7 +242,7 @@ describe('useAnimatedHeight — مورفِ نرمِ ارتفاع (اندازه �
     expect(container.style.height).toBe('');
   });
 
-  it('خلع‌سلاح: unmount/disactive هیچ تایمرِ عقب‌مانده‌ای نمی‌گذارد', () => {
+  it('خلع‌سلاح: نشده‌ی وسطِ مورف — ریستِ کاملِ px/کلیپ و هیچ تایمرِ عقب‌مانده‌ای', () => {
     const { getByTestId, rerender, unmount } = render(<Probe active />);
     const container = getByTestId('container');
 
@@ -245,9 +256,14 @@ describe('useAnimatedHeight — مورفِ نرمِ ارتفاع (اندازه �
     act(() => {
       vi.advanceTimersByTime(16);
     });
+    expect(container.getAttribute('data-animating')).toBe('true');
 
+    // غیرفعال‌شدن وسطِ مورف → ریستِ کامل؛ برای بازشدنِ بعدی هیچ
+    // باقی‌مانده‌ی px/کلیپی برنمی‌دارد
     rerender(<Probe active={false} />);
     expect(container.getAttribute('data-armed')).toBeNull();
+    expect(container.getAttribute('data-animating')).toBeNull();
+    expect(container.style.height).toBe('');
 
     unmount();
     act(() => {

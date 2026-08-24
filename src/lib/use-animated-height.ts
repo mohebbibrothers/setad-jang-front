@@ -21,9 +21,16 @@
  *   می‌گردد. تغییرِ میانِ انیمیشن؟ فقط هدف عوض می‌شود — ترنزیشن از
  *   مقدارِ جاریِ محاسبه‌شده نرم ادامه پیدا می‌کند (رفتارِ بومیِ CSS).
  *
+ *   v3 — ضد «فلشِ اسکرول‌بارِ حین مورف»: در کلِ پنجره‌ی انیمیشن
+ *   پرچمِ isAnimating برمی‌خیزد تا مصرف‌کننده کانتینر را از
+ *   overflow-auto به overflow-hidden (کلیپ) سوییچ کند؛ چون ارتفاعِ
+ *   میانیِ ترنزیشن از محتوای مقصد کوچک‌تر است و auto ناگزیر اسکرول‌بار
+ *   را فلش می‌زد (همان «کرسر می‌پره و صفحه بالا می‌آید»).
  *   • اندازه‌گیری با getBoundingClientRect (زیرپیکسل — ضدِ اورفلوِ
  *     فانتومیِ یک‌پیکسلی) و با اپسیلون ۰٫۵px برای جلوگیری از لرزش؛
  *   • مسلح‌شدن با تأخیر تا با انیمیشنِ ورودِ خودِ پنل نجنگد؛
+ *   • ریستِ کاملِ state با غیرفعال‌شدن (هیچ باقی‌مانده‌ای برای بازشدنِ
+ *     بعدیِ مودال نمی‌ماند)؛
  *   • بدون موتورِ چیدمان/ResizeObserver → کاملاً خنثی (auto همیشه).
  * ═══════════════════════════════════════════════════════════════════
  */
@@ -43,6 +50,9 @@ export interface AnimatedHeight {
   style: { height: string } | undefined;
   /** آیا ترنزیشن مسلح است؟ (پس از پایانِ انیمیشنِ ورودِ لایه) */
   armed: boolean;
+  /** آیا در پنجره‌ی مورفیم؟ (فریز→هدف→آزاد) — مصرف‌کننده در این بازه
+   *  کانتینر را کلیپ (overflow-hidden) می‌کند تا اسکرول‌بار فلش نزند */
+  isAnimating: boolean;
 }
 
 export function useAnimatedHeight(
@@ -53,6 +63,7 @@ export function useAnimatedHeight(
 ): AnimatedHeight {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [styleHeight, setStyleHeight] = useState<number | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
   const [armed, setArmed] = useState(false);
   // آینه‌ی refِ مسلح‌بودن — اندازه‌گیر (که یک‌بار subscribe می‌شود)
   // تصمیمِ «مورف یا نه» را همیشه با جدیدترین وضعیت می‌گیرد
@@ -65,15 +76,22 @@ export function useAnimatedHeight(
     if (releaseTimer.current !== null) window.clearTimeout(releaseTimer.current);
     releaseTimer.current = window.setTimeout(() => {
       releaseTimer.current = null;
-      setStyleHeight(null); // ← آزادسازی: بازگشت به auto (ضدِ اسکرول‌بارِ فانتومی)
+      // آزادسازی: بازگشت به auto + پایانِ پنجره‌ی کلیپ — در یک کامیت تا
+      // هیچ فریمی اسکرول‌بارِ فانتومی رخ ندهد
+      setStyleHeight(null);
+      setIsAnimating(false);
     }, RELEASE_AFTER_MS);
   };
 
-  // مسلح/خلع‌سلاح‌کردنِ ترنزیشن + پاکسازیِ همه‌ی تایمرها
+  // مسلح/خلع‌سلاح‌کردنِ ترنزیشن + ریستِ کاملِ state با غیرفعال‌شدن
   useEffect(() => {
     if (!active) {
       armedRef.current = false;
       setArmed(false);
+      // ریست: هیچ باقی‌مانده‌ی px/کلیپ برای بازشدنِ بعدی نمی‌ماند
+      setStyleHeight(null);
+      setIsAnimating(false);
+      lastMeasured.current = 0;
       return undefined;
     }
     const timer = window.setTimeout(() => {
@@ -111,6 +129,7 @@ export function useAnimatedHeight(
       const baseline = lastMeasured.current;
       lastMeasured.current = target;
       setStyleHeight((current) => current ?? baseline);
+      setIsAnimating(true); // کلیپ در کلِ پنجره‌ی انیمیشن
       if (frame.current !== null) window.cancelAnimationFrame(frame.current);
       frame.current = window.requestAnimationFrame(() => {
         frame.current = null;
@@ -128,5 +147,6 @@ export function useAnimatedHeight(
     contentRef,
     style: styleHeight === null ? undefined : { height: `${styleHeight}px` },
     armed,
+    isAnimating,
   };
 }
