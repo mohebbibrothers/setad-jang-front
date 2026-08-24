@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Instagram, Twitter, Linkedin, Send } from 'lucide-react';
 import { BackToTop } from './BackToTop';
+import { TrustSeals } from './TrustSeals';
 
 /**
  * Footer v3 — center-aligned, premium presentation.
@@ -131,6 +132,10 @@ export function Footer() {
               </nav>
             ))}
           </div>
+
+          {/* نمادهای اعتماد (اینماد و…) — سرور-رندر تا خزنده‌ی صحت‌سنج
+            نماد، مُهر را در HTML خام صفحه‌ی اصلی بیابد. */}
+          <TrustSeals />
 
           {/* Decorative divider — gradient hairline that fades at the edges */}
           <div

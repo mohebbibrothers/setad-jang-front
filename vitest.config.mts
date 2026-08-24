@@ -1,7 +1,12 @@
 import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
+  // پلاگین React: ترانسفورم JSX/TSX در زنجیره‌ی تست. بدون آن، به‌خاطر
+  // "jsx": "preserve" در tsconfig (پیش‌فرض Next)، هر تستی که راستی‌آزمایی
+  // کامپوننت انجام دهد با خطای import-analysis می‌ایستد.
+  plugins: [react()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
