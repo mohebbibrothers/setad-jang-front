@@ -200,8 +200,11 @@ describe('باگ ۱ — قفل‌شدن صفحه پس از بستن مودال (
     const dlg = dialog();
 
     const region = screen.getByTestId('auth-morph-region');
-    // ناحیه‌ی مورف همیشه کلیپ است (اسکرول‌بار حین مورف فلش نمی‌زند)…
-    expect(region.className).toContain('overflow-hidden');
+    // v8: ناحیه‌ی مورف زیر نظرِ هدایت‌گرِ واحد است — در سکون کلیپ نیست
+    // (height:auto + overflow:visible) و فقط حینِ پاس کلیپ می‌شود تا
+    // اسکرول‌بار فلش نزند؛ فاز باید سکون گزارش شود:
+    expect(region.className).toContain('morph-swap');
+    expect(region.getAttribute('data-phase')).toBe('rest');
     // …ولی فوتر بیرونِ آن و درست بلافاصله پس از آن در بدنه‌ی اسکرول قرار
     // دارد؛ پس ارتفاعِ موقتِ کوچک‌تر هیچ‌وقت آن را پنهان نمی‌کند:
     const footer = within(dlg).getByText(/اتصال امن است/);
@@ -352,40 +355,38 @@ describe('قراردادِ عملکرد — لگ‌زدا (ریشه‌ای)', ()
     expect(backdrop.className).not.toContain('backdrop-blur');
   });
 
-  it('کپسولِ تب‌ها transformِ خالصِ CSS است (نه layoutId/JS-اندازه‌گیری) و با سوییچ به end می‌رود', () => {
+  it('کپسولِ تب‌ها «اندازه‌گیری‌شده» است (نه هندسه‌ی حدسی) و انتخاب را آینه می‌کند', () => {
     render(<Harness />);
 
-    // transform-based GPU slide — layoutِ خوانده‌شده توسط JS نیست
-    expect(screen.getByTestId('auth-view-indicator').className).toContain('auth-pill-indicator');
-    expect(screen.getByTestId('auth-view-indicator').getAttribute('data-pos')).toBe('start');
+    // کپسولِ سگمنتِ جدید: کلاسِ واحد + نشانه‌ی data-active که دقیقاً مقدارِ
+    // فعال را منعکس می‌کند؛ ترک کلیپ‌شده است (بیرون‌زدگی ساختاری ناممکن)
+    const indicator = () => screen.getByTestId('auth-view-indicator');
+    expect(indicator().className).toContain('auth-seg-indicator');
+    expect(indicator().getAttribute('data-active')).toBe('login');
+    expect(indicator().parentElement!.className).toContain('overflow-hidden');
 
     fireEvent.click(modalTab('ثبت‌نام'));
-    expect(screen.getByTestId('auth-view-indicator').getAttribute('data-pos')).toBe('end');
+    expect(indicator().getAttribute('data-active')).toBe('signup');
 
     fireEvent.click(modalTab('ورود'));
-    expect(screen.getByTestId('auth-view-indicator').getAttribute('data-pos')).toBe('start');
+    expect(indicator().getAttribute('data-active')).toBe('login');
   });
 
-  it('کپسولِ روشِ ورود هم transformِ خالص است و با «کد یکبارمصرف» به end می‌رود', () => {
+  it('کپسولِ روشِ ورود هم همان سامانه‌ی اندازه‌گیری‌شده است و انتخاب را آینه می‌کند', () => {
     render(<Harness />);
 
     // لایه‌ی خروجیِ کراس‌فید هم کپیِ DOM دارد — کوئری را به پنلِ فعالِ
     // لایه‌ی جاری اسکوپ می‌کنیم (کوئری دسترس‌پذیری، aria-hidden را
     // نمی‌بیند و دقیقاً همان چیزی است که کاربر می‌بیند).
-    expect(activePanel().getByTestId('auth-method-indicator').className).toContain(
-      'auth-pill-indicator',
-    );
-    expect(activePanel().getByTestId('auth-method-indicator').getAttribute('data-pos')).toBe(
-      'start',
-    );
+    const indicator = () => activePanel().getByTestId('auth-method-indicator');
+    expect(indicator().className).toContain('auth-seg-indicator');
+    expect(indicator().getAttribute('data-active')).toBe('password');
 
     fireEvent.click(activePanel().getByRole('tab', { name: 'کد یکبارمصرف' }));
-    expect(activePanel().getByTestId('auth-method-indicator').getAttribute('data-pos')).toBe('end');
+    expect(indicator().getAttribute('data-active')).toBe('otp');
 
     fireEvent.click(activePanel().getByRole('tab', { name: 'رمز عبور' }));
-    expect(activePanel().getByTestId('auth-method-indicator').getAttribute('data-pos')).toBe(
-      'start',
-    );
+    expect(indicator().getAttribute('data-active')).toBe('password');
   });
 });
 

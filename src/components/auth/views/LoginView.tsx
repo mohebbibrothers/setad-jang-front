@@ -30,12 +30,12 @@ import { coerceAuthError, type AuthErrorModel } from '@/lib/auth-errors';
 import { prepareIdentifierForSubmit, validateIdentifier } from '@/lib/auth-identifier';
 import { patchAuthFlow, useAuthFlowDraft, type LoginMethod } from '@/lib/auth-flow-session';
 import { isOtpComplete } from '@/lib/otp';
-import { cn } from '@/lib/utils';
 import { Alert, SubmitButton } from '../ui';
 import { IdentifierField } from '../IdentifierField';
 import { PasswordField } from '../PasswordField';
 import { OtpStep } from '../OtpStep';
 import { useOtpChallenge } from '../useOtpChallenge';
+import { Segmented } from '../segmented';
 
 /** نماها memoize‌اند: callbackهای والد پایدارند (useCallback) و draft
  *  هر نما فقط خودش را رِرِندِر می‌کند — تایپ/تیکِ یک نما، نمایِ غیرفعال
@@ -56,40 +56,37 @@ export const LoginView = memo(function LoginView({
 
   return (
     <div className="space-y-5">
-      {/* سوییچ روش — کپسولِ لغزان با transformِ خالص (GPU، صرفِ reflow صفر) */}
-      <div
-        role="tablist"
-        aria-label="روش ورود"
-        className="relative grid grid-cols-2 gap-1 rounded-xl bg-ink-50 p-1"
-      >
-        <span
-          aria-hidden="true"
-          data-testid="auth-method-indicator"
-          className="auth-pill-indicator"
-          data-pos={method === 'otp' ? 'end' : 'start'}
-        />
-        {(
-          [
-            { key: 'password', label: 'رمز عبور', Icon: KeyRound },
-            { key: 'otp', label: 'کد یکبارمصرف', Icon: ShieldCheck },
-          ] as const
-        ).map(({ key, label, Icon }) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={method === key}
-            onClick={() => patchAuthFlow('login', { method: key as LoginMethod })}
-            className={cn(
-              'relative flex h-10 items-center justify-center gap-1.5 rounded-lg text-[13px] font-bold transition-colors',
-              method === key ? 'text-brand-700' : 'text-ink-500 hover:text-ink-700',
-            )}
-          >
-            <Icon className="relative h-4 w-4" strokeWidth={2.2} />
-            <span className="relative">{label}</span>
-          </button>
-        ))}
-      </div>
+      {/* سوییچ روش — همان کپسولِ اندازه‌گیری‌شده (تک‌منبع با تب‌های مودال):
+          آینه‌ی دقیقِ سلولِ فعال، transformِ خالص، ترک کلیپ‌شده */}
+      <Segmented<LoginMethod>
+        ariaLabel="روش ورود"
+        value={method}
+        onChange={(next) => patchAuthFlow('login', { method: next })}
+        indicatorTestId="auth-method-indicator"
+        buttonClassName="flex h-10 items-center justify-center gap-1.5 rounded-lg text-[13px] font-bold transition-colors"
+        activeButtonClassName="text-brand-700"
+        inactiveButtonClassName="text-ink-500 hover:text-ink-700"
+        options={[
+          {
+            value: 'password',
+            label: (
+              <>
+                <KeyRound className="h-4 w-4" strokeWidth={2.2} />
+                <span>رمز عبور</span>
+              </>
+            ),
+          },
+          {
+            value: 'otp',
+            label: (
+              <>
+                <ShieldCheck className="h-4 w-4" strokeWidth={2.2} />
+                <span>کد یکبارمصرف</span>
+              </>
+            ),
+          },
+        ]}
+      />
 
       {method === 'password' ? (
         <PasswordLoginForm

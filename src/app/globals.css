@@ -459,9 +459,27 @@
   }
 }
 
-/* ── AuthModal — ورود نرم نماها (CSS keyframes: ناممکن است گیر کند) ──────
-   سوییچ تب/مرحله‌ی مودال احراز هویت با همین تیکِ ساده انجام می‌شود؛
-   هیچ exit animationِ معلق‌مانده‌ای در کار نیست. */
+/* ── AuthModal (v8) — هدایت‌گرِ یگانه‌ی موشنِ بدنه: MorphSwap ────────────
+   یک ساعت برای همه‌چیز: کراس‌فید و مورفِ ارتفاع از یک متغیرِ مدت
+   تغذیه می‌شوند. سکون = height:auto + overflow:visible + هیچ کلاسِ
+   انیمیشنی — در سکون هزینه‌ی رندر صفر است؛ کلیپ فقط در طولِ پاس. */
+.morph-swap {
+  --morph-ms: 220ms;
+  position: relative;
+  transition-property: height;
+  transition-duration: var(--morph-ms);
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.morph-swap[data-phase='rest'] {
+  overflow: visible;
+}
+
+.morph-swap[data-phase='swap'],
+.morph-swap[data-phase='grow'] {
+  overflow: hidden;
+}
+
 @keyframes authViewIn {
   from {
     opacity: 0;
@@ -484,52 +502,71 @@
   }
 }
 
-.auth-view-enter {
-  /* ورود: تند و ابریشمی (۱۸۰ms) — هیچ پنجره‌ی «نیم‌خالی» نمی‌ماند */
-  animation: authViewIn 0.18s cubic-bezier(0.2, 0.9, 0.25, 1) both;
-  will-change: transform, opacity;
+/* لایه‌های کراس‌فید فقط هنگام پاس وجود دارند (کلاس در سکون نیست) — پس
+   هیچ will-change/لایه‌ی دائمی‌ای در کار نیست. */
+.morph-swap-in {
+  animation: authViewIn var(--morph-ms) cubic-bezier(0.2, 0.9, 0.25, 1) both;
 }
 
-.auth-view-exit {
-  /* خروجِ لایه‌ی قدیمی در کراس‌فید: کوتاه‌تر از ورود تا ردِ آن مزاحم
-     نباشد؛ absolute است و روی چیدمان اثری ندارد */
-  animation: authViewOut 0.14s ease-in both;
-  will-change: transform, opacity;
+.morph-swap-out {
+  /* خروج اندکی کوتاه‌تر تا ردِ لایه‌ی قدیمی مزاحم نباشد؛ absolute است
+     و ارتفاعِ چیدمان فقط از نسخه‌ی جدید می‌آید */
+  animation: authViewOut calc(var(--morph-ms) * 0.72) ease-in both;
+}
+
+/* صفحه‌ی موفقیت — ضربِ تأییدِ کوتاه و شیرین */
+@keyframes authSuccessIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.auth-success-enter {
+  animation: authSuccessIn 0.26s cubic-bezier(0.2, 0.9, 0.25, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-view-enter,
-  .auth-view-exit {
+  .morph-swap {
+    transition-duration: 0.01ms;
+  }
+  .morph-swap-in,
+  .morph-swap-out,
+  .auth-success-enter {
     animation: none;
   }
 }
 
-/* ── کپسولِ لغزانِ تب‌ها (جایگزین layoutId — صرفاً GPU، بدون JS) ─────────
-   قرارداد مهندسی: همان حرکتِ فنریِ کپسول， ولی transformِ خالص که روی
-   کامپوزیتور رانده می‌شود — هیچ اندازه‌گیریِ getBoundingClientRect در
-   هیچ رِرِندِری (تایپ، تیکِ تایمر) انجام نمی‌شود و reflowِ اجباری
-   صفر است. هندسه با گریدِ دو سلولِ ۵۰٪ی و گپِ ۴px دقیق است:
-   عرض = ۵۰٪ − ۶px (مساویِ سلول)， جابه‌جایی = عرضِ خودش + ۴px گپ. */
-.auth-pill-indicator {
+/* ── کپسولِ لغزانِ «اندازه‌گیری‌شده» (Segmented) ──────────────────────────
+   قرارداد: هندسه حدس زده نمی‌شود — کامپوننت جعبه‌ی دقیقِ دکمه‌ی فعال را
+   می‌سنجد و این عنصر با transformِ فیزیکی (translate3d — بی‌تفاوت به
+   RTL/LTR) دقیقاً روی همان جعبه می‌نشیند. ترک در کامپوننت
+   overflow-hidden با گوشه‌های هم‌مرکز است؛ پس حتی بدترین اورشوتِ فرضی
+   هم هرگز بیرون از ترک نقاشی نمی‌شود — خرابیِ بصری ساختاری ناممکن است.
+   نخستین قرارگیری (data-instant) بدون ترنزیشن است تا فلشِ مونت نباشد. */
+.auth-seg-indicator {
   position: absolute;
-  inset-block: 0.25rem;
-  inset-inline-start: 0.25rem;
-  width: calc(50% - 6px);
+  left: 0;
+  top: 0;
   border-radius: 0.5rem;
   background: #fff;
   box-shadow: 0 2px 8px -3px rgba(15, 20, 32, 0.15);
-  transition: transform 0.22s cubic-bezier(0.34, 1.3, 0.45, 1);
   pointer-events: none;
+  transition:
+    transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.auth-pill-indicator[data-pos='end'] {
-  /* گریدِ RTL: سلولِ نخست راست؛ حرکت به چپ = گذر به سلولِ دوم.
-     -100% عرضِ خودش و −4px گپ — دقیقاً پیکسل‌به‌پیکسلِ سلولِ دوم */
-  transform: translateX(calc(-100% - 4px));
+.auth-seg-indicator[data-instant='true'] {
+  transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-pill-indicator {
+  .auth-seg-indicator {
     transition: none;
   }
 }
@@ -559,7 +596,7 @@
 @keyframes dialogPopIn {
   from {
     opacity: 0;
-    transform: translateY(48px) scale(0.98);
+    transform: translateY(14px) scale(0.99);
   }
   to {
     opacity: 1;
@@ -574,7 +611,31 @@
   }
   to {
     opacity: 0;
-    transform: translateY(24px) scale(0.98);
+    transform: translateY(10px) scale(0.99);
+  }
+}
+
+/* شیتِ موبایل: خوانای پلتفرم — از لبه‌ی پایین می‌نشیند و به همان‌جا
+   برمی‌گردد (بدون scale تا بافتِ پنجره حینِ صعود ثابت بماند) */
+@keyframes dialogSheetIn {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dialogSheetOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(18px);
   }
 }
 
@@ -601,19 +662,28 @@
 }
 
 .auth-backdrop-enter {
-  animation: overlayFadeIn 0.2s ease-out both;
+  animation: overlayFadeIn 0.18s ease-out both;
 }
 
 .auth-backdrop-exit {
-  animation: overlayFadeOut 0.2s ease-in both;
+  animation: overlayFadeOut 0.16s ease-in both;
 }
 
 .auth-dialog-enter {
-  animation: dialogPopIn 0.24s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  animation: dialogPopIn 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
 
 .auth-dialog-exit {
-  animation: dialogPopOut 0.2s ease-in both;
+  animation: dialogPopOut 0.18s ease-in both;
+}
+
+@media (max-width: 639px) {
+  .auth-dialog-enter {
+    animation-name: dialogSheetIn;
+  }
+  .auth-dialog-exit {
+    animation-name: dialogSheetOut;
+  }
 }
 
 .ui-menu-enter {

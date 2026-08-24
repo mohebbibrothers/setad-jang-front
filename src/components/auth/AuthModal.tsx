@@ -49,8 +49,9 @@
  *      اسکرولِ خودکارِ فیلدِ فوکوس‌شده به‌نمای — کاربر همیشه می‌بیند
  *      چه می‌نویسد.
  *   ۶) سوییچِ نما/روش/مرحله دیگر «انفجاری» نیست: ارتفاعِ بدنه با
- *      ResizeObserver اندازه و مورف می‌شود (useAnimatedHeight) و محتوای
- *      جدید با منحنیِ expo-out وارد می‌شود — الگوی Stripe/Clerk.
+ *      ResizeObserver اندازه و مورف می‌شد و محتوای جدید با منحنیِ
+ *      expo-out وارد می‌شد (بعدها در v8 به هدایت‌گرِ واحدِ MorphSwap
+ *      ادغام شد — یک ساعت برای کراس‌فید و ارتفاع).
  *
  * v5 — جداسازیِ فوتر از ناحیه‌ی مورف (رفع لگِ «فوترِ دیررس»):
  *   ناحیه‌ی مورف فقط محتوای متغیر (خبر + فرمِ فعال) را می‌پوشاند و
@@ -61,19 +62,24 @@
  * v6 — بدون لگ و بدون «انفجار»:
  *   ۷) ریستِ نما به بعد از تخلیه منتقل شد (نه افکتِ open) — بازشدنِ
  *      تازه دیگر یک فریمِ «نمایِ قبلی → پرش به login» ندارد؛
- *   ۸) SwapTransition: کراس‌فیدِ دو نما — قدیمی ۱۴۰ms غیرتعاملی محو و
- *      جدیدی ۱۸۰ms lift/fade، بدون فریمِ خالی، بدون پاپ؛ لایه‌ی خروجی
- *      absolute است پس ارتفاع و مورف فقط به نسخه‌ی جدید بستگی دارند.
+ *   ۸) کراس‌فیدِ دو نما — قدیمی غیرتعاملی محو و جدیدی lift/fade، بدون
+ *      فریمِ خالی، بدون پاپ؛ لایه‌ی خروجی absolute است پس ارتفاع و مورف
+ *      فقط به نسخه‌ی جدید بستگی دارند (در v8 در MorphSwap ادغام شد).
  *
- * v7 — لگ‌زدایی از ریشه (پروفایلِ ممیزی):
- *   ۹) backdrop-blurِ تمام‌صفحه حذف شد — روی صفحه‌ی اصلیِ پراز
- *      انیمیشن، مرورگر هر فریم کل ویوپورت را دوباره blur می‌کرد
- *      (قاتلِ فریم‌ریت). حالا لایه‌ی rgbaِ ثابت است — هزینه‌ی GPU صفر.
- *  ۱۰) layoutId (framer-motion) از هر دو کپسول حذف شد؛ به‌جای آن
- *      .auth-pill-indicator — transformِ خالص روی کامپوزیتور، بدون هیچ
- *      اندازه‌گیریِ getBoundingClientRect در تایپ/تیکِ تایمر (reflow صفر).
- *  ۱۱) نماها memoize‌اند و callbackهای والد پایدار (useCallback) —
- *      تیک/تایپِ یک نما دیگر نمایِ غیرفعال را رِرِندِر نمی‌کند.
+ * v8 — ریشه‌کنیِ لگ و کپسول (یک هدایت‌گر، یک ساعت؛ هندسه‌ی اندازه‌گیری‌شده):
+ *  ۱۲) سه سامانه‌ی موشنِ ناهم‌زمان (کراس‌فید + مورفِ ارتفاع + keyframesِ
+ *      مجزا) با یک هدایت‌گرِ واحد جایگزین شدند: MorphSwap. سوییچ = یک
+ *      پاسِ اتمیکِ FLIP که کراس‌فید و ارتفاع را روی یک ساعتِ واحد
+ *      (--morph-ms) پیش می‌برد؛ پاک‌سازی تایمریِ تضمین‌شده؛ سکون =
+ *      height:auto + overflow:visible + هیچ کلاس/لایه‌ی اضافه‌ای.
+ *  ۱۳) مونتِ نخست کاملاً ایستاست: محتوا از فریمِ اول به‌صورت کامل حاضر
+ *      است و فقط کرومِ پنل انیمیت می‌شود — پایانِ «اجزای ناتمام در
+ *      لحظه‌ی اول» و «بازترشدنِ دیررسِ صفحه».
+ *  ۱۴) کپسولِ لغزان دیگر هندسه را حدس نمی‌زند (calc(50%−6px) و
+ *      منحنیِ اورشوتِ بیرون‌زننده از ترک حذف شد): Segmented جعبه‌ی
+ *      دکمه‌ی فعال را اندازه می‌گیرد و کپسول دقیقاً آینه‌ی آن است؛
+ *      ترک overflow-hidden با گوشه‌های هم‌مرکز — خرابیِ بصری از نظر
+ *      ساختاری ناممکن.
  * ═══════════════════════════════════════════════════════════════════════
  */
 
@@ -84,13 +90,13 @@ import { resetAllAuthFlows, useAuthFlowDraft } from '@/lib/auth-flow-session';
 import { usePresence } from '@/lib/use-presence';
 import { lockBodyScroll } from '@/lib/scroll-lock';
 import { overlayStyleForViewport, useVisualViewportMetrics } from '@/lib/use-visual-viewport';
-import { useAnimatedHeight } from '@/lib/use-animated-height';
 import { cn } from '@/lib/utils';
 import { LoginView } from './views/LoginView';
 import { SignupView } from './views/SignupView';
 import { ForgotView } from './views/ForgotView';
 import { AuthPanel } from './AuthPanel';
-import { SwapTransition } from './SwapTransition';
+import { MorphSwap } from './morph-swap';
+import { Segmented } from './segmented';
 import { Alert } from './ui';
 
 type View = 'login' | 'signup' | 'forgot';
@@ -130,9 +136,6 @@ export function AuthModal({
   // interactive-widget=resizes-content که کروم را بومی پوشش می‌دهد).
   // در دسکتاپ null است → استایلِ پیش‌فرضِ CSS — هیچ تغییرِ رفتاری.
   const viewportMetrics = useVisualViewportMetrics(rendered);
-
-  // مورفِ نرمِ ارتفاع بین نماها/روش‌ها/مرحله‌ها — ضد «ترنزیشنِ انفجاری»
-  const bodyHeight = useAnimatedHeight(rendered, 320);
 
   // اسکرولِ فیلدِ فوکوس‌شده به‌نمای پس از بازشدنِ کیبورد (iOS در
   // کانتینرهای اسکرول‌دارِ تو‌در‌تو خودش این کار را نمی‌کند)
@@ -327,56 +330,45 @@ export function AuthModal({
           </button>
         </header>
 
-        {/* تب ورود | ثبت‌نام — کپسولِ لغزان با transformِ خالص (GPU):
-            جایگزینِ layoutId (که روی هر رِرِندِر چیدمان می‌سنجید و
-            reflowِ اجباری می‌ساخت — منبعِ لگِ تایپ و سوییچ). */}
-        {view !== 'forgot' ? (
+        {/* تب ورود | ثبت‌نام — کنترلِ سگمنت با کپسولِ «اندازه‌گیری‌شده»:
+            آینه‌ی دقیقِ سلولِ فعال (بدون هندسه‌ی حدسی)، حرکت transformِ
+            خالص روی کامپوزیتور، ترک کلیپ‌شده با گوشه‌های هم‌مرکز. */}
+        {view === 'forgot' ? null : (
           <div className="px-6 pb-1 pt-2 sm:px-7">
-            <div
-              role="tablist"
-              aria-label="ورود یا ثبت‌نام"
-              className="relative grid grid-cols-2 gap-1 rounded-xl bg-ink-50 p-1"
-            >
-              <span
-                aria-hidden="true"
-                data-testid="auth-view-indicator"
-                className="auth-pill-indicator"
-                data-pos={view === 'signup' ? 'end' : 'start'}
-              />
-              {(
-                [
-                  { key: 'login', label: 'ورود' },
-                  { key: 'signup', label: 'ثبت‌نام' },
-                ] as const
-              ).map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  id={`auth-tab-${key}`}
-                  aria-controls={`auth-panel-${key}`}
-                  aria-selected={view === key}
-                  onClick={() => {
-                    setView(key);
-                    setNotice(null);
-                  }}
-                  className={cn(
-                    'relative h-10 rounded-lg text-[13.5px] font-extrabold transition-colors',
-                    view === key ? 'text-brand-700' : 'text-ink-500 hover:text-ink-700',
-                  )}
-                >
-                  <span className="relative">{label}</span>
-                </button>
-              ))}
-            </div>
+            <Segmented<'login' | 'signup'>
+              ariaLabel="ورود یا ثبت‌نام"
+              value={view as 'login' | 'signup'}
+              onChange={(next) => {
+                setView(next);
+                setNotice(null);
+              }}
+              indicatorTestId="auth-view-indicator"
+              buttonClassName="h-10 rounded-lg text-[13.5px] font-extrabold transition-colors"
+              activeButtonClassName="text-brand-700"
+              inactiveButtonClassName="text-ink-500 hover:text-ink-700"
+              options={[
+                {
+                  value: 'login',
+                  label: 'ورود',
+                  id: 'auth-tab-login',
+                  controls: 'auth-panel-login',
+                },
+                {
+                  value: 'signup',
+                  label: 'ثبت‌نام',
+                  id: 'auth-tab-signup',
+                  controls: 'auth-panel-signup',
+                },
+              ]}
+            />
           </div>
-        ) : null}
+        )}
 
         {/* بدنه — کانتینرِ اسکرول (اسکرول‌بار فقط و فقط با اورفلوِ واقعی) */}
         <div className="overflow-y-auto px-6 pb-6 pt-4 sm:px-7">
           {welcomeName ? (
             <div
-              className="auth-view-enter flex flex-col items-center gap-3 py-10 text-center"
+              className="auth-success-enter flex flex-col items-center gap-3 py-10 text-center"
               role="status"
             >
               <CheckCircle2 className="h-16 w-16 text-brand-500" strokeWidth={1.5} />
@@ -388,80 +380,65 @@ export function AuthModal({
           ) : (
             <>
               {/*
-                ناحیه‌ی مورف — فقط محتوای «متغیر» (خبر + فرمِ فعال).
-                همیشه overflow-hidden است: در سکون ارتفاع auto همان
-                اندازه‌ی محتواست و چیزی کلیپ نمی‌شود؛ حین مورف، ارتفاعِ
-                موقتِ کوچک‌تر فقط فرم را کوتاه نشان می‌دهد — نه فوتر را
-                (که بیرونِ این ناحیه است و هرگز دیر ظاهر نمی‌شود).
+                ناحیه‌ی مورف — فقط محتوای «متغیر» (خبر + فرمِ فعال) زیر
+                نظرِ یک هدایت‌گرِ واحد (MorphSwap): سکون = height:auto و
+                overflow:visible (اسکرول‌بار فقط با اورفلوِ واقعی)؛ سوییچ
+                = یک پاسِ اتمیک که کراس‌فید و مورفِ ارتفاع را روی یک ساعت
+                پیش می‌برد؛ کلیپ فقط در طول همان پاس — پس ارتفاعِ موقتِ
+                کوچک‌تر هرگز چیزی را پنهان نمی‌کند و فوتر (که بیرونِ این
+                ناحیه است) هیچ‌وقت دیر ظاهر نمی‌شود.
               */}
-              <div
-                data-testid="auth-morph-region"
-                className={cn(
-                  'overflow-hidden',
-                  bodyHeight.armed &&
-                    'transition-[height] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
-                )}
-                style={bodyHeight.style}
-              >
-                {/* بسته‌ی اندازه‌گیری — flexcol تا مارجین‌های فرزندان توی
-                    جعبه بمانند و اندازه دقیق باشد */}
-                <div ref={bodyHeight.contentRef} className="flex flex-col">
-                  {/* کراس‌فیدِ تعویضِ نما/روش/مرحله: نسخه‌ی قدیمی absolute
-                      و غیرتعاملی محو می‌شود و جدیدی هم‌زمان وارد — ارتفاع
-                      فقط از نسخه‌ی جدید می‌آید و مورفْ با آن هم‌راستاست */}
-                  <SwapTransition swapKey={swapKey}>
-                    <>
-                      {notice ? (
-                        <div className="mb-4">
-                          <Alert kind="success">{notice}</Alert>
-                        </div>
-                      ) : null}
+              <MorphSwap swapKey={swapKey} boxTestId="auth-morph-region">
+                <>
+                  {notice ? (
+                    <div className="mb-4">
+                      <Alert kind="success">{notice}</Alert>
+                    </div>
+                  ) : null}
 
-                      <AuthPanel
-                        id="auth-panel-login"
-                        labelledby="auth-tab-login"
-                        active={view === 'login'}
-                        activeKey={`${loginDraft.method}:${loginDraft.step}`}
-                      >
-                        <LoginView
-                          identifier={identifier}
-                          setIdentifier={setIdentifier}
-                          onSuccess={handleSuccess}
-                          goForgot={goForgot}
-                        />
-                      </AuthPanel>
+                  <AuthPanel
+                    id="auth-panel-login"
+                    labelledby="auth-tab-login"
+                    active={view === 'login'}
+                    activeKey={`${loginDraft.method}:${loginDraft.step}`}
+                  >
+                    <LoginView
+                      identifier={identifier}
+                      setIdentifier={setIdentifier}
+                      onSuccess={handleSuccess}
+                      goForgot={goForgot}
+                    />
+                  </AuthPanel>
 
-                      <AuthPanel
-                        id="auth-panel-signup"
-                        labelledby="auth-tab-signup"
-                        active={view === 'signup'}
-                        activeKey={signupDraft.step}
-                      >
-                        <SignupView
-                          identifier={identifier}
-                          setIdentifier={setIdentifier}
-                          onSuccess={handleSuccess}
-                          goLogin={goLogin}
-                        />
-                      </AuthPanel>
+                  <AuthPanel
+                    id="auth-panel-signup"
+                    labelledby="auth-tab-signup"
+                    active={view === 'signup'}
+                    activeKey={signupDraft.step}
+                  >
+                    <SignupView
+                      identifier={identifier}
+                      setIdentifier={setIdentifier}
+                      onSuccess={handleSuccess}
+                      goLogin={goLogin}
+                    />
+                  </AuthPanel>
 
-                      {/* نمای بازیابی تب ندارد — با لینک «فراموشی» وارد می‌شود */}
-                      <AuthPanel
-                        id="auth-panel-forgot"
-                        labelledby="auth-modal-title"
-                        active={view === 'forgot'}
-                        activeKey={forgotDraft.step}
-                      >
-                        <ForgotView
-                          identifier={identifier}
-                          setIdentifier={setIdentifier}
-                          goLogin={goLogin}
-                        />
-                      </AuthPanel>
-                    </>
-                  </SwapTransition>
-                </div>
-              </div>
+                  {/* نمای بازیابی تب ندارد — با لینک «فراموشی» وارد می‌شود */}
+                  <AuthPanel
+                    id="auth-panel-forgot"
+                    labelledby="auth-modal-title"
+                    active={view === 'forgot'}
+                    activeKey={forgotDraft.step}
+                  >
+                    <ForgotView
+                      identifier={identifier}
+                      setIdentifier={setIdentifier}
+                      goLogin={goLogin}
+                    />
+                  </AuthPanel>
+                </>
+              </MorphSwap>
 
               {/* نوار اعتماد — بیرون از ناحیه‌ی مورف: از فریمِ اول حاضر
                   است و حین مورف فقط نرم با ناحیه جابه‌جا می‌شود، هیچ‌وقت
