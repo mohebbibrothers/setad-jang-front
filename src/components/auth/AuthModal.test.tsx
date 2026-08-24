@@ -195,6 +195,22 @@ describe('باگ ۱ — قفل‌شدن صفحه پس از بستن مودال (
     expect(document.body.style.overflow).toBe('hidden');
   });
 
+  it('نوار اعتماد بیرون از ناحیه‌ی مورف است — هیچ‌وقت پشتِ کلیپ دیر ظاهر نمی‌شود', () => {
+    render(<Harness />);
+    const dlg = dialog();
+
+    const region = screen.getByTestId('auth-morph-region');
+    // ناحیه‌ی مورف همیشه کلیپ است (اسکرول‌بار حین مورف فلش نمی‌زند)…
+    expect(region.className).toContain('overflow-hidden');
+    // …ولی فوتر بیرونِ آن و درست بلافاصله پس از آن در بدنه‌ی اسکرول قرار
+    // دارد؛ پس ارتفاعِ موقتِ کوچک‌تر هیچ‌وقت آن را پنهان نمی‌کند:
+    const footer = within(dlg).getByText(/اتصال امن است/);
+    expect(region.contains(footer)).toBe(false);
+    expect(footer.previousElementSibling).toBe(region);
+    // و فرمِ فعال داخل ناحیه‌ی مورف است (مورف فقط فرم را می‌پوشاند)
+    expect(region.contains(screen.getByRole('tabpanel'))).toBe(true);
+  });
+
   it('فوکوس پس از تخلیه‌ی کامل به عنصرِ قبلیِ خارج از مودال برمی‌گردد', () => {
     render(<Harness startOpen={false} />);
     const outside = screen.getByTestId('outside-action');

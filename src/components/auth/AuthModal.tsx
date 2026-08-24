@@ -51,6 +51,12 @@
  *   ۶) سوییچِ نما/روش/مرحله دیگر «انفجاری» نیست: ارتفاعِ بدنه با
  *      ResizeObserver اندازه و مورف می‌شود (useAnimatedHeight) و محتوای
  *      جدید با منحنیِ expo-out وارد می‌شود — الگوی Stripe/Clerk.
+ *
+ * v5 — جداسازیِ فوتر از ناحیه‌ی مورف (رفع لگِ «فوترِ دیررس»):
+ *   ناحیه‌ی مورف فقط محتوای متغیر (خبر + فرمِ فعال) را می‌پوشاند و
+ *   همیشه overflow-hidden است؛ نوار اعتماد بیرونِ آن قرار گرفت — پس
+ *   هنگام ورود به بخشِ بلندتر، ارتفاعِ موقتِ کوچک‌تر هرگز آن را پشتِ
+ *   کلیپ پنهان نمی‌کند. سکون = auto: اسکرول‌بار هم فقط با اورفلوِ واقعی.
  * ═══════════════════════════════════════════════════════════════════════
  */
 
@@ -332,99 +338,103 @@ export function AuthModal({
           </div>
         ) : null}
 
-        {/* بدنه — هر سه نما همیشه مونت؛ نمایان با hidden/inert.
-            ارتفاعِ بدنه با ResizeObserver اندازه و با ترنزیشنِ نرم مورف
-            می‌شود تا سوییچِ نما/روش/مرحله «جهش» نداشته باشد. */}
-        <div
-          className={cn(
-            // حینِ مورف: کلیپ (نه اسکرول) — ارتفاعِ میانی از محتوای مقصد
-            // کوچک‌تر است و auto ناگزیر اسکرول‌بار را فلش می‌زد.
-            // در سکون: auto — اسکرول‌بار فقط و فقط با اورفلوِ واقعی.
-            bodyHeight.isAnimating ? 'overflow-y-hidden' : 'overflow-y-auto',
-            'px-6 pb-6 pt-4 sm:px-7',
-            bodyHeight.armed &&
-              'transition-[height] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
-          )}
-          style={bodyHeight.style}
-        >
-          {/* بسته‌ی اندازه‌گیری — flexcol تا مارجین‌های فرزندان توی جعبه
-              بمانند و اندازه دقیق باشد */}
-          <div ref={bodyHeight.contentRef} className="flex flex-col">
-            {welcomeName ? (
+        {/* بدنه — کانتینرِ اسکرول (اسکرول‌بار فقط و فقط با اورفلوِ واقعی) */}
+        <div className="overflow-y-auto px-6 pb-6 pt-4 sm:px-7">
+          {welcomeName ? (
+            <div
+              className="auth-view-enter flex flex-col items-center gap-3 py-10 text-center"
+              role="status"
+            >
+              <CheckCircle2 className="h-16 w-16 text-brand-500" strokeWidth={1.5} />
+              <h3 className="text-[18px] font-extrabold text-ink-900">
+                {welcomeName}، خوش آمدید 🌱
+              </h3>
+              <p className="text-[12.5px] text-ink-500">ورود شما با موفقیت انجام شد.</p>
+            </div>
+          ) : (
+            <>
+              {/*
+                ناحیه‌ی مورف — فقط محتوای «متغیر» (خبر + فرمِ فعال).
+                همیشه overflow-hidden است: در سکون ارتفاع auto همان
+                اندازه‌ی محتواست و چیزی کلیپ نمی‌شود؛ حین مورف، ارتفاعِ
+                موقتِ کوچک‌تر فقط فرم را کوتاه نشان می‌دهد — نه فوتر را
+                (که بیرونِ این ناحیه است و هرگز دیر ظاهر نمی‌شود).
+              */}
               <div
-                className="auth-view-enter flex flex-col items-center gap-3 py-10 text-center"
-                role="status"
+                data-testid="auth-morph-region"
+                className={cn(
+                  'overflow-hidden',
+                  bodyHeight.armed &&
+                    'transition-[height] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
+                )}
+                style={bodyHeight.style}
               >
-                <CheckCircle2 className="h-16 w-16 text-brand-500" strokeWidth={1.5} />
-                <h3 className="text-[18px] font-extrabold text-ink-900">
-                  {welcomeName}، خوش آمدید 🌱
-                </h3>
-                <p className="text-[12.5px] text-ink-500">ورود شما با موفقیت انجام شد.</p>
+                {/* بسته‌ی اندازه‌گیری — flexcol تا مارجین‌های فرزندان توی
+                    جعبه بمانند و اندازه دقیق باشد */}
+                <div ref={bodyHeight.contentRef} className="flex flex-col">
+                  {notice ? (
+                    <div className="mb-4">
+                      <Alert kind="success">{notice}</Alert>
+                    </div>
+                  ) : null}
+
+                  <AuthPanel
+                    id="auth-panel-login"
+                    labelledby="auth-tab-login"
+                    active={view === 'login'}
+                    activeKey={`${loginDraft.method}:${loginDraft.step}`}
+                  >
+                    <LoginView
+                      identifier={identifier}
+                      setIdentifier={setIdentifier}
+                      onSuccess={handleSuccess}
+                      goForgot={(id) => {
+                        if (id?.trim()) setIdentifier(id);
+                        setView('forgot');
+                        setNotice(null);
+                      }}
+                    />
+                  </AuthPanel>
+
+                  <AuthPanel
+                    id="auth-panel-signup"
+                    labelledby="auth-tab-signup"
+                    active={view === 'signup'}
+                    activeKey={signupDraft.step}
+                  >
+                    <SignupView
+                      identifier={identifier}
+                      setIdentifier={setIdentifier}
+                      onSuccess={handleSuccess}
+                      goLogin={() => goLogin()}
+                    />
+                  </AuthPanel>
+
+                  {/* نمای بازیابی تب ندارد — با لینک «فراموشی» وارد می‌شود */}
+                  <AuthPanel
+                    id="auth-panel-forgot"
+                    labelledby="auth-modal-title"
+                    active={view === 'forgot'}
+                    activeKey={forgotDraft.step}
+                  >
+                    <ForgotView
+                      identifier={identifier}
+                      setIdentifier={setIdentifier}
+                      goLogin={goLogin}
+                    />
+                  </AuthPanel>
+                </div>
               </div>
-            ) : (
-              <>
-                {notice ? (
-                  <div className="mb-4">
-                    <Alert kind="success">{notice}</Alert>
-                  </div>
-                ) : null}
 
-                <AuthPanel
-                  id="auth-panel-login"
-                  labelledby="auth-tab-login"
-                  active={view === 'login'}
-                  activeKey={`${loginDraft.method}:${loginDraft.step}`}
-                >
-                  <LoginView
-                    identifier={identifier}
-                    setIdentifier={setIdentifier}
-                    onSuccess={handleSuccess}
-                    goForgot={(id) => {
-                      if (id?.trim()) setIdentifier(id);
-                      setView('forgot');
-                      setNotice(null);
-                    }}
-                  />
-                </AuthPanel>
-
-                <AuthPanel
-                  id="auth-panel-signup"
-                  labelledby="auth-tab-signup"
-                  active={view === 'signup'}
-                  activeKey={signupDraft.step}
-                >
-                  <SignupView
-                    identifier={identifier}
-                    setIdentifier={setIdentifier}
-                    onSuccess={handleSuccess}
-                    goLogin={() => goLogin()}
-                  />
-                </AuthPanel>
-
-                {/* نمای بازیابی تب ندارد — با لینک «فراموشی» وارد می‌شود */}
-                <AuthPanel
-                  id="auth-panel-forgot"
-                  labelledby="auth-modal-title"
-                  active={view === 'forgot'}
-                  activeKey={forgotDraft.step}
-                >
-                  <ForgotView
-                    identifier={identifier}
-                    setIdentifier={setIdentifier}
-                    goLogin={goLogin}
-                  />
-                </AuthPanel>
-              </>
-            )}
-
-            {/* نوار اعتماد */}
-            {!welcomeName ? (
+              {/* نوار اعتماد — بیرون از ناحیه‌ی مورف: از فریمِ اول حاضر
+                  است و حین مورف فقط نرم با ناحیه جابه‌جا می‌شود، هیچ‌وقت
+                  پشتِ کلیپ پنهان نمی‌ماند */}
               <p className="mt-6 flex items-center justify-center gap-1.5 border-t border-ink-100 pt-4 text-[11px] font-medium text-ink-500">
                 <ShieldCheck className="h-3.5 w-3.5 text-brand-500" />
                 اتصال امن است؛ اطلاعات شما فقط برای ورود استفاده می‌شود.
               </p>
-            ) : null}
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>
