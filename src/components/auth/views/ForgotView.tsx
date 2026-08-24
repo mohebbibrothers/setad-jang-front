@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * ForgotView — بازیابی رمز عبور:
+ * ForgotView — بازیابی رمز عبور با حافظه‌ی سشن:
  *   مرحله ۱) شناسه → POST /auth/password/forgot/request/
  *   مرحله ۲) کد + رمز جدید → /auth/password/forgot/confirm/
  *   مرحله ۳) پیام موفقیت → بازگشت به ورود با رمز جدید
  *
- * endpoint ها enumeration-safe نیستند ولی پیام عمومی می‌دهند؛ ما هم
- * هیچ‌وقت وجود/عدم‌وجود حساب را فاش نمی‌کنیم — فقط «کد ارسال شد».
+ * enumeration-safe همی‌خوان: هیچ‌وقت وجود/عدم‌وجود حساب را فاش نمی‌کنیم —
+ * فقط «کد ارسال شد».
  */
 
 import { useState } from 'react';
@@ -15,6 +15,7 @@ import { CheckCircle2, LogIn } from 'lucide-react';
 import { forgotPasswordRequest, forgotPasswordConfirm, type AuthChallengeResult } from '@/lib/auth';
 import { coerceAuthError, type AuthErrorModel } from '@/lib/auth-errors';
 import { prepareIdentifierForSubmit, validateIdentifier } from '@/lib/auth-identifier';
+import { patchAuthFlow, useAuthFlowDraft } from '@/lib/auth-flow-session';
 import { isOtpComplete } from '@/lib/otp';
 import { Alert, SubmitButton } from '../ui';
 import { IdentifierField } from '../IdentifierField';
@@ -32,9 +33,7 @@ export function ForgotView({
   /** بازگشت به ورود (نمایش پیام موفقیت تغییر رمز) */
   goLogin: (notice?: string) => void;
 }) {
-  const [step, setStep] = useState<'identifier' | 'code' | 'done'>('identifier');
-  const [code, setCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
+  const draft = useAuthFlowDraft('forgot');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AuthErrorModel | null>(null);
   const [touched, setTouched] = useState(false);
@@ -43,11 +42,12 @@ export function ForgotView({
   const identifierError = touched ? validateIdentifier(identifier) : null;
 
   const challenge = useOtpChallenge({
+    flow: 'forgot',
     identifier: prepared,
     request: (id): Promise<AuthChallengeResult> => forgotPasswordRequest(id),
   });
 
-  if (step === 'done') {
+  if (draft.step === 'done') {
     return (
       <div className="space-y-5 py-2 text-center">
         <CheckCircle2
@@ -71,19 +71,19 @@ export function ForgotView({
     );
   }
 
-  if (step === 'code') {
+  if (draft.step === 'code') {
     const submit = async (e?: React.FormEvent) => {
       e?.preventDefault();
-      if (busy || !isOtpComplete(code) || !isPasswordAcceptable(newPassword)) return;
+      if (busy || !isOtpComplete(draft.code) || !isPasswordAcceptable(draft.password)) return;
       setBusy(true);
       setError(null);
       try {
         await forgotPasswordConfirm({
           identifier: prepared,
-          code,
-          new_password: newPassword,
+          code: draft.code,
+          new_password: draft.password,
         });
-        setStep('done');
+        patchAuthFlow('forgot', { step: 'done' });
       } catch (err) {
         const model = coerceAuthError(err);
         setError(model);
@@ -101,15 +101,14 @@ export function ForgotView({
         <OtpStep
           id="forgot-otp"
           identifier={prepared}
-          code={code}
+          code={draft.code}
           onCodeChange={(v) => {
-            setCode(v);
+            patchAuthFlow('forgot', { code: v });
             setError(null);
           }}
           challenge={challenge}
           onEditIdentifier={() => {
-            setStep('identifier');
-            setCode('');
+            patchAuthFlow('forgot', { step: 'identifier', code: '' });
             setError(null);
             challenge.reset();
           }}
@@ -121,9 +120,9 @@ export function ForgotView({
           id="forgot-new-password"
           label="رمز عبور جدید"
           autoComplete="new-password"
-          value={newPassword}
+          value={draft.password}
           onChange={(v) => {
-            setNewPassword(v);
+            patchAuthFlow('forgot', { password: v });
             setError(null);
           }}
           error={error?.fieldErrors.password ?? null}
@@ -133,7 +132,7 @@ export function ForgotView({
 
         <SubmitButton
           loading={busy}
-          disabled={!isOtpComplete(code) || !isPasswordAcceptable(newPassword)}
+          disabled={!isOtpComplete(draft.code) || !isPasswordAcceptable(draft.password)}
         >
           تغییر رمز عبور
         </SubmitButton>
@@ -152,9 +151,8 @@ export function ForgotView({
         if (idError) return;
         const ok = await challenge.send();
         if (ok) {
-          setCode('');
+          patchAuthFlow('forgot', { step: 'code', code: '' });
           setError(null);
-          setStep('code');
         }
       }}
     >
@@ -168,7 +166,6 @@ export function ForgotView({
         onChange={(v) => setIdentifier(v)}
         error={identifierError}
         disabled={challenge.sending}
-        autoFocus
       />
       <SubmitButton loading={challenge.sending}>ارسال کد بازیابی</SubmitButton>
     </form>

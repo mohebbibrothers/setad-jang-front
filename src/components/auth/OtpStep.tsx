@@ -71,7 +71,6 @@ export function OtpStep({
         onComplete={onComplete}
         invalid={invalid}
         disabled={disabled}
-        autoFocus
       />
 
       {/* TTL + هشدار تلاش‌ها */}

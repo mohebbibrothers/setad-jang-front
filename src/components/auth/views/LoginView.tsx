@@ -5,13 +5,16 @@
  *   ۱) رمز عبور           → POST /auth/login/password/
  *   ۲) کد یکبارمصرف (OTP) → /auth/login/otp/request/ + /otp/verify/
  *
+ * پیشرفتِ روش/مرحله/کد در auth-flow-session نشسته — سوییچ تب ورود↔ثبت‌نام
+ * یا بستن مودال، فلوی در حال اجرا را نمی‌شکند (استاندارد صنعت).
+ *
  * نکات سینک با بک‌اند:
  *   • شناسه یکتا (ایمیل/موبایل) — تشخیص kind سِمت سرور است؛ ما فقط
  *     مقدار تمیزشده (ارقام لاتین) را می‌فرستیم.
- *   • 401/403 پیام دقیق خود بک‌اند را می‌بینند؛ خطاها هرگز بازنویسی
- *     نمی‌شوند (همان‌متن، همان‌معنا).
- *   • verify هنگام کامل‌شدن ۵ رقم به‌صورت خودکار ارسال می‌شود (once).
+ *   • 401/403 پیام دقیق خود بک‌اند را می‌بینند؛ خطاها بازنویسی نمی‌شوند.
+ *   • verify هنگام کامل‌شدن ۵ رقم خودکار ارسال می‌شود (once).
  *   • «مرا به خاطر بسپار» = persist توکن (localStorage در برابر session).
+ *   • رمزِ ورود به‌عمدت در draft سشن نمی‌ماند (امنیت)؛ فقط کد OTP و مرحله.
  */
 
 import { useState } from 'react';
@@ -26,6 +29,7 @@ import {
 } from '@/lib/auth';
 import { coerceAuthError, type AuthErrorModel } from '@/lib/auth-errors';
 import { prepareIdentifierForSubmit, validateIdentifier } from '@/lib/auth-identifier';
+import { patchAuthFlow, useAuthFlowDraft, type LoginMethod } from '@/lib/auth-flow-session';
 import { isOtpComplete } from '@/lib/otp';
 import { cn } from '@/lib/utils';
 import { Alert, SubmitButton } from '../ui';
@@ -33,8 +37,6 @@ import { IdentifierField } from '../IdentifierField';
 import { PasswordField } from '../PasswordField';
 import { OtpStep } from '../OtpStep';
 import { useOtpChallenge } from '../useOtpChallenge';
-
-type Method = 'password' | 'otp';
 
 export function LoginView({
   identifier,
@@ -47,7 +49,9 @@ export function LoginView({
   onSuccess: (user: AuthUser) => void;
   goForgot: (identifier: string) => void;
 }) {
-  const [method, setMethod] = useState<Method>('password');
+  const draft = useAuthFlowDraft('login');
+  const method = draft.method;
+
   return (
     <div className="space-y-5">
       {/* سوییچ روش — کپسول متحرک */}
@@ -64,9 +68,10 @@ export function LoginView({
         ).map(({ key, label, Icon }) => (
           <button
             key={key}
+            type="button"
             role="tab"
             aria-selected={method === key}
-            onClick={() => setMethod(key)}
+            onClick={() => patchAuthFlow('login', { method: key as LoginMethod })}
             className={cn(
               'relative flex h-10 items-center justify-center gap-1.5 rounded-lg text-[13px] font-bold transition-colors',
               method === key ? 'text-brand-700' : 'text-ink-500 hover:text-ink-700',
@@ -163,7 +168,6 @@ function PasswordLoginForm({
         }}
         error={identifierError}
         disabled={busy}
-        autoFocus
       />
 
       <PasswordField
@@ -212,8 +216,7 @@ function OtpLoginFlow({
   setIdentifier: (v: string) => void;
   onSuccess: (user: AuthUser) => void;
 }) {
-  const [step, setStep] = useState<'identifier' | 'code'>('identifier');
-  const [code, setCode] = useState('');
+  const draft = useAuthFlowDraft('login');
   const [remember, setRemember] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AuthErrorModel | null>(null);
@@ -223,6 +226,7 @@ function OtpLoginFlow({
   const identifierError = touched ? validateIdentifier(identifier) : null;
 
   const challenge = useOtpChallenge({
+    flow: 'login',
     identifier: prepared,
     request: (id): Promise<AuthChallengeResult> => loginOtpRequest(id),
   });
@@ -232,13 +236,12 @@ function OtpLoginFlow({
     const idError = validateIdentifier(identifier);
     setTouched(true);
     if (idError) return;
-    // خودِ challenge مالک ارسال است — تایمرها و خطای 429 از همین‌جا
-    // تک‌منبعی مدیریت می‌شوند؛ هیچ درخواست دومی بیرون از آن نمی‌رود.
+    // خودِ challenge مالک ارسال است — تایمرها با ددلاین مطلق در draft
+    // می‌نشینند و سوییچ تب/بستن مودال را جان سالم به در می‌برند.
     const ok = await challenge.send();
     if (ok) {
-      setCode('');
+      patchAuthFlow('login', { step: 'code', code: '' });
       setError(null);
-      setStep('code');
     }
   };
 
@@ -257,13 +260,13 @@ function OtpLoginFlow({
       const model = coerceAuthError(err);
       setError(model);
       challenge.markWrongAttempt(model);
-      setCode('');
+      patchAuthFlow('login', { code: '' });
     } finally {
       setBusy(false);
     }
   };
 
-  if (step === 'code') {
+  if (draft.step === 'code') {
     return (
       <div className="space-y-4">
         {error ? <Alert kind="error">{error.message}</Alert> : null}
@@ -272,16 +275,15 @@ function OtpLoginFlow({
         <OtpStep
           id="login-otp"
           identifier={prepared}
-          code={code}
+          code={draft.code}
           onCodeChange={(v) => {
-            setCode(v);
+            patchAuthFlow('login', { code: v });
             setError(null);
           }}
           onComplete={verify}
           challenge={challenge}
           onEditIdentifier={() => {
-            setStep('identifier');
-            setCode('');
+            patchAuthFlow('login', { step: 'identifier', code: '' });
             setError(null);
             challenge.reset();
           }}
@@ -301,7 +303,11 @@ function OtpLoginFlow({
           مرا به خاطر بسپار
         </label>
 
-        <SubmitButton loading={busy} disabled={!isOtpComplete(code)} onClick={() => verify(code)}>
+        <SubmitButton
+          loading={busy}
+          disabled={!isOtpComplete(draft.code)}
+          onClick={() => verify(draft.code)}
+        >
           تأیید و ورود
         </SubmitButton>
       </div>
@@ -320,7 +326,6 @@ function OtpLoginFlow({
         onChange={(v) => setIdentifier(v)}
         error={identifierError}
         disabled={challenge.sending}
-        autoFocus
       />
       <SubmitButton loading={challenge.sending}>ارسال کد ورود</SubmitButton>
     </form>

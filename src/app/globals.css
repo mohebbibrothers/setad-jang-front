@@ -458,3 +458,27 @@
     animation: none !important;
   }
 }
+
+/* ── AuthModal — ورود نرم نماها (CSS keyframes: ناممکن است گیر کند) ──────
+   سوییچ تب/مرحله‌ی مودال احراز هویت با همین تیکِ ساده انجام می‌شود؛
+   هیچ exit animationِ معلق‌مانده‌ای در کار نیست. */
+@keyframes authViewIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-view-enter {
+  animation: authViewIn 0.24s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-view-enter {
+    animation: none;
+  }
+}

@@ -3,19 +3,26 @@
 /**
  * useOtpChallenge — مغز مشترک هر سه فلوی «درخواست کد → تأیید کد».
  *
- * مسئولیت‌ها (همگی از قرارداد خوانده‌شده‌ی بک‌اند):
- *   • ارسال درخواست OTP با همان identifier؛
- *   • شمارش‌معکوس ارسال مجدد — پیش‌فرض ۶۰ ثانیه (otp.py) ولی اگر سرور
- *     429 داد، دقیقاً با همان ثانیه‌ای که خودش گفته سینک می‌شود؛
- *   • TTL نمایشی ۵ دقیقه (اعتبار کد) که با هر ارسال موفق ریست می‌شود؛
- *   • شمارش تلاش‌های اشتباه سمت کلاینت (سقف ۵ در بک‌اند — پس از آن
- *     باید کد جدید گرفت) و پیامِ راهنمای متناسب؛
- *   • خروجی خطا همیشه به مدلِ یکپارچه‌ی coerceAuthError تبدیل می‌شود.
+ * نسخه‌ی store-backed: همه‌ی فیلدهای زنده (cooldown، TTL، تلاش‌های
+ * ناموفق، آخرین خطای ارسال) در auth-flow-session می‌نشینند و با
+ * ددلاینِ مطلق (timestamp) سنجیده می‌شوند؛ پس سوییچ تب ورود/ثبت‌نام،
+ * بستن و بازکردن مجدد مودال، یا رفتن به تب دیگرِ مرورگر — هیچ‌کدام
+ * تایمر یا پیشرفت را نمی‌شکنند.
+ *
+ * خواندن این فایل با ثابت‌های otp.py بک‌اند یکی است:
+ *   کد ۵ رقمی · TTL ۳۰۰ ثانیه · ۵ تلاش · cooldown ۶۰ ثانیه.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AuthChallengeResult } from '@/lib/auth';
 import { coerceAuthError, type AuthErrorModel } from '@/lib/auth-errors';
+import {
+  patchAuthFlow,
+  resetAuthFlowOtp,
+  secondsUntil,
+  useAuthFlowDraft,
+  type AuthFlowKey,
+} from '@/lib/auth-flow-session';
 import { OTP_MAX_ATTEMPTS, OTP_RESEND_COOLDOWN_SECONDS, OTP_TTL_SECONDS } from '@/lib/otp';
 
 export type OtpChallenge = {
@@ -32,81 +39,89 @@ export type OtpChallenge = {
   exhausted: boolean;
   /** آخرین خطای مرحله‌ی درخواست */
   sendError: AuthErrorModel | null;
-  /** ارسال (یا ارسال مجدد) کد؛ true یعنی کد صادر و تایمرها ریست شدند */
+  /** ارسال (یا ارسال مجدد) کد؛ true یعنی کد صادر و ددلاین‌ها ریست شدند */
   send: () => Promise<boolean>;
-  /** قبل از تأیید: خواندن پیام مناسب باتوجه‌به وضعیت */
+  /** ثبت یک تلاش ناموفق در verify (از مدل خطای هماهنگ بک‌اند) */
   markWrongAttempt: (model: AuthErrorModel) => void;
   reset: () => void;
 };
 
 export function useOtpChallenge(options: {
+  flow: AuthFlowKey;
   identifier: string;
   request: (identifier: string) => Promise<AuthChallengeResult>;
 }): OtpChallenge {
-  const { identifier, request } = options;
+  const { flow, identifier, request } = options;
+  const draft = useAuthFlowDraft(flow);
   const [sending, setSending] = useState(false);
-  const [resendIn, setResendIn] = useState(0);
-  const [ttlIn, setTtlIn] = useState(0);
-  const [wrongAttempts, setWrongAttempts] = useState(0);
-  const [sendError, setSendError] = useState<AuthErrorModel | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const requestRef = useRef(request);
   requestRef.current = request;
 
-  // تایمر واحد برای هر دو شمارش‌معکوس
+  const resendIn = secondsUntil(draft.resendAt, now);
+  const ttlIn = secondsUntil(draft.expiresAt, now);
+
+  // تپش یک‌ثانیه‌ای فقط تا وقتی ددلاینی در آینده هست — بدون تیکِ الکی.
   useEffect(() => {
-    if (resendIn <= 0 && ttlIn <= 0) return;
-    const t = window.setInterval(() => {
-      setResendIn((s) => (s > 0 ? s - 1 : 0));
-      setTtlIn((s) => (s > 0 ? s - 1 : 0));
-    }, 1000);
-    return () => window.clearInterval(t);
-  }, [resendIn, ttlIn]);
+    const pending =
+      secondsUntil(draft.resendAt, Date.now()) > 0 || secondsUntil(draft.expiresAt, Date.now()) > 0;
+    if (!pending) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [draft.resendAt, draft.expiresAt]);
 
   const reset = useCallback(() => {
-    setResendIn(0);
-    setTtlIn(0);
-    setWrongAttempts(0);
-    setSendError(null);
-  }, []);
+    resetAuthFlowOtp(flow);
+  }, [flow]);
 
   const send = useCallback(async (): Promise<boolean> => {
     if (sending) return false;
     setSending(true);
-    setSendError(null);
     try {
       await requestRef.current(identifier);
-      setResendIn(OTP_RESEND_COOLDOWN_SECONDS);
-      setTtlIn(OTP_TTL_SECONDS);
-      setWrongAttempts(0);
+      patchAuthFlow(flow, {
+        resendAt: Date.now() + OTP_RESEND_COOLDOWN_SECONDS * 1000,
+        expiresAt: Date.now() + OTP_TTL_SECONDS * 1000,
+        wrongAttempts: 0,
+        sendError: null,
+      });
       return true;
     } catch (err) {
       const model = coerceAuthError(err);
-      // اگر سرور گفت «کمی صبر کن»، همان را مبنای شمارش‌معکوس می‌گذاریم —
-      // اعتبار این عدد متعلق به سرور است نه حدسِ کلاینت.
-      if (model.kind === 'cooldown' && model.waitSeconds) {
-        setResendIn(model.waitSeconds);
-      }
-      setSendError(model);
+      patchAuthFlow(flow, {
+        sendError: model,
+        // اگر سرور گفت «کمی صبر کن»، همان ثانیه را مبنای ددلاین می‌گذاریم —
+        // اعتبار این عدد متعلق به سرور است نه حدسِ کلاینت.
+        ...(model.kind === 'cooldown' && model.waitSeconds
+          ? { resendAt: Date.now() + model.waitSeconds * 1000 }
+          : {}),
+      });
       return false;
     } finally {
       setSending(false);
     }
-  }, [identifier, sending]);
+  }, [flow, identifier, sending]);
 
-  const markWrongAttempt = useCallback((model: AuthErrorModel) => {
-    setWrongAttempts((n) => Math.min(n + 1, OTP_MAX_ATTEMPTS));
-    // «کد نامعتبر یا منقضی» یا «تلاش‌ها زیاد» → TTL عملاً تمام است
-    if (/منقضی|تلاش‌های اشتباه/.test(model.message)) setTtlIn(0);
-  }, []);
+  const markWrongAttempt = useCallback(
+    (model: AuthErrorModel) => {
+      const next: Partial<Parameters<typeof patchAuthFlow>[1]> = {
+        wrongAttempts: Math.min(draft.wrongAttempts + 1, OTP_MAX_ATTEMPTS),
+      };
+      // «کد نامعتبر یا منقضی» / «تلاش‌های اشتباه زیاد» → TTL عملاً تمام است
+      if (/منقضی|تلاش‌های اشتباه/.test(model.message)) next.expiresAt = null;
+      patchAuthFlow(flow, next);
+    },
+    [draft.wrongAttempts, flow],
+  );
 
   return {
     sending,
     resendIn,
     ttlIn,
-    wrongAttempts,
+    wrongAttempts: draft.wrongAttempts,
     maxAttempts: OTP_MAX_ATTEMPTS,
-    exhausted: ttlIn === 0 || wrongAttempts >= OTP_MAX_ATTEMPTS,
-    sendError,
+    exhausted: draft.wrongAttempts >= OTP_MAX_ATTEMPTS || (draft.expiresAt !== null && ttlIn === 0),
+    sendError: draft.sendError,
     send,
     markWrongAttempt,
     reset,

@@ -2,20 +2,27 @@
 
 /**
  * ═══════════════════════════════════════════════════════════════════════
- * AuthModal — پنجره‌ی ورود / ثبت‌نام بعثت مردم
+ * AuthModal — پنجره‌ی ورود / ثبت‌نام بعثت مردم (v2 — معماری بدون unmount)
  *
- * معماری:
- *   • سه نما (view): ورود | ثبت‌نام | بازیابی رمز — با ماشین‌حالت ساده
- *     و حافظه‌ی مشترکِ «شناسه» تا جابه‌جایی بین نماها ورودی کاربر را
- *     نپوشاند؛
- *   • دسکتاپ: دیالوگ دقیقاً وسط صفحه؛ موبایل: شیتِ پایین تمام‌عرض
- *     (ارگونومی انگشت) — هر دو با همان محتوا؛
- *   • a11y: role="dialog" + aria-modal + focus-trap + Esc + scroll-lock
- *     + بازگشت فوکوس به دکمه‌ی بازکننده + اولین فیلد autofocus؛
- *   • موفقیت: پنل خوش‌آمد با نام کاربر (از پاسخ خودِ بک‌اند) و بستنِ
- *     خودکار — هدر از طریق useAuth لحظه‌ای به‌روز می‌شود.
+ * درس‌های سه باگ گزارش‌شده‌ی کاربر و ریشه‌های رفع‌شده:
  *
- * تمام منطق فلوها در views/* و تمام قراردادها در lib/* تست‌پوششی دارد.
+ *   ۱) «ثبت‌نام سفید» و «قفل‌شدن صفحه» هر دو از AnimatePresence
+ *      mode="wait" روی تعویض view می‌آمدند (مونتِ جدید پشت انیمیشنِ
+ *      خروج گیر می‌کرد و هنگام بستن، یک overlay زامبی صفحه را
+ *      می‌پوشاند). حالا هر سه view همیشه مونت‌اند و با hidden/inert
+ *      پنهان می‌شوند — انیمیشنِ سوییچ هم CSS keyframes است، نه framer.
+ *
+ *   ۲) «پرتاب به اول فلو» چون state داخل viewها بود و با unmount می‌مرد.
+ *      حالا state در `auth-flow-session` (خارج از React، با ددلاین‌های
+ *      زمانیِ مطلق) نشسته: سوییچ تب، بستن مودال، حتی رفتن به تب دیگرِ
+ *      مرورگر — فلو دقیقاً از همان‌جا ادامه پیدا می‌کند و cooldown
+ *      ارسال مجدد از لحظه‌ی واقعی ارسال می‌گذرد. این استاندارد صنعت است.
+ *
+ *   ۳) a11y: role=dialog + focus-trapِ آگاه از hidden/inert + Esc +
+ *      scroll-lock با جبرانِ پهنای اسکرول‌بار + بازگشت فوکوس.
+ *
+ *   ۴) پس از ورود موفق، سشنِ فلوها کامل ریست می‌شود (resetAllAuthFlows)
+ *      تا ورود بعدی از صفحه‌ی تمیز شروع شود.
  * ═══════════════════════════════════════════════════════════════════════
  */
 
@@ -23,10 +30,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, CheckCircle2, ShieldCheck, X } from 'lucide-react';
 import type { AuthUser } from '@/lib/auth';
+import { resetAllAuthFlows, useAuthFlowDraft } from '@/lib/auth-flow-session';
 import { cn } from '@/lib/utils';
 import { LoginView } from './views/LoginView';
 import { SignupView } from './views/SignupView';
 import { ForgotView } from './views/ForgotView';
+import { AuthPanel } from './AuthPanel';
 import { Alert } from './ui';
 
 type View = 'login' | 'signup' | 'forgot';
@@ -52,8 +61,15 @@ export function AuthModal({
   const [welcomeName, setWelcomeName] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
-  // ریست حالت هنگام بازشدن دوباره
+  // draftها فقط برای کلید تغییر محتوای پنل‌ها (فوکوسِ مرحله‌ی جدید)
+  const loginDraft = useAuthFlowDraft('login');
+  const signupDraft = useAuthFlowDraft('signup');
+  const forgotDraft = useAuthFlowDraft('forgot');
+
+  // ریستِ سطحِ نما هنگام بازشدن — پیش‌نویسِ فلوها آگاهانه حفظ می‌شود
   useEffect(() => {
     if (open) {
       setView(initialView);
@@ -62,30 +78,36 @@ export function AuthModal({
     }
   }, [open, initialView]);
 
-  // قفل اسکرول + ذخیره/بازگردانی فوکوس
+  // قفل اسکرول + جبران پهنای اسکرول‌بار (بدون جهش چیدمان) + بازگردانی فوکوس
   useEffect(() => {
     if (!open) return;
     previouslyFocused.current = document.activeElement as HTMLElement | null;
-    const prev = document.body.style.overflow;
+    const prevOverflow = document.body.style.overflow;
+    const prevPadding = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
     return () => {
-      document.body.style.overflow = prev;
+      document.body.style.overflow = prevOverflow;
+      document.body.style.paddingRight = prevPadding;
       previouslyFocused.current?.focus?.();
     };
   }, [open]);
 
-  // Esc + focus-trap
+  // Esc + focus-trap (آگاه از hidden/inert — فقط قابل‌فوکوسِ واقعی‌ها)
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !panelRef.current) return;
-      const focusables = panelRef.current.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), textarea, select, [tabindex]:not([tabindex="-1"])',
-      );
+      const focusables = Array.from(
+        panelRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), textarea, select, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.closest('[hidden],[inert]') === null);
       if (!focusables.length) return;
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
@@ -100,10 +122,7 @@ export function AuthModal({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, onClose]);
-
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  }, [open]);
 
   const handleSuccess = useCallback((user: AuthUser) => {
     const name =
@@ -112,7 +131,8 @@ export function AuthModal({
       user.email ||
       'دوست عزیز';
     setWelcomeName(name);
-    // بستن نرم پس از پیام خوش‌آمد
+    // سشنِ فلوها برای ورود بعدی کاملاً نو می‌شود
+    resetAllAuthFlows();
     window.setTimeout(() => onCloseRef.current(), 1500);
   }, []);
 
@@ -136,11 +156,11 @@ export function AuthModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            onClick={onClose}
+            transition={{ duration: 0.2 }}
+            onClick={() => onCloseRef.current()}
           />
 
-          {/* پنل */}
+          {/* پنل — انیمیشن‌ها tween زمانی‌اند (ناممکن است معلق بمانند) */}
           <motion.div
             ref={panelRef}
             role="dialog"
@@ -153,10 +173,9 @@ export function AuthModal({
             )}
             initial={{ opacity: 0, y: 48, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 32, scale: 0.98 }}
-            transition={{ type: 'spring', bounce: 0.22, duration: 0.55 }}
+            exit={{ opacity: 0, y: 24, scale: 0.98 }}
+            transition={{ duration: 0.24, ease: 'easeOut' }}
           >
-            {/* نوار گرادیانی ظریف بالای کارت */}
             <span
               aria-hidden="true"
               className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-brand-500 via-mint-500 to-brand-500"
@@ -184,7 +203,7 @@ export function AuthModal({
               </div>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => onCloseRef.current()}
                 aria-label="بستن"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-800"
               >
@@ -208,7 +227,10 @@ export function AuthModal({
                   ).map(({ key, label }) => (
                     <button
                       key={key}
+                      type="button"
                       role="tab"
+                      id={`auth-tab-${key}`}
+                      aria-controls={`auth-panel-${key}`}
                       aria-selected={view === key}
                       onClick={() => {
                         setView(key);
@@ -219,13 +241,13 @@ export function AuthModal({
                         view === key ? 'text-brand-700' : 'text-ink-500 hover:text-ink-700',
                       )}
                     >
-                      {view === key && (
+                      {view === key ? (
                         <motion.span
                           layoutId="auth-view-tab"
                           className="absolute inset-0 rounded-lg bg-white shadow-[0_2px_8px_-3px_rgba(15,20,32,.15)]"
                           transition={{ type: 'spring', bounce: 0.25, duration: 0.5 }}
                         />
-                      )}
+                      ) : null}
                       <span className="relative">{label}</span>
                     </button>
                   ))}
@@ -233,69 +255,74 @@ export function AuthModal({
               </div>
             ) : null}
 
-            {/* بدنه */}
+            {/* بدنه — هر سه نما همیشه مونت؛ نمایان با hidden/inert */}
             <div className="overflow-y-auto px-6 pb-6 pt-4 sm:px-7">
-              <AnimatePresence mode="wait" initial={false}>
-                {welcomeName ? (
-                  <motion.div
-                    key="welcome"
-                    initial={{ opacity: 0, scale: 0.92 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ type: 'spring', bounce: 0.35, duration: 0.6 }}
-                    className="flex flex-col items-center gap-3 py-10 text-center"
-                    role="status"
+              {welcomeName ? (
+                <div
+                  className="auth-view-enter flex flex-col items-center gap-3 py-10 text-center"
+                  role="status"
+                >
+                  <CheckCircle2 className="h-16 w-16 text-brand-500" strokeWidth={1.5} />
+                  <h3 className="text-[18px] font-extrabold text-ink-900">
+                    {welcomeName}، خوش آمدید 🌱
+                  </h3>
+                  <p className="text-[12.5px] text-ink-500">ورود شما با موفقیت انجام شد.</p>
+                </div>
+              ) : (
+                <>
+                  {notice ? (
+                    <div className="mb-4">
+                      <Alert kind="success">{notice}</Alert>
+                    </div>
+                  ) : null}
+
+                  <AuthPanel
+                    id="auth-panel-login"
+                    labelledby="auth-tab-login"
+                    active={view === 'login'}
+                    activeKey={`${loginDraft.method}:${loginDraft.step}`}
                   >
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', bounce: 0.55, delay: 0.08 }}
-                    >
-                      <CheckCircle2 className="h-16 w-16 text-brand-500" strokeWidth={1.5} />
-                    </motion.span>
-                    <h3 className="text-[18px] font-extrabold text-ink-900">
-                      {welcomeName}، خوش آمدید 🌱
-                    </h3>
-                    <p className="text-[12.5px] text-ink-500">ورود شما با موفقیت انجام شد.</p>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key={view}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.22 }}
-                    className="space-y-5"
+                    <LoginView
+                      identifier={identifier}
+                      setIdentifier={setIdentifier}
+                      onSuccess={handleSuccess}
+                      goForgot={(id) => {
+                        if (id?.trim()) setIdentifier(id);
+                        setView('forgot');
+                        setNotice(null);
+                      }}
+                    />
+                  </AuthPanel>
+
+                  <AuthPanel
+                    id="auth-panel-signup"
+                    labelledby="auth-tab-signup"
+                    active={view === 'signup'}
+                    activeKey={signupDraft.step}
                   >
-                    {notice ? <Alert kind="success">{notice}</Alert> : null}
-                    {view === 'login' ? (
-                      <LoginView
-                        identifier={identifier}
-                        setIdentifier={setIdentifier}
-                        onSuccess={handleSuccess}
-                        goForgot={(id) => {
-                          if (id?.trim()) setIdentifier(id);
-                          setView('forgot');
-                          setNotice(null);
-                        }}
-                      />
-                    ) : view === 'signup' ? (
-                      <SignupView
-                        identifier={identifier}
-                        setIdentifier={setIdentifier}
-                        onSuccess={handleSuccess}
-                        goLogin={() => goLogin()}
-                      />
-                    ) : (
-                      <ForgotView
-                        identifier={identifier}
-                        setIdentifier={setIdentifier}
-                        goLogin={goLogin}
-                      />
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <SignupView
+                      identifier={identifier}
+                      setIdentifier={setIdentifier}
+                      onSuccess={handleSuccess}
+                      goLogin={() => goLogin()}
+                    />
+                  </AuthPanel>
+
+                  {/* نمای بازیابی تب ندارد — با لینک «فراموشی» وارد می‌شود */}
+                  <AuthPanel
+                    id="auth-panel-forgot"
+                    labelledby="auth-modal-title"
+                    active={view === 'forgot'}
+                    activeKey={forgotDraft.step}
+                  >
+                    <ForgotView
+                      identifier={identifier}
+                      setIdentifier={setIdentifier}
+                      goLogin={goLogin}
+                    />
+                  </AuthPanel>
+                </>
+              )}
 
               {/* نوار اعتماد */}
               {!welcomeName ? (

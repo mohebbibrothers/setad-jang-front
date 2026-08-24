@@ -1,17 +1,19 @@
 'use client';
 
 /**
- * SignupView — ثبت‌نام دومرحله‌ای:
- *   مرحله ۱) شناسه   → POST /auth/signup/request/   (فقط ارسال کد؛
- *                                                     هنوز حسابی ساخته
- *                                                     نمی‌شود)
+ * SignupView — ثبت‌نام دومرحله‌ای با حافظه‌ی سشن:
+ *   مرحله ۱) شناسه   → POST /auth/signup/request/
  *   مرحله ۲) کد + رمز (+ نام اختیاری) → /auth/signup/verify/ → JWT
  *
+ * مرحله/کد/رمز/نام در auth-flow-session می‌مانند — سوییچ به تب «ورود» و
+ * بازگشت (یا بستن و بازکردن مودال) فلو را از نقطه‌ی توقف ادامه می‌دهد؛
+ * درخواستِ کدِ تکراری هم بی‌دلیل زده نمی‌شود تا cooldown بک‌اند محترم
+ * بماند. این رفتار استاندارد اپ‌های مرجع است.
+ *
  * سینک‌های کلیدی:
- *   • «این شناسه قبلاً ثبت شده است.» چه در request چه در verify بیاید،
- *     به‌جای بن‌بست، پیشنهاد «ورود با همین شناسه» داده می‌شود.
- *   • قواعد رمز با validate_password جنگو آینه شده (۸+ و نه‌عددی) و
- *     پیام دقیقِ سرور در صورت رد، جایگزین حدسِ ما می‌شود.
+ *   • «این شناسه قبلاً ثبت شده است.» → پیشنهاد «ورود با همین شناسه»؛
+ *   • قواعد رمز با validate_password جنگو آینه‌شده؛ پیام سرور جایگزین
+ *     حدسِ ما می‌شود؛
  *   • نام/نام‌خانوادگی اختیاری است و خالی ارسال نمی‌شود.
  */
 
@@ -20,6 +22,7 @@ import { LogIn } from 'lucide-react';
 import { signupRequest, signupVerify, type AuthUser, type AuthChallengeResult } from '@/lib/auth';
 import { coerceAuthError, type AuthErrorModel } from '@/lib/auth-errors';
 import { prepareIdentifierForSubmit, validateIdentifier } from '@/lib/auth-identifier';
+import { patchAuthFlow, useAuthFlowDraft } from '@/lib/auth-flow-session';
 import { isOtpComplete } from '@/lib/otp';
 import { Alert, Field, SubmitButton, inputClass } from '../ui';
 import { IdentifierField } from '../IdentifierField';
@@ -28,6 +31,8 @@ import { OtpStep } from '../OtpStep';
 import { useOtpChallenge } from '../useOtpChallenge';
 
 const DUPLICATE_HINT = 'قبلاً ثبت شده';
+const isDuplicateError = (model: AuthErrorModel | null): boolean =>
+  model?.message.includes(DUPLICATE_HINT) ?? false;
 
 export function SignupView({
   identifier,
@@ -40,11 +45,7 @@ export function SignupView({
   onSuccess: (user: AuthUser) => void;
   goLogin: () => void;
 }) {
-  const [step, setStep] = useState<'identifier' | 'code'>('identifier');
-  const [code, setCode] = useState('');
-  const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const draft = useAuthFlowDraft('signup');
   const [remember, setRemember] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AuthErrorModel | null>(null);
@@ -54,17 +55,24 @@ export function SignupView({
   const identifierError = touched ? validateIdentifier(identifier) : null;
 
   const challenge = useOtpChallenge({
+    flow: 'signup',
     identifier: prepared,
     request: (id): Promise<AuthChallengeResult> => signupRequest(id),
   });
 
-  const isDuplicate = Boolean(
-    (error?.message.includes(DUPLICATE_HINT) ?? false) ||
-    (challenge.sendError?.message.includes(DUPLICATE_HINT) ?? false),
+  const duplicateCTA = (
+    <button
+      type="button"
+      onClick={goLogin}
+      className="inline-flex items-center gap-1 font-bold text-brand-700 underline-offset-2 hover:underline"
+    >
+      <LogIn className="h-3.5 w-3.5" />
+      ورود با همین شناسه
+    </button>
   );
 
   /* ── مرحله ۱: درخواست کد ─────────────────────────────────────────── */
-  if (step === 'identifier') {
+  if (draft.step === 'identifier') {
     return (
       <form
         noValidate
@@ -76,25 +84,15 @@ export function SignupView({
           if (idError) return;
           const ok = await challenge.send();
           if (ok) {
-            setCode('');
+            patchAuthFlow('signup', { step: 'code', code: '' });
             setError(null);
-            setStep('code');
           }
         }}
       >
         {challenge.sendError ? (
-          <Alert kind={isDuplicate ? 'info' : 'error'}>
+          <Alert kind={isDuplicateError(challenge.sendError) ? 'info' : 'error'}>
             {challenge.sendError.message}{' '}
-            {isDuplicate ? (
-              <button
-                type="button"
-                onClick={goLogin}
-                className="inline-flex items-center gap-1 font-bold text-brand-700 underline-offset-2 hover:underline"
-              >
-                <LogIn className="h-3.5 w-3.5" />
-                ورود با همین شناسه
-              </button>
-            ) : null}
+            {isDuplicateError(challenge.sendError) ? duplicateCTA : null}
           </Alert>
         ) : null}
 
@@ -109,7 +107,6 @@ export function SignupView({
           onChange={(v) => setIdentifier(v)}
           error={identifierError}
           disabled={challenge.sending}
-          autoFocus
         />
 
         <SubmitButton loading={challenge.sending}>دریافت کد تأیید</SubmitButton>
@@ -118,28 +115,26 @@ export function SignupView({
   }
 
   /* ── مرحله ۲: کد + رمز ────────────────────────────────────────────── */
-  const isDuplicateNow = (model: AuthErrorModel) => model.message.includes(DUPLICATE_HINT);
-
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (busy) return;
-    if (!isOtpComplete(code) || !isPasswordAcceptable(password)) return;
+    if (!isOtpComplete(draft.code) || !isPasswordAcceptable(draft.password)) return;
     setBusy(true);
     setError(null);
     try {
       const res = await signupVerify({
         identifier: prepared,
-        code,
-        password,
-        ...(firstName.trim() ? { first_name: firstName.trim() } : {}),
-        ...(lastName.trim() ? { last_name: lastName.trim() } : {}),
+        code: draft.code,
+        password: draft.password,
+        ...(draft.firstName.trim() ? { first_name: draft.firstName.trim() } : {}),
+        ...(draft.lastName.trim() ? { last_name: draft.lastName.trim() } : {}),
         persist: remember,
       });
       onSuccess(res.user);
     } catch (err) {
       const model = coerceAuthError(err);
       setError(model);
-      if (!isDuplicateNow(model)) challenge.markWrongAttempt(model);
+      if (!isDuplicateError(model)) challenge.markWrongAttempt(model);
     } finally {
       setBusy(false);
     }
@@ -148,18 +143,8 @@ export function SignupView({
   return (
     <form onSubmit={submit} noValidate className="space-y-4">
       {error ? (
-        <Alert kind={error.message.includes(DUPLICATE_HINT) ? 'info' : 'error'}>
-          {error.message}{' '}
-          {error.message.includes(DUPLICATE_HINT) ? (
-            <button
-              type="button"
-              onClick={goLogin}
-              className="inline-flex items-center gap-1 font-bold text-brand-700 underline-offset-2 hover:underline"
-            >
-              <LogIn className="h-3.5 w-3.5" />
-              ورود با همین شناسه
-            </button>
-          ) : null}
+        <Alert kind={isDuplicateError(error) ? 'info' : 'error'}>
+          {error.message} {isDuplicateError(error) ? duplicateCTA : null}
         </Alert>
       ) : null}
       {challenge.sendError ? <Alert kind="error">{challenge.sendError.message}</Alert> : null}
@@ -167,15 +152,14 @@ export function SignupView({
       <OtpStep
         id="signup-otp"
         identifier={prepared}
-        code={code}
+        code={draft.code}
         onCodeChange={(v) => {
-          setCode(v);
+          patchAuthFlow('signup', { code: v });
           setError(null);
         }}
         challenge={challenge}
         onEditIdentifier={() => {
-          setStep('identifier');
-          setCode('');
+          patchAuthFlow('signup', { step: 'identifier', code: '' });
           setError(null);
           challenge.reset();
         }}
@@ -187,9 +171,9 @@ export function SignupView({
         id="signup-password"
         label="رمز عبور دلخواه"
         autoComplete="new-password"
-        value={password}
+        value={draft.password}
         onChange={(v) => {
-          setPassword(v);
+          patchAuthFlow('signup', { password: v });
           setError(null);
         }}
         error={error?.fieldErrors.password ?? null}
@@ -204,8 +188,8 @@ export function SignupView({
             type="text"
             autoComplete="given-name"
             maxLength={100}
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            value={draft.firstName}
+            onChange={(e) => patchAuthFlow('signup', { firstName: e.target.value })}
             disabled={busy}
             className={inputClass(false)}
           />
@@ -216,8 +200,8 @@ export function SignupView({
             type="text"
             autoComplete="family-name"
             maxLength={100}
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            value={draft.lastName}
+            onChange={(e) => patchAuthFlow('signup', { lastName: e.target.value })}
             disabled={busy}
             className={inputClass(false)}
           />
@@ -236,7 +220,7 @@ export function SignupView({
 
       <SubmitButton
         loading={busy}
-        disabled={!isOtpComplete(code) || !isPasswordAcceptable(password)}
+        disabled={!isOtpComplete(draft.code) || !isPasswordAcceptable(draft.password)}
       >
         ساخت حساب کاربری
       </SubmitButton>
