@@ -63,7 +63,7 @@ export const LoginView = memo(function LoginView({
         value={method}
         onChange={(next) => patchAuthFlow('login', { method: next })}
         indicatorTestId="auth-method-indicator"
-        buttonClassName="flex h-10 items-center justify-center gap-1.5 rounded-lg text-[13px] font-bold transition-colors"
+        buttonClassName="flex h-10 items-center justify-center gap-1.5 rounded-lg text-[13px] font-bold transition-[color,transform] duration-150 active:scale-[0.97]"
         activeButtonClassName="text-brand-700"
         inactiveButtonClassName="text-ink-500 hover:text-ink-700"
         options={[

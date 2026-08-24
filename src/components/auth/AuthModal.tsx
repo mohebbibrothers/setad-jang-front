@@ -343,7 +343,7 @@ export function AuthModal({
                 setNotice(null);
               }}
               indicatorTestId="auth-view-indicator"
-              buttonClassName="h-10 rounded-lg text-[13.5px] font-extrabold transition-colors"
+              buttonClassName="h-10 rounded-lg text-[13.5px] font-extrabold transition-[color,transform] duration-150 active:scale-[0.97]"
               activeButtonClassName="text-brand-700"
               inactiveButtonClassName="text-ink-500 hover:text-ink-700"
               options={[

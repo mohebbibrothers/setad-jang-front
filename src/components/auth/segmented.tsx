@@ -22,9 +22,10 @@
  *      RTL/LTR) روی کامپوزیتور؛ هیچ reflow/اندازه‌ای در تایپ یا تیکِ
  *      تایمر رخ نمی‌دهد (اندازه فقط هنگام تغییر مقدار/ریسایز/لودِ فونت).
  *
- *   ۳) ترک overflow-hidden با گوشه‌های هم‌مرکز است (۱۲px بیرون، ۴px
- *      فاصله، ۸px کپسول)؛ حتی بدترین اورشوتِ فرضی هم هرگز بیرون از ترک
- *      نقاشی نمی‌شود — خرابیِ بصری از نظر ساختاری ناممکن است.
+ *   ۳) ترک overflow-hidden است؛ حتی بدترین اورشوتِ فرضی هم هرگز بیرون
+ *      از ترک نقاشی نمی‌شود — خرابیِ بصری از نظر ساختاری ناممکن است.
+ *      زیبایی‌شناسی: کپسول با شعاعِ کامل (استادیوم/بیضی) روی ترکی
+ *      فرو‌رفته (سایه‌ی درونی + حاشیه‌ی مویی) با سایه‌ی لایه‌ایِ شناور.
  *
  *   ۴) نخستین اندازه‌گیری در useLayoutEffect و پیش از پینت انجام و بدون
  *      ترنزیشن اعمال می‌شود (هیچ لغزشِ فلش‌مانندی هنگام مونت نیست)؛
@@ -157,7 +158,12 @@ export function Segmented<T extends string>({
       ref={trackRef}
       role="tablist"
       aria-label={ariaLabel}
-      className={cn('relative grid gap-1 overflow-hidden rounded-xl bg-ink-50 p-1', className)}
+      className={cn(
+        // ترک: کلیپِ مطلق + سایه‌ی درونی و حاشیه‌ی مویی = عمقِ فرورفته
+        // که کپسولِ سفید روی آن «شناور» به نظر می‌رسد
+        'relative grid gap-1 overflow-hidden rounded-xl bg-ink-50 p-1 shadow-[inset_0_1px_2px_rgba(15,20,32,0.06)] ring-1 ring-inset ring-ink-900/[0.04]',
+        className,
+      )}
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
       <span

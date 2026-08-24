@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { Segmented } from './segmented';
@@ -106,5 +108,13 @@ describe('Segmented — کپسولِ اندازه‌گیری‌شده', () => {
       });
     });
     expect(indicator.getAttribute('data-instant')).toBe('false');
+  });
+
+  it('قراردادِ بصری: کپسول استادیوم/بیضی است (شعاعِ کامل) — نه مستطیل', () => {
+    // کاربر صراحتاً «بیضی» خواست؛ این قرارداد را برای همیشه قفل می‌کنیم
+    const css = readFileSync(resolve(process.cwd(), 'src/app/globals.css'), 'utf8');
+    const block = css.match(/\.auth-seg-indicator\s*\{[^}]*\}/);
+    expect(block).toBeTruthy();
+    expect(block![0]).toContain('border-radius: 9999px');
   });
 });
