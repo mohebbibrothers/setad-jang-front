@@ -6,6 +6,7 @@ import { Menu, X } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { AuthControls } from '@/components/auth/AuthControls';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { lockBodyScroll } from '@/lib/scroll-lock';
 import { TopBar } from './TopBar';
 import { cn } from '@/lib/utils';
 
@@ -69,11 +70,12 @@ export function Header() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // قفل اسکرولِ شیت موبایل از مالکِ متمرکز (scroll-lock): شمارش‌مرجعی و
+  // تودرتو-امن — با قفلِ مودال احراز هویت برخورد نمی‌کند و هنگام
+  // بازشدنِ مودال از دلِ شیت (openAuth) ترتیبِ آزادسازی تضمینی است.
   useEffect(() => {
-    document.body.style.overflow = open ? 'hidden' : '';
-    return () => {
-      document.body.style.overflow = '';
-    };
+    if (!open) return;
+    return lockBodyScroll();
   }, [open]);
 
   return (

@@ -13,10 +13,10 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, LogIn, LogOut, UserRound } from 'lucide-react';
 import { useAuth } from '@/lib/use-auth';
 import { formatIdentifierForDisplay } from '@/lib/auth-identifier';
+import { usePresence } from '@/lib/use-presence';
 import { cn } from '@/lib/utils';
 
 function displayName(user: ReturnType<typeof useAuth>['user']): string {
@@ -47,6 +47,10 @@ export function AuthControls({
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  // چرخه‌حیات قطعیِ منو — همان قرارداد مودال: تخلیه‌ی تایمریِ تضمینی،
+  // بدون اتکا به AnimatePresence. در فازِ خروج منو تعاملی نیست.
+  const { rendered: menuRendered, closing: menuClosing } = usePresence(menuOpen, 140);
 
   // بستن منو با کلیک بیرون یا Esc
   useEffect(() => {
@@ -127,54 +131,53 @@ export function AuthControls({
         />
       </button>
 
-      <AnimatePresence>
-        {menuOpen ? (
-          <motion.div
-            role="menu"
-            aria-label="منوی حساب کاربری"
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.16 }}
-            className="absolute left-0 top-[calc(100%+8px)] z-[70] w-60 overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-[0_24px_48px_-16px_rgba(15,20,32,.25)]"
-          >
-            <div className="border-b border-ink-100 bg-ink-50/50 px-4 py-3">
-              <p className="truncate text-[13.5px] font-extrabold text-ink-900">
-                {name || 'حساب من'}
-              </p>
-              {identifierText ? (
-                <p
-                  className="mt-0.5 truncate text-[11.5px] font-medium text-ink-500"
-                  dir="ltr"
-                  style={{ textAlign: 'right' }}
-                >
-                  {identifierText}
-                </p>
-              ) : null}
-            </div>
-            <div className="p-1.5">
-              <button
-                type="button"
-                role="menuitem"
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    await logout();
-                  } finally {
-                    setBusy(false);
-                    setMenuOpen(false);
-                  }
-                }}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-bold text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-60"
+      {menuRendered ? (
+        <div
+          role="menu"
+          aria-label="منوی حساب کاربری"
+          aria-hidden={menuClosing || undefined}
+          inert={menuClosing || undefined}
+          className={cn(
+            'absolute left-0 top-[calc(100%+8px)] z-[70] w-60 overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-[0_24px_48px_-16px_rgba(15,20,32,.25)]',
+            menuClosing ? 'ui-menu-exit pointer-events-none' : 'ui-menu-enter',
+          )}
+        >
+          <div className="border-b border-ink-100 bg-ink-50/50 px-4 py-3">
+            <p className="truncate text-[13.5px] font-extrabold text-ink-900">
+              {name || 'حساب من'}
+            </p>
+            {identifierText ? (
+              <p
+                className="mt-0.5 truncate text-[11.5px] font-medium text-ink-500"
+                dir="ltr"
+                style={{ textAlign: 'right' }}
               >
-                <LogOut className="h-4 w-4" />
-                {busy ? 'در حال خروج…' : 'خروج از حساب'}
-              </button>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+                {identifierText}
+              </p>
+            ) : null}
+          </div>
+          <div className="p-1.5">
+            <button
+              type="button"
+              role="menuitem"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await logout();
+                } finally {
+                  setBusy(false);
+                  setMenuOpen(false);
+                }
+              }}
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-bold text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-60"
+            >
+              <LogOut className="h-4 w-4" />
+              {busy ? 'در حال خروج…' : 'خروج از حساب'}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

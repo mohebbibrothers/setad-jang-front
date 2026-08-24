@@ -482,3 +482,104 @@
     animation: none;
   }
 }
+
+/* ── چرخه‌حیات قطعی لایه‌های شناور (v3) ────────────────────────────────
+   این keyframes فقط تجربه‌ی بصری‌اند؛ مالکِ حیاتِ لایه (تخلیه از DOM)
+   هوکِ usePresence با تایمرِ تضمینی است. پس این انیمیشن‌ها هرگز نمی‌توانند
+   لایه‌ی زامبی‌ای بسازند که کلیک‌های صفحه را ببلعد. */
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlayFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dialogPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(48px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dialogPopOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+}
+
+@keyframes menuFloatIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes menuFloatOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+
+.auth-backdrop-enter {
+  animation: overlayFadeIn 0.2s ease-out both;
+}
+
+.auth-backdrop-exit {
+  animation: overlayFadeOut 0.2s ease-in both;
+}
+
+.auth-dialog-enter {
+  animation: dialogPopIn 0.24s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+.auth-dialog-exit {
+  animation: dialogPopOut 0.2s ease-in both;
+}
+
+.ui-menu-enter {
+  animation: menuFloatIn 0.16s ease-out both;
+}
+
+.ui-menu-exit {
+  animation: menuFloatOut 0.14s ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-backdrop-enter,
+  .auth-backdrop-exit,
+  .auth-dialog-enter,
+  .auth-dialog-exit,
+  .ui-menu-enter,
+  .ui-menu-exit {
+    animation: none;
+  }
+}

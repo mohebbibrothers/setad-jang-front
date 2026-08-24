@@ -1,15 +1,19 @@
+import { useState } from 'react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 /**
- * تست‌های رگرسیونِ سه باگ گزارش‌شده‌ی مودال احراز هویت.
- * هر تست = سناریوی دقیق کاربر، سطح یکپارچه (بدون mock کردن قطعات داخلی
- * مودال؛ فقط لایه‌ی شبکه در '@/lib/auth' ماک می‌شود).
+ * تست‌های رگرسیونِ مودال احراز هویت — باگانه (behavioral)، سطح یکپارچه.
+ * فقط لایه‌ی شبکه در '@/lib/auth' ماک می‌شود؛ قطعات داخلی واقعی‌اند تا
+ * تست‌ها دقیقاً همان چیزی را ببینند که مرورگر کاربر می‌بیند.
  *
- * نکته‌ی معماری v2: هر سه view همیشه مونت‌اند و با hidden/inert پنهان
- * می‌شوند؛ پس کوئری‌ها به «پنلِ فعال» اسکوپ می‌شوند — testing-library
- * به‌صورت پیش‌فرض عناصر hidden را از درخت دسترس‌پذیری کنار می‌گذارد و
- * getAllByRole('tabpanel') فقط پنلِ فعال را برمی‌گرداند.
+ * نکته‌ی معماری v2/v3:
+ *  - هر سه view همیشه مونت‌اند و با hidden/inert پنهان می‌شوند؛ پس
+ *    کوئری‌ها به «پنلِ فعال» اسکوپ می‌شوند — testing-library عناصر
+ *    hidden را از درخت دسترس‌پذیری کنار می‌گذارد و getAllByRole('tabpanel')
+ *    فقط پنلِ فعال را برمی‌گرداند.
+ *  - چرخه‌حیات با usePresence تایمری است؛ تست‌های باگِ ۱ با
+ *    fake-timers ددلاین تخلیه را جلو می‌برند (۲۴۰ms مودال + بافر).
  */
 
 const signupRequestMock = vi.fn();
@@ -25,6 +29,28 @@ vi.mock('@/lib/auth', async (importOriginal) => {
 
 import { AuthModal } from './AuthModal';
 import { resetAllAuthFlows } from '@/lib/auth-flow-session';
+
+/** زمانِ تخلیه‌ی قطعی مودال (۲۴۰ms) + بافر */
+const DISPOSE_MS = 300;
+
+/**
+ * هارنس واقعی: مثل Header، stateِ باز/بسته را خودش نگه می‌دارد تا
+ * کلِ چرخه — از کلیک روی تریگر تا تخلیه‌ی کامل لایه — تست شود.
+ */
+function Harness({ startOpen = true }: { startOpen?: boolean }) {
+  const [open, setOpen] = useState(startOpen);
+  return (
+    <>
+      <button type="button" data-testid="auth-open-trigger" onClick={() => setOpen(true)}>
+        ورود | ثبت‌نام
+      </button>
+      <button type="button" data-testid="outside-action">
+        اقدام بیرونی
+      </button>
+      <AuthModal open={open} onClose={() => setOpen(false)} />
+    </>
+  );
+}
 
 function dialog() {
   return screen.getByRole('dialog');
@@ -49,49 +75,138 @@ beforeEach(() => {
   signupRequestMock.mockReset();
   signupRequestMock.mockResolvedValue(null);
   document.body.style.overflow = '';
+  document.body.style.paddingRight = '';
 });
 
 afterEach(cleanup);
 
-describe('باگ ۱ — قفل‌شدن صفحه بعد از بستن مودال', () => {
-  it('بازکردن → رفتن به ثبت‌نام → بستن: اسکرول آزاد و مودال حذف شود', () => {
-    const onClose = vi.fn();
-    const { unmount } = render(<AuthModal open onClose={onClose} />);
+describe('باگ ۱ — قفل‌شدن صفحه پس از بستن مودال (ریشه‌کنی v3: چرخه‌حیات قطعی)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('سناریوی دقیق کاربر: بازکردن → تب «ثبت‌نام» → بستن → صفحه کاملاً آزاد', () => {
+    render(<Harness />);
+    const dlg = dialog();
 
     fireEvent.click(modalTab('ثبت‌نام'));
     expect(activePanel().getByText('دریافت کد تأیید')).toBeTruthy();
     expect(document.body.style.overflow).toBe('hidden');
 
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'بستن' }));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.click(within(dlg).getByRole('button', { name: 'بستن' }));
 
-    // شبیه‌سازی unmount توسط والد (همان چیزی که Header پس از onClose می‌کند)
-    unmount();
-    expect(document.body.style.overflow).toBe('');
+    // فاز خروج: لایه هنوز پایدار است ولی کاملاً غیرتعاملی —
+    // حتی یک فریمِ اضافه هم هیچ کلیکی را نمی‌بلعد.
+    expect(dlg.isConnected).toBe(true);
+    expect(dlg.getAttribute('aria-hidden')).toBe('true');
+    const wrapper = dlg.closest('.fixed.inset-0') as HTMLElement;
+    expect(wrapper.className).toContain('pointer-events-none');
+    expect(document.body.style.overflow).toBe('hidden'); // تا پایان خروج قفل باقی است
+
+    // تخلیه‌ی قطعی — بدون هیچ رویدادِ انیمیشنی، فقط با گذرِ زمان:
+    act(() => {
+      vi.advanceTimersByTime(DISPOSE_MS);
+    });
+    expect(dlg.isConnected).toBe(false);
     expect(screen.queryByRole('dialog')).toBeNull();
+    // قفل آزاد و استایل‌های بدنه دقیقاً به حالتِ قبل برگشته‌اند
+    expect(document.body.style.overflow).toBe('');
+    expect(document.body.style.paddingRight).toBe('');
   });
 
-  it('بستن با Escape هم اسکرول را آزاد می‌کند', () => {
-    const onClose = vi.fn();
-    const { unmount } = render(<AuthModal open onClose={onClose} />);
-    expect(document.body.style.overflow).toBe('hidden');
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(onClose).toHaveBeenCalledTimes(1);
-    unmount();
+  it('سناریوی دقیق کاربر: روش «کد یکبارمصرف» → بستن با بک‌دراپ → صفحه آزاد', () => {
+    render(<Harness />);
+
+    fireEvent.click(activePanel().getByRole('tab', { name: 'کد یکبارمصرف' }));
+    expect(activePanel().getByText('ارسال کد ورود')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'بستن پنجره' }));
+    act(() => {
+      vi.advanceTimersByTime(DISPOSE_MS);
+    });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.body.style.overflow).toBe('');
   });
 
-  it('بستن با بک‌دراپ هم رخداد onClose را یک‌بار صادر می‌کند', () => {
-    const onClose = vi.fn();
-    render(<AuthModal open onClose={onClose} />);
-    fireEvent.click(screen.getByRole('button', { name: 'بستن پنجره' }));
-    expect(onClose).toHaveBeenCalledTimes(1);
+  it('بستن با Escape: همان مسیر قطعی + شنونده‌ی سالم در فازِ خروج', () => {
+    render(<Harness />);
+    const dlg = dialog();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(dlg.getAttribute('aria-hidden')).toBe('true');
+
+    // Escِ تکراری در فازِ خروج هیچ اثر/خطایی ندارد (شنونده فقط در open است)
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    act(() => {
+      vi.advanceTimersByTime(DISPOSE_MS);
+    });
+    expect(dlg.isConnected).toBe(false);
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  it('حلقه‌ی تنش: سه چرخه‌ی «باز → سوییچ → بستن» بدون هیچ باقی‌مانده‌ای', () => {
+    render(<Harness startOpen={false} />);
+    for (let i = 0; i < 3; i += 1) {
+      fireEvent.click(screen.getByTestId('auth-open-trigger'));
+      const dlg = dialog();
+      expect(document.body.style.overflow).toBe('hidden');
+
+      fireEvent.click(modalTab(i % 2 === 0 ? 'ثبت‌نام' : 'ورود'));
+      fireEvent.click(within(dlg).getByRole('button', { name: 'بستن' }));
+      act(() => {
+        vi.advanceTimersByTime(DISPOSE_MS);
+      });
+
+      expect(dlg.isConnected).toBe(false);
+      expect(document.body.style.overflow).toBe('');
+      expect(document.body.style.paddingRight).toBe('');
+    }
+  });
+
+  it('بازشدنِ میانِ فاز خروج: تخلیه‌ی دیرهنگام رخ نمی‌دهد و قفل حفظ می‌شود', () => {
+    render(<Harness />);
+    const dlg = dialog();
+
+    fireEvent.click(within(dlg).getByRole('button', { name: 'بستن' }));
+    act(() => {
+      vi.advanceTimersByTime(120); // وسطِ انیمیشنِ خروج
+    });
+    fireEvent.click(screen.getByTestId('auth-open-trigger'));
+
+    expect(dialog()).toBeTruthy();
+    expect(document.body.style.overflow).toBe('hidden');
+
+    // اگر تایمرِ تخلیه‌ی قبلی زنده مانده بود، این‌جا مودال را می‌کشت:
+    act(() => {
+      vi.advanceTimersByTime(5_000);
+    });
+    expect(dialog()).toBeTruthy();
+    expect(document.body.style.overflow).toBe('hidden');
+  });
+
+  it('فوکوس پس از تخلیه‌ی کامل به عنصرِ قبلیِ خارج از مودال برمی‌گردد', () => {
+    render(<Harness startOpen={false} />);
+    const outside = screen.getByTestId('outside-action');
+    outside.focus();
+
+    fireEvent.click(screen.getByTestId('auth-open-trigger'));
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'بستن' }));
+    act(() => {
+      vi.advanceTimersByTime(DISPOSE_MS);
+    });
+
+    expect(document.activeElement).toBe(outside);
   });
 });
 
 describe('باگ ۲ — ثبت‌نام خالی بعد از انتخاب «کد یکبارمصرف»', () => {
   it('ورود → روش کد یکبارمصرف → تب ثبت‌نام: فرم ثبت‌نام کامل رندر شود', () => {
-    render(<AuthModal open onClose={vi.fn()} />);
+    render(<Harness />);
 
     // روش ورود: کد یکبارمصرف
     fireEvent.click(activePanel().getByRole('tab', { name: 'کد یکبارمصرف' }));
@@ -115,7 +230,7 @@ describe('باگ ۲ — ثبت‌نام خالی بعد از انتخاب «کد
   });
 
   it('دو سوییچ پشت‌سرهم (ورود↔ثبت‌نام) پایدار است — هیچ صفحه‌ی سفیدی نمی‌آید', () => {
-    render(<AuthModal open onClose={vi.fn()} />);
+    render(<Harness />);
     for (let i = 0; i < 3; i += 1) {
       fireEvent.click(modalTab('ثبت‌نام'));
       expect(activePanel().getByText('دریافت کد تأیید')).toBeTruthy();
@@ -126,8 +241,31 @@ describe('باگ ۲ — ثبت‌نام خالی بعد از انتخاب «کد
 });
 
 describe('باگ ۳ — ازدست‌رفتن پیشرفت ثبت‌نام با جابه‌جایی تب', () => {
+  it('بستن و بازکردنِ مودال هم پیش‌نویسِ فلو را حفظ می‌کند (طراحیِ آگاهانه)', async () => {
+    render(<Harness />);
+
+    fireEvent.click(modalTab('ثبت‌نام'));
+    fireEvent.change(activePanel().getByLabelText('ایمیل یا شماره موبایل'), {
+      target: { value: '09120000000' },
+    });
+    fireEvent.submit(activePanel().getByText('دریافت کد تأیید').closest('form')!);
+    await waitFor(() =>
+      expect(activePanel().getByRole('group', { name: /کد یکبارمصرف/ })).toBeTruthy(),
+    );
+
+    // بستن و بازکردن — فلو باید از مرحله‌ی کد ادامه پیدا کند
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'بستن' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    fireEvent.click(screen.getByTestId('auth-open-trigger'));
+    fireEvent.click(modalTab('ثبت‌نام'));
+    expect(activePanel().getByRole('group', { name: /کد یکبارمصرف/ })).toBeTruthy();
+    // و درخواستِ تکراری زده نشده — cooldown بک‌اند محترم است
+    expect(signupRequestMock).toHaveBeenCalledTimes(1);
+  });
+
   it('ثبت‌نام مرحله‌ی ۲ → رفتن به ورود → بازگشت: ادامه‌ی فلو از همان‌جا + بدون درخواست تکراری', async () => {
-    render(<AuthModal open onClose={vi.fn()} />);
+    render(<Harness />);
 
     // رفتن به ثبت‌نام و ورود شناسه
     fireEvent.click(modalTab('ثبت‌نام'));
@@ -160,7 +298,7 @@ describe('باگ ۳ — ازدست‌رفتن پیشرفت ثبت‌نام با 
   });
 
   it('مقادیر تایپ‌شده‌ی مرحله‌ی ۲ (رمز و نام) هم حفظ می‌شوند', async () => {
-    render(<AuthModal open onClose={vi.fn()} />);
+    render(<Harness />);
 
     fireEvent.click(modalTab('ثبت‌نام'));
     fireEvent.change(activePanel().getByLabelText('ایمیل یا شماره موبایل'), {
