@@ -104,12 +104,12 @@ export function Footer() {
         <div className="container-edge relative">
           {/* ردیف سه‌تایی: نماد (راست) + دو ستون لینک.
            * چیدمان RTL است؛ پس اولین سلولِ DOM (نمادها) راست‌ترین ستون
-           * می‌شود. `md:me-8` روی نماد، فاصله‌اش را از ستون‌های لینک
-           * بیشتر از فاصله‌ی بین خود آن‌ها نگه می‌دارد — عضو ردیف، ولی
-           * با وقارِ مستقل. در موبایل همه‌ی سلول‌ها وسط‌چین و نماد آخر
-           * ردیف (order-last) می‌نشیند تا ناوبری اول خوانده شود. */}
+           * می‌شود. فاصله‌ی بین هر سه ستون دقیقاً یکی است — ریتم گرید
+           * با گپِ یکتا و بدون هیچ مارجینِ استثنایی، تا ردیف کاملاً
+           * متقارن خوانده شود. در موبایل همه‌ی سلول‌ها وسط‌چین و نماد
+           * آخر ردیف (order-last) می‌نشیند تا ناوبری اول خوانده شود. */}
           <div className="relative mx-auto grid max-w-4xl grid-cols-1 justify-items-center gap-12 text-center md:grid-cols-3 md:items-start md:gap-x-12 lg:gap-x-16">
-            <TrustSeals className="order-last md:order-first md:me-6 lg:me-8" />
+            <TrustSeals className="order-last md:order-first" />
             {COLS.map((c) => (
               <nav key={c.title} aria-label={c.title} className="flex flex-col items-center">
                 <h4 className="mb-1 text-[14.5px] font-extrabold text-ink-900">{c.title}</h4>
