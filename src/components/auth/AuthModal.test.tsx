@@ -345,6 +345,50 @@ describe('کیبورد موبایل — پنل روی کیبورد سوار می
   });
 });
 
+describe('قراردادِ عملکرد — لگ‌زدا (ریشه‌ای)', () => {
+  it('بک‌دراپِ تمام‌صفحه هیچ backdrop-filter/blur ندارد (هزینه‌ی GPUِ تمام‌ویوپورت صفر)', () => {
+    render(<Harness />);
+    const backdrop = screen.getByRole('button', { name: 'بستن پنجره' });
+    expect(backdrop.className).not.toContain('backdrop-blur');
+  });
+
+  it('کپسولِ تب‌ها transformِ خالصِ CSS است (نه layoutId/JS-اندازه‌گیری) و با سوییچ به end می‌رود', () => {
+    render(<Harness />);
+
+    // transform-based GPU slide — layoutِ خوانده‌شده توسط JS نیست
+    expect(screen.getByTestId('auth-view-indicator').className).toContain('auth-pill-indicator');
+    expect(screen.getByTestId('auth-view-indicator').getAttribute('data-pos')).toBe('start');
+
+    fireEvent.click(modalTab('ثبت‌نام'));
+    expect(screen.getByTestId('auth-view-indicator').getAttribute('data-pos')).toBe('end');
+
+    fireEvent.click(modalTab('ورود'));
+    expect(screen.getByTestId('auth-view-indicator').getAttribute('data-pos')).toBe('start');
+  });
+
+  it('کپسولِ روشِ ورود هم transformِ خالص است و با «کد یکبارمصرف» به end می‌رود', () => {
+    render(<Harness />);
+
+    // لایه‌ی خروجیِ کراس‌فید هم کپیِ DOM دارد — کوئری را به پنلِ فعالِ
+    // لایه‌ی جاری اسکوپ می‌کنیم (کوئری دسترس‌پذیری، aria-hidden را
+    // نمی‌بیند و دقیقاً همان چیزی است که کاربر می‌بیند).
+    expect(activePanel().getByTestId('auth-method-indicator').className).toContain(
+      'auth-pill-indicator',
+    );
+    expect(activePanel().getByTestId('auth-method-indicator').getAttribute('data-pos')).toBe(
+      'start',
+    );
+
+    fireEvent.click(activePanel().getByRole('tab', { name: 'کد یکبارمصرف' }));
+    expect(activePanel().getByTestId('auth-method-indicator').getAttribute('data-pos')).toBe('end');
+
+    fireEvent.click(activePanel().getByRole('tab', { name: 'رمز عبور' }));
+    expect(activePanel().getByTestId('auth-method-indicator').getAttribute('data-pos')).toBe(
+      'start',
+    );
+  });
+});
+
 describe('باگ ۲ — ثبت‌نام خالی بعد از انتخاب «کد یکبارمصرف»', () => {
   it('ورود → روش کد یکبارمصرف → تب ثبت‌نام: فرم ثبت‌نام کامل رندر شود', () => {
     render(<Harness />);

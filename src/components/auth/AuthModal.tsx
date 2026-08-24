@@ -64,11 +64,20 @@
  *   ۸) SwapTransition: کراس‌فیدِ دو نما — قدیمی ۱۴۰ms غیرتعاملی محو و
  *      جدیدی ۱۸۰ms lift/fade، بدون فریمِ خالی، بدون پاپ؛ لایه‌ی خروجی
  *      absolute است پس ارتفاع و مورف فقط به نسخه‌ی جدید بستگی دارند.
+ *
+ * v7 — لگ‌زدایی از ریشه (پروفایلِ ممیزی):
+ *   ۹) backdrop-blurِ تمام‌صفحه حذف شد — روی صفحه‌ی اصلیِ پراز
+ *      انیمیشن، مرورگر هر فریم کل ویوپورت را دوباره blur می‌کرد
+ *      (قاتلِ فریم‌ریت). حالا لایه‌ی rgbaِ ثابت است — هزینه‌ی GPU صفر.
+ *  ۱۰) layoutId (framer-motion) از هر دو کپسول حذف شد؛ به‌جای آن
+ *      .auth-pill-indicator — transformِ خالص روی کامپوزیتور، بدون هیچ
+ *      اندازه‌گیریِ getBoundingClientRect در تایپ/تیکِ تایمر (reflow صفر).
+ *  ۱۱) نماها memoize‌اند و callbackهای والد پایدار (useCallback) —
+ *      تیک/تایپِ یک نما دیگر نمایِ غیرفعال را رِرِندِر نمی‌کند.
  * ═══════════════════════════════════════════════════════════════════════
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import { ArrowRight, CheckCircle2, ShieldCheck, X } from 'lucide-react';
 import type { AuthUser } from '@/lib/auth';
 import { resetAllAuthFlows, useAuthFlowDraft } from '@/lib/auth-flow-session';
@@ -230,6 +239,13 @@ export function AuthModal({
     setNotice(text ?? null);
   }, []);
 
+  // callback پایدار: مرورهای memoize‌شده با هر رِرِندِر ساختگی نشوند
+  const goForgot = useCallback((id?: string) => {
+    if (id?.trim()) setIdentifier(id);
+    setView('forgot');
+    setNotice(null);
+  }, []);
+
   if (!rendered) return null;
 
   return (
@@ -252,7 +268,7 @@ export function AuthModal({
         aria-label="بستن پنجره"
         disabled={closing}
         className={cn(
-          'absolute inset-0 cursor-default bg-ink-900/50 backdrop-blur-sm',
+          'absolute inset-0 cursor-default bg-ink-900/55',
           closing ? 'auth-backdrop-exit' : 'auth-backdrop-enter',
         )}
         onClick={() => onCloseRef.current()}
@@ -311,14 +327,22 @@ export function AuthModal({
           </button>
         </header>
 
-        {/* تب ورود | ثبت‌نام */}
+        {/* تب ورود | ثبت‌نام — کپسولِ لغزان با transformِ خالص (GPU):
+            جایگزینِ layoutId (که روی هر رِرِندِر چیدمان می‌سنجید و
+            reflowِ اجباری می‌ساخت — منبعِ لگِ تایپ و سوییچ). */}
         {view !== 'forgot' ? (
           <div className="px-6 pb-1 pt-2 sm:px-7">
             <div
               role="tablist"
               aria-label="ورود یا ثبت‌نام"
-              className="grid grid-cols-2 gap-1 rounded-xl bg-ink-50 p-1"
+              className="relative grid grid-cols-2 gap-1 rounded-xl bg-ink-50 p-1"
             >
+              <span
+                aria-hidden="true"
+                data-testid="auth-view-indicator"
+                className="auth-pill-indicator"
+                data-pos={view === 'signup' ? 'end' : 'start'}
+              />
               {(
                 [
                   { key: 'login', label: 'ورود' },
@@ -341,13 +365,6 @@ export function AuthModal({
                     view === key ? 'text-brand-700' : 'text-ink-500 hover:text-ink-700',
                   )}
                 >
-                  {view === key ? (
-                    <motion.span
-                      layoutId="auth-view-tab"
-                      className="absolute inset-0 rounded-lg bg-white shadow-[0_2px_8px_-3px_rgba(15,20,32,.15)]"
-                      transition={{ type: 'spring', bounce: 0.25, duration: 0.5 }}
-                    />
-                  ) : null}
                   <span className="relative">{label}</span>
                 </button>
               ))}
@@ -410,11 +427,7 @@ export function AuthModal({
                           identifier={identifier}
                           setIdentifier={setIdentifier}
                           onSuccess={handleSuccess}
-                          goForgot={(id) => {
-                            if (id?.trim()) setIdentifier(id);
-                            setView('forgot');
-                            setNotice(null);
-                          }}
+                          goForgot={goForgot}
                         />
                       </AuthPanel>
 
@@ -428,7 +441,7 @@ export function AuthModal({
                           identifier={identifier}
                           setIdentifier={setIdentifier}
                           onSuccess={handleSuccess}
-                          goLogin={() => goLogin()}
+                          goLogin={goLogin}
                         />
                       </AuthPanel>
 

@@ -504,6 +504,36 @@
   }
 }
 
+/* ── کپسولِ لغزانِ تب‌ها (جایگزین layoutId — صرفاً GPU، بدون JS) ─────────
+   قرارداد مهندسی: همان حرکتِ فنریِ کپسول， ولی transformِ خالص که روی
+   کامپوزیتور رانده می‌شود — هیچ اندازه‌گیریِ getBoundingClientRect در
+   هیچ رِرِندِری (تایپ، تیکِ تایمر) انجام نمی‌شود و reflowِ اجباری
+   صفر است. هندسه با گریدِ دو سلولِ ۵۰٪ی و گپِ ۴px دقیق است:
+   عرض = ۵۰٪ − ۶px (مساویِ سلول)， جابه‌جایی = عرضِ خودش + ۴px گپ. */
+.auth-pill-indicator {
+  position: absolute;
+  inset-block: 0.25rem;
+  inset-inline-start: 0.25rem;
+  width: calc(50% - 6px);
+  border-radius: 0.5rem;
+  background: #fff;
+  box-shadow: 0 2px 8px -3px rgba(15, 20, 32, 0.15);
+  transition: transform 0.22s cubic-bezier(0.34, 1.3, 0.45, 1);
+  pointer-events: none;
+}
+
+.auth-pill-indicator[data-pos='end'] {
+  /* گریدِ RTL: سلولِ نخست راست؛ حرکت به چپ = گذر به سلولِ دوم.
+     -100% عرضِ خودش و −4px گپ — دقیقاً پیکسل‌به‌پیکسلِ سلولِ دوم */
+  transform: translateX(calc(-100% - 4px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-pill-indicator {
+    transition: none;
+  }
+}
+
 /* ── چرخه‌حیات قطعی لایه‌های شناور (v3) ────────────────────────────────
    این keyframes فقط تجربه‌ی بصری‌اند؛ مالکِ حیاتِ لایه (تخلیه از DOM)
    هوکِ usePresence با تایمرِ تضمینی است. پس این انیمیشن‌ها هرگز نمی‌توانند

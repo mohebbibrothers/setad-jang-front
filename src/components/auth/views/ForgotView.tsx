@@ -10,7 +10,7 @@
  * فقط «کد ارسال شد».
  */
 
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { CheckCircle2, LogIn } from 'lucide-react';
 import { forgotPasswordRequest, forgotPasswordConfirm, type AuthChallengeResult } from '@/lib/auth';
 import { coerceAuthError, type AuthErrorModel } from '@/lib/auth-errors';
@@ -23,7 +23,7 @@ import { PasswordField, isPasswordAcceptable } from '../PasswordField';
 import { OtpStep } from '../OtpStep';
 import { useOtpChallenge } from '../useOtpChallenge';
 
-export function ForgotView({
+export const ForgotView = memo(function ForgotView({
   identifier,
   setIdentifier,
   goLogin,
@@ -170,4 +170,4 @@ export function ForgotView({
       <SubmitButton loading={challenge.sending}>ارسال کد بازیابی</SubmitButton>
     </form>
   );
-}
+});

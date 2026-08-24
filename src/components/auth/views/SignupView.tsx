@@ -17,7 +17,7 @@
  *   • نام/نام‌خانوادگی اختیاری است و خالی ارسال نمی‌شود.
  */
 
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { LogIn } from 'lucide-react';
 import { signupRequest, signupVerify, type AuthUser, type AuthChallengeResult } from '@/lib/auth';
 import { coerceAuthError, type AuthErrorModel } from '@/lib/auth-errors';
@@ -34,7 +34,7 @@ const DUPLICATE_HINT = 'قبلاً ثبت شده';
 const isDuplicateError = (model: AuthErrorModel | null): boolean =>
   model?.message.includes(DUPLICATE_HINT) ?? false;
 
-export function SignupView({
+export const SignupView = memo(function SignupView({
   identifier,
   setIdentifier,
   onSuccess,
@@ -226,4 +226,4 @@ export function SignupView({
       </SubmitButton>
     </form>
   );
-}
+});

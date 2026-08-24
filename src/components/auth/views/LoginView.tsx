@@ -17,8 +17,7 @@
  *   • رمزِ ورود به‌عمدت در draft سشن نمی‌ماند (امنیت)؛ فقط کد OTP و مرحله.
  */
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { memo, useState } from 'react';
 import { KeyRound, ShieldCheck } from 'lucide-react';
 import {
   loginPassword,
@@ -38,7 +37,10 @@ import { PasswordField } from '../PasswordField';
 import { OtpStep } from '../OtpStep';
 import { useOtpChallenge } from '../useOtpChallenge';
 
-export function LoginView({
+/** نماها memoize‌اند: callbackهای والد پایدارند (useCallback) و draft
+ *  هر نما فقط خودش را رِرِندِر می‌کند — تایپ/تیکِ یک نما، نمایِ غیرفعال
+ *  را رِرِندِر نمی‌کند (کاهشِ کارِ رندر به حداقلِ ممکن). */
+export const LoginView = memo(function LoginView({
   identifier,
   setIdentifier,
   onSuccess,
@@ -54,12 +56,18 @@ export function LoginView({
 
   return (
     <div className="space-y-5">
-      {/* سوییچ روش — کپسول متحرک */}
+      {/* سوییچ روش — کپسولِ لغزان با transformِ خالص (GPU، صرفِ reflow صفر) */}
       <div
         role="tablist"
         aria-label="روش ورود"
-        className="grid grid-cols-2 gap-1 rounded-xl bg-ink-50 p-1"
+        className="relative grid grid-cols-2 gap-1 rounded-xl bg-ink-50 p-1"
       >
+        <span
+          aria-hidden="true"
+          data-testid="auth-method-indicator"
+          className="auth-pill-indicator"
+          data-pos={method === 'otp' ? 'end' : 'start'}
+        />
         {(
           [
             { key: 'password', label: 'رمز عبور', Icon: KeyRound },
@@ -77,13 +85,6 @@ export function LoginView({
               method === key ? 'text-brand-700' : 'text-ink-500 hover:text-ink-700',
             )}
           >
-            {method === key && (
-              <motion.span
-                layoutId="auth-login-method"
-                className="absolute inset-0 rounded-lg bg-white shadow-[0_2px_8px_-3px_rgba(15,20,32,.15)]"
-                transition={{ type: 'spring', bounce: 0.25, duration: 0.5 }}
-              />
-            )}
             <Icon className="relative h-4 w-4" strokeWidth={2.2} />
             <span className="relative">{label}</span>
           </button>
@@ -102,7 +103,7 @@ export function LoginView({
       )}
     </div>
   );
-}
+});
 
 /* ── روش ۱: رمز عبور ──────────────────────────────────────────────────── */
 

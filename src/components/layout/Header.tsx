@@ -140,7 +140,7 @@ export function Header() {
         aria-hidden={!open}
       >
         <button
-          className="absolute inset-0 bg-ink-900/40 backdrop-blur-sm"
+          className="absolute inset-0 bg-ink-900/45"
           onClick={() => setOpen(false)}
           aria-label="بستن منو"
         />
