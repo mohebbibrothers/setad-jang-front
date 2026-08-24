@@ -102,13 +102,14 @@ export function Footer() {
           rest of the site, while the surrounding surface still bleeds
           edge-to-edge behind them. */}
         <div className="container-edge relative">
-          {/* Footer columns — fully centred.
-           * Grid intentionally caps at md:grid-cols-2 for now because the
-           * corporate columns (about/faq/privacy/terms/support) were
-           * retired until their pages exist. A 4-col grid with only 2
-           * items would leave two empty columns on desktop; 2-col with
-           * a max content width keeps the block visually balanced. */}
-          <div className="relative mx-auto grid max-w-2xl grid-cols-1 gap-10 text-center sm:grid-cols-2 md:gap-16">
+          {/* ردیف سه‌تایی: نماد (راست) + دو ستون لینک.
+           * چیدمان RTL است؛ پس اولین سلولِ DOM (نمادها) راست‌ترین ستون
+           * می‌شود. `md:me-8` روی نماد، فاصله‌اش را از ستون‌های لینک
+           * بیشتر از فاصله‌ی بین خود آن‌ها نگه می‌دارد — عضو ردیف، ولی
+           * با وقارِ مستقل. در موبایل همه‌ی سلول‌ها وسط‌چین و نماد آخر
+           * ردیف (order-last) می‌نشیند تا ناوبری اول خوانده شود. */}
+          <div className="relative mx-auto grid max-w-4xl grid-cols-1 justify-items-center gap-12 text-center md:grid-cols-3 md:items-start md:gap-x-12 lg:gap-x-16">
+            <TrustSeals className="order-last md:order-first md:me-6 lg:me-8" />
             {COLS.map((c) => (
               <nav key={c.title} aria-label={c.title} className="flex flex-col items-center">
                 <h4 className="mb-1 text-[14.5px] font-extrabold text-ink-900">{c.title}</h4>
@@ -132,10 +133,6 @@ export function Footer() {
               </nav>
             ))}
           </div>
-
-          {/* نمادهای اعتماد (اینماد و…) — سرور-رندر تا خزنده‌ی صحت‌سنج
-            نماد، مُهر را در HTML خام صفحه‌ی اصلی بیابد. */}
-          <TrustSeals />
 
           {/* Decorative divider — gradient hairline that fades at the edges */}
           <div
