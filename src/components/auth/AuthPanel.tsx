@@ -54,9 +54,17 @@ export function AuthPanel({
       aria-labelledby={labelledby}
       hidden={!active}
       inert={!active || undefined}
-      className={cn('space-y-5', active && 'auth-view-enter')}
     >
-      {children}
+      {/*
+        wrapper کلیددار: با تغییر activeKey (مرحله یا روش) فقط همین
+        wrapper داخلی ری‌مونت می‌شود تا انیمیشنِ ورودِ نرم دوباره بازی
+        کند — state فلو در سشن زنده می‌ماند و فرم‌ها از همان‌جا پر
+        می‌شوند. سوییچِ تب هم به واسطه‌ی hidden→visible بودنِ پنل،
+        انیمیشنِ CSS را از نو آغاز می‌کند.
+      */}
+      <div key={activeKey} className={cn('space-y-5', active && 'auth-view-enter')}>
+        {children}
+      </div>
     </div>
   );
 }

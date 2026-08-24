@@ -42,6 +42,15 @@
  *     cooldown از لحظه‌ی واقعیِ ارسال می‌گذرد (استاندارد صنعت)؛
  *   • a11y کامل: role=dialog، Esc، تله‌ی فوکوس، بازگشتِ فوکوس؛
  *   • پس از ورودِ موفق، سشنِ فلوها کاملاً ریست می‌شود (ورود بعدی تمیز).
+ *
+ * v4 — کیبوردِ موبایل + موشنِ ابریشمی:
+ *   ۵) کیبورد پنل را نمی‌پوشاند: متاتگِ interactive-widget=resizes-content
+ *      (کرومِ بومی) + چسبیدنِ لایه به Visual Viewport (سافاری/iOS) +
+ *      اسکرولِ خودکارِ فیلدِ فوکوس‌شده به‌نمای — کاربر همیشه می‌بیند
+ *      چه می‌نویسد.
+ *   ۶) سوییچِ نما/روش/مرحله دیگر «انفجاری» نیست: ارتفاعِ بدنه با
+ *      ResizeObserver اندازه و مورف می‌شود (useAnimatedHeight) و محتوای
+ *      جدید با منحنیِ expo-out وارد می‌شود — الگوی Stripe/Clerk.
  * ═══════════════════════════════════════════════════════════════════════
  */
 
@@ -52,6 +61,8 @@ import type { AuthUser } from '@/lib/auth';
 import { resetAllAuthFlows, useAuthFlowDraft } from '@/lib/auth-flow-session';
 import { usePresence } from '@/lib/use-presence';
 import { lockBodyScroll } from '@/lib/scroll-lock';
+import { overlayStyleForViewport, useVisualViewportMetrics } from '@/lib/use-visual-viewport';
+import { useAnimatedHeight } from '@/lib/use-animated-height';
 import { cn } from '@/lib/utils';
 import { LoginView } from './views/LoginView';
 import { SignupView } from './views/SignupView';
@@ -91,6 +102,35 @@ export function AuthModal({
 
   // چرخه‌حیات قطعی — مالکِ حقیقیِ «رندر/تخلیه» (به‌جای AnimatePresence)
   const { rendered, closing } = usePresence(open, MODAL_EXIT_MS);
+
+  // کیبوردِ موبایل: چسبیدنِ لایه به ناحیه‌ی دیدنی (کنارِ متاتگِ
+  // interactive-widget=resizes-content که کروم را بومی پوشش می‌دهد).
+  // در دسکتاپ null است → استایلِ پیش‌فرضِ CSS — هیچ تغییرِ رفتاری.
+  const viewportMetrics = useVisualViewportMetrics(rendered);
+
+  // مورفِ نرمِ ارتفاع بین نماها/روش‌ها/مرحله‌ها — ضد «ترنزیشنِ انفجاری»
+  const bodyHeight = useAnimatedHeight(rendered, 320);
+
+  // اسکرولِ فیلدِ فوکوس‌شده به‌نمای پس از بازشدنِ کیبورد (iOS در
+  // کانتینرهای اسکرول‌دارِ تو‌در‌تو خودش این کار را نمی‌کند)
+  const focusScrollTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (focusScrollTimer.current !== null) window.clearTimeout(focusScrollTimer.current);
+    },
+    [],
+  );
+  const handleFocusWithin = useCallback((e: React.FocusEvent) => {
+    const el = e.target as HTMLElement | null;
+    if (!el || !/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
+    if (!window.matchMedia('(max-width: 639px)').matches) return;
+    if (focusScrollTimer.current !== null) window.clearTimeout(focusScrollTimer.current);
+    focusScrollTimer.current = window.setTimeout(() => {
+      if (typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }, 380); // بعد از اتمامِ انیمیشنِ بازشدنِ کیبورد
+  }, []);
 
   // draftها فقط برای کلید تغییر محتوای پنل‌ها (فوکوسِ مرحله‌ی جدید)
   const loginDraft = useAuthFlowDraft('login');
@@ -177,6 +217,9 @@ export function AuthModal({
         // حتی اگر فرضاً یک فریم بیشتر هم بماند.
         closing && 'pointer-events-none',
       )}
+      // موبایل: چسبیدن به ناحیه‌ی دیدنی (لبه‌ی پایینِ شیت = لبه‌ی بالای
+      // کیبورد) — در دسکتاپ metrics نال است و استایلِ CSS حاکم می‌ماند.
+      style={viewportMetrics ? overlayStyleForViewport(viewportMetrics) : undefined}
       role="presentation"
       aria-hidden={closing || undefined}
     >
@@ -201,8 +244,11 @@ export function AuthModal({
         aria-describedby="auth-modal-subtitle"
         aria-hidden={closing || undefined}
         inert={closing || undefined}
+        onFocus={handleFocusWithin}
         className={cn(
-          'relative flex max-h-[94dvh] w-full max-w-[440px] flex-col overflow-hidden',
+          // موبایل: سقف ارتفاع = کل ناحیه‌ی دیدنی (که با کیبورد کوچک
+          // می‌شود) تا پنل هرگز زیر کیبورد نرود؛ دسکتاپ: همان ۹۴dvh.
+          'relative flex max-h-full w-full max-w-[440px] flex-col overflow-hidden sm:max-h-[94dvh]',
           'rounded-t-[24px] bg-white shadow-[0_40px_90px_-30px_rgba(5,56,50,.5)] sm:rounded-[24px]',
           closing ? 'auth-dialog-exit' : 'auth-dialog-enter',
         )}
@@ -286,82 +332,95 @@ export function AuthModal({
           </div>
         ) : null}
 
-        {/* بدنه — هر سه نما همیشه مونت؛ نمایان با hidden/inert */}
-        <div className="overflow-y-auto px-6 pb-6 pt-4 sm:px-7">
-          {welcomeName ? (
-            <div
-              className="auth-view-enter flex flex-col items-center gap-3 py-10 text-center"
-              role="status"
-            >
-              <CheckCircle2 className="h-16 w-16 text-brand-500" strokeWidth={1.5} />
-              <h3 className="text-[18px] font-extrabold text-ink-900">
-                {welcomeName}، خوش آمدید 🌱
-              </h3>
-              <p className="text-[12.5px] text-ink-500">ورود شما با موفقیت انجام شد.</p>
-            </div>
-          ) : (
-            <>
-              {notice ? (
-                <div className="mb-4">
-                  <Alert kind="success">{notice}</Alert>
-                </div>
-              ) : null}
-
-              <AuthPanel
-                id="auth-panel-login"
-                labelledby="auth-tab-login"
-                active={view === 'login'}
-                activeKey={`${loginDraft.method}:${loginDraft.step}`}
-              >
-                <LoginView
-                  identifier={identifier}
-                  setIdentifier={setIdentifier}
-                  onSuccess={handleSuccess}
-                  goForgot={(id) => {
-                    if (id?.trim()) setIdentifier(id);
-                    setView('forgot');
-                    setNotice(null);
-                  }}
-                />
-              </AuthPanel>
-
-              <AuthPanel
-                id="auth-panel-signup"
-                labelledby="auth-tab-signup"
-                active={view === 'signup'}
-                activeKey={signupDraft.step}
-              >
-                <SignupView
-                  identifier={identifier}
-                  setIdentifier={setIdentifier}
-                  onSuccess={handleSuccess}
-                  goLogin={() => goLogin()}
-                />
-              </AuthPanel>
-
-              {/* نمای بازیابی تب ندارد — با لینک «فراموشی» وارد می‌شود */}
-              <AuthPanel
-                id="auth-panel-forgot"
-                labelledby="auth-modal-title"
-                active={view === 'forgot'}
-                activeKey={forgotDraft.step}
-              >
-                <ForgotView
-                  identifier={identifier}
-                  setIdentifier={setIdentifier}
-                  goLogin={goLogin}
-                />
-              </AuthPanel>
-            </>
+        {/* بدنه — هر سه نما همیشه مونت؛ نمایان با hidden/inert.
+            ارتفاعِ بدنه با ResizeObserver اندازه و با ترنزیشنِ نرم مورف
+            می‌شود تا سوییچِ نما/روش/مرحله «جهش» نداشته باشد. */}
+        <div
+          className={cn(
+            'overflow-y-auto px-6 pb-6 pt-4 sm:px-7',
+            bodyHeight.armed &&
+              'transition-[height] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
           )}
+          style={bodyHeight.style}
+        >
+          {/* بسته‌ی اندازه‌گیری — flexcol تا مارجین‌های فرزندان توی جعبه
+              بمانند و اندازه دقیق باشد */}
+          <div ref={bodyHeight.contentRef} className="flex flex-col">
+            {welcomeName ? (
+              <div
+                className="auth-view-enter flex flex-col items-center gap-3 py-10 text-center"
+                role="status"
+              >
+                <CheckCircle2 className="h-16 w-16 text-brand-500" strokeWidth={1.5} />
+                <h3 className="text-[18px] font-extrabold text-ink-900">
+                  {welcomeName}، خوش آمدید 🌱
+                </h3>
+                <p className="text-[12.5px] text-ink-500">ورود شما با موفقیت انجام شد.</p>
+              </div>
+            ) : (
+              <>
+                {notice ? (
+                  <div className="mb-4">
+                    <Alert kind="success">{notice}</Alert>
+                  </div>
+                ) : null}
 
-          {/* نوار اعتماد */}
-          {!welcomeName ? (
-            <p className="mt-6 flex items-center justify-center gap-1.5 border-t border-ink-100 pt-4 text-[11px] font-medium text-ink-500">
-              <ShieldCheck className="h-3.5 w-3.5 text-brand-500" />
-              اتصال امن است؛ اطلاعات شما فقط برای ورود استفاده می‌شود.
-            </p>
-          ) : null}
+                <AuthPanel
+                  id="auth-panel-login"
+                  labelledby="auth-tab-login"
+                  active={view === 'login'}
+                  activeKey={`${loginDraft.method}:${loginDraft.step}`}
+                >
+                  <LoginView
+                    identifier={identifier}
+                    setIdentifier={setIdentifier}
+                    onSuccess={handleSuccess}
+                    goForgot={(id) => {
+                      if (id?.trim()) setIdentifier(id);
+                      setView('forgot');
+                      setNotice(null);
+                    }}
+                  />
+                </AuthPanel>
+
+                <AuthPanel
+                  id="auth-panel-signup"
+                  labelledby="auth-tab-signup"
+                  active={view === 'signup'}
+                  activeKey={signupDraft.step}
+                >
+                  <SignupView
+                    identifier={identifier}
+                    setIdentifier={setIdentifier}
+                    onSuccess={handleSuccess}
+                    goLogin={() => goLogin()}
+                  />
+                </AuthPanel>
+
+                {/* نمای بازیابی تب ندارد — با لینک «فراموشی» وارد می‌شود */}
+                <AuthPanel
+                  id="auth-panel-forgot"
+                  labelledby="auth-modal-title"
+                  active={view === 'forgot'}
+                  activeKey={forgotDraft.step}
+                >
+                  <ForgotView
+                    identifier={identifier}
+                    setIdentifier={setIdentifier}
+                    goLogin={goLogin}
+                  />
+                </AuthPanel>
+              </>
+            )}
+
+            {/* نوار اعتماد */}
+            {!welcomeName ? (
+              <p className="mt-6 flex items-center justify-center gap-1.5 border-t border-ink-100 pt-4 text-[11px] font-medium text-ink-500">
+                <ShieldCheck className="h-3.5 w-3.5 text-brand-500" />
+                اتصال امن است؛ اطلاعات شما فقط برای ورود استفاده می‌شود.
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

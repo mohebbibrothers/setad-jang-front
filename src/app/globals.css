@@ -465,7 +465,7 @@
 @keyframes authViewIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -474,7 +474,9 @@
 }
 
 .auth-view-enter {
-  animation: authViewIn 0.24s ease-out both;
+  /* منحنی expo-out: شروعِ تند، فرودِ ابریشمی — حسِ «مورف»، نه «جهش» */
+  animation: authViewIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {

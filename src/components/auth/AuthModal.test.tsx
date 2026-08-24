@@ -92,6 +92,12 @@ describe('باگ ۱ — قفل‌شدن صفحه پس از بستن مودال (
     render(<Harness />);
     const dlg = dialog();
 
+    // مسیرِ پیش‌فرض (بدون VisualViewport): هیچ استایلِ درونی تحمیلی —
+    // دسکتاپ دقیقاً مثل قبل با کلاس‌های CSS کار می‌کند.
+    const wrapperBefore = dlg.closest('.fixed.inset-0') as HTMLElement;
+    expect(wrapperBefore.style.height).toBe('');
+    expect(wrapperBefore.style.top).toBe('');
+
     fireEvent.click(modalTab('ثبت‌نام'));
     expect(activePanel().getByText('دریافت کد تأیید')).toBeTruthy();
     expect(document.body.style.overflow).toBe('hidden');
@@ -201,6 +207,106 @@ describe('باگ ۱ — قفل‌شدن صفحه پس از بستن مودال (
     });
 
     expect(document.activeElement).toBe(outside);
+  });
+});
+
+/* ── VisualViewport ساختگی برای شبیه‌سازی کیبوردِ موبایل ─────────────── */
+type VvListener = () => void;
+function installFakeVisualViewport(initial: { height: number; offsetTop: number }) {
+  const state = { ...initial };
+  const listeners = new Map<string, Set<VvListener>>();
+  const bucket = (type: string) => {
+    let set = listeners.get(type);
+    if (!set) {
+      set = new Set();
+      listeners.set(type, set);
+    }
+    return set;
+  };
+  const fake = {
+    get height() {
+      return state.height;
+    },
+    get offsetTop() {
+      return state.offsetTop;
+    },
+    addEventListener(type: string, fn: VvListener) {
+      bucket(type).add(fn);
+    },
+    removeEventListener(type: string, fn: VvListener) {
+      bucket(type).delete(fn);
+    },
+    emit(type: 'resize' | 'scroll', next?: { height?: number; offsetTop?: number }) {
+      Object.assign(state, next ?? {});
+      for (const fn of Array.from(bucket(type))) fn();
+    },
+  };
+  Object.defineProperty(window, 'visualViewport', { value: fake, configurable: true });
+  return fake;
+}
+
+describe('کیبورد موبایل — پنل روی کیبورد سوار می‌شود، نه زیر آن', () => {
+  beforeEach(() => {
+    // موبایل‌سازیِ محیط: درگاه‌کُشی موبایل + اسکرین‌ریدر matchMedia
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent: () => false,
+    }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete (window as unknown as Record<string, unknown>).visualViewport;
+  });
+
+  it('با بازشدنِ کیبورد، لایه‌ی مودال به ناحیه‌ی دیدنیِ کوچک‌شده می‌چسبد و با بستن برمی‌گردد', () => {
+    const vv = installFakeVisualViewport({ height: 800, offsetTop: 0 });
+    render(<Harness />);
+
+    const dlg = dialog();
+    const wrapper = dlg.closest('.fixed.inset-0') as HTMLElement;
+    // ناحیه‌ی دیدنیِ اولیه
+    expect(wrapper.style.height).toBe('800px');
+    expect(wrapper.style.top).toBe('0px');
+    // سقفِ ارتفاعِ پنل روی موبایل کلِ ناحیه‌ی دیدنی است
+    expect(dlg.className).toContain('max-h-full');
+
+    // کیبورد باز می‌شود → ناحیه‌ی دیدنی کوچک می‌شود → شیت/پنل بالا می‌آید
+    act(() => vv.emit('resize', { height: 430 }));
+    expect(wrapper.style.height).toBe('430px');
+
+    // iOS محتوا را در داخل گاهی می‌لغزاند — جبرانِ offsetTop هم کار می‌کند
+    act(() => vv.emit('scroll', { offsetTop: 20 }));
+    expect(wrapper.style.top).toBe('20px');
+
+    // کیبورد بسته می‌شود → همه‌چیز به حالتِ اول برمی‌گردد
+    act(() => vv.emit('resize', { height: 800, offsetTop: 0 }));
+    expect(wrapper.style.height).toBe('800px');
+    expect(wrapper.style.top).toBe('0px');
+  });
+
+  it('فوکوسِ فیلد در موبایل: فیلد به‌نمای اسکرول می‌شود تا متنِ تایپ‌شده دیده شود', () => {
+    vi.useFakeTimers();
+    try {
+      const scrollSpy = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
+      render(<Harness />);
+
+      const input = activePanel().getByLabelText('ایمیل یا شماره موبایل');
+      fireEvent.focusIn(input);
+      act(() => {
+        vi.advanceTimersByTime(2_000);
+      });
+
+      expect(scrollSpy).toHaveBeenCalledWith({ block: 'nearest', behavior: 'smooth' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

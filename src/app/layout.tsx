@@ -164,6 +164,11 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   colorScheme: 'light',
+  // کروم/اندروید با بازشدنِ کیبورد ICB را resize می‌کند تا لایه‌های
+  // fixed (مودال ورود) روی کیبورد سوار شوند، نه زیر آن — در مرورگرهای
+  // بدون پشتیبانی (iOS قدیمی) همان مسیر Visual Viewport در مودال حاکم
+  // است و این کلید بی‌ضرر نادیده گرفته می‌شود.
+  interactiveWidget: 'resizes-content',
 };
 
 /**
