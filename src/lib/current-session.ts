@@ -48,14 +48,22 @@ function recencyKey(s: AuthSession): number {
 }
 
 /**
- * id نشستِ فعلی: جدیدترین نشستِ فعال و نامنقضی که UAاش با مرورگرِ
- * فعلی یکی است. بدونِ تطبیق → null (راستگویی بهتر از حدس است).
+ * id نشستِ فعلی:
+ *   ۱) مرجعِ قطعیِ سرور — فلگِ is_current که از claimِ sid توکن می‌آید؛
+ *   ۲) fallback برای توکن‌های قدیمی (بدون sid): جدیدترین نشستِ فعال و
+ *      نامنقضی که UAاش با مرورگرِ فعلی یکی است. بدونِ تطبیق → null
+ *      (راستگویی بهتر از حدس است).
  */
 export function findCurrentSessionId(
   sessions: ReadonlyArray<AuthSession>,
   clientUserAgent: string,
   now: number = Date.now(),
 ): AuthSession['id'] | null {
+  const flagged = sessions.find(
+    (s) => s.is_current === true && !s.is_revoked && !isSessionExpired(s, now),
+  );
+  if (flagged) return flagged.id;
+
   let best: AuthSession | null = null;
   for (const s of sessions) {
     if (s.is_revoked || isSessionExpired(s, now)) continue;
@@ -82,4 +90,21 @@ export function orderSessionsForDisplay(
 /** خواندنِ امنِ UA در محیطِ کلاینت (SSR/تست → رشته‌ی خالی) */
 export function clientUserAgent(): string {
   return typeof navigator === 'undefined' ? '' : navigator.userAgent || '';
+}
+
+/** پنجره‌ی «در حال استفاده» — با لمسِ ۶۰ثانیه‌ایِ سرور، ۵ دقیقه حاشیه‌ی اطمینان است */
+export const SESSION_IN_USE_WINDOW_MS = 5 * 60 * 1000;
+
+/**
+ * آیا نشست همین حالا در حال استفاده است؟ — بر اساس تازگیِ last_seen_at
+ * که بک‌اند در هر درخواستِ احرازشده (با آستانه‌ی ۶۰ ثانیه) لمس می‌کند.
+ */
+export function isSessionInUse(
+  session: Pick<AuthSession, 'last_seen_at' | 'is_revoked' | 'expires_at'>,
+  now: number = Date.now(),
+  windowMs: number = SESSION_IN_USE_WINDOW_MS,
+): boolean {
+  if (session.is_revoked || isSessionExpired(session, now)) return false;
+  const t = Date.parse(session.last_seen_at || '');
+  return Number.isFinite(t) && now - t >= 0 && now - t < windowMs;
 }

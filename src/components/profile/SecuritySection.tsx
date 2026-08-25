@@ -32,6 +32,7 @@ import {
   clientUserAgent,
   findCurrentSessionId,
   isSessionExpired,
+  isSessionInUse,
   orderSessionsForDisplay,
 } from '@/lib/current-session';
 import { Alert, SubmitButton } from '@/components/auth/ui';
@@ -167,6 +168,8 @@ function SessionRow({
   const [error, setError] = useState<string | null>(null);
 
   const expired = isSessionExpired(session);
+  // نشستِ غیرجاریِ فعالی که در ۵ دقیقه‌ی گذشته روی سرور فعالیت داشته
+  const inUse = !isCurrent && isSessionInUse(session);
 
   const revoke = async () => {
     if (busy) return;
@@ -235,6 +238,14 @@ function SessionRow({
               <Badge tone="danger">لغو شده</Badge>
             ) : expired ? (
               <Badge tone="neutral">منقضی شده</Badge>
+            ) : inUse ? (
+              <Badge tone="ok">
+                <span aria-hidden="true" className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                </span>
+                در حال استفاده
+              </Badge>
             ) : (
               <Badge tone="ok">فعال</Badge>
             )}

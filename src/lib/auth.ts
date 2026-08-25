@@ -131,6 +131,8 @@ export type AuthSession = {
   last_seen_at?: string;
   expires_at?: string | null;
   created_at?: string;
+  /** فلگِ سروری: این نشست همان نشستِ حاملِ توکنِ درخواست است (از claimِ sid) */
+  is_current?: boolean;
 };
 
 /* ───────────────────────────────────────────────────────────────────────── */

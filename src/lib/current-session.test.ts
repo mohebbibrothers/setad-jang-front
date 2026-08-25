@@ -6,9 +6,11 @@ import { describe, expect, it } from 'vitest';
  */
 
 import {
+  SESSION_IN_USE_WINDOW_MS,
   clientUserAgent,
   findCurrentSessionId,
   isSessionExpired,
+  isSessionInUse,
   orderSessionsForDisplay,
   userAgentMatches,
 } from './current-session';
@@ -55,6 +57,22 @@ describe('userAgentMatches', () => {
 describe('findCurrentSessionId', () => {
   const ua = 'My Browser/1.0';
 
+  it('فلگِ سروری is_current بر استدلالِ UA ارجح است (مرجعِ قطعی)', () => {
+    const list = [
+      session({ id: 1, user_agent: ua, last_seen_at: '2026-08-25T11:00:00Z' }),
+      session({ id: 2, user_agent: 'Totally/Different', is_current: true }),
+    ];
+    expect(findCurrentSessionId(list, ua, NOW)).toBe(2);
+  });
+
+  it('فلگِ is_current روی نشستِ لغوشده/منقضی نادیده گرفته می‌شود', () => {
+    const list = [
+      session({ id: 1, user_agent: ua }),
+      session({ id: 2, user_agent: 'X', is_current: true, is_revoked: true }),
+    ];
+    expect(findCurrentSessionId(list, ua, NOW)).toBe(1);
+  });
+
   it('تازه‌ترین نشستِ فعالِ هم‌UA انتخاب می‌شود', () => {
     const list = [
       session({ id: 1, user_agent: ua, last_seen_at: '2026-08-10T10:00:00Z' }),
@@ -93,6 +111,31 @@ describe('orderSessionsForDisplay', () => {
     expect(orderSessionsForDisplay([a, b, c], 3).map((s) => s.id)).toEqual([3, 1, 2]);
     expect(orderSessionsForDisplay([a, b, c], null).map((s) => s.id)).toEqual([1, 2, 3]);
     expect(orderSessionsForDisplay([a, b], 99).map((s) => s.id)).toEqual([1, 2]);
+  });
+});
+
+describe('isSessionInUse', () => {
+  const fresh = new Date(NOW - 60_000).toISOString();
+  const stale = new Date(NOW - 60 * 60_000).toISOString();
+
+  it('last_seenِ تازه → در حال استفاده؛ قدیمی/آینده/نامعتبر/لغوشده → خیر', () => {
+    expect(isSessionInUse({ last_seen_at: fresh, is_revoked: false }, NOW)).toBe(true);
+    expect(isSessionInUse({ last_seen_at: stale, is_revoked: false }, NOW)).toBe(false);
+    expect(isSessionInUse({ last_seen_at: fresh, is_revoked: true }, NOW)).toBe(false);
+    expect(
+      isSessionInUse(
+        { last_seen_at: fresh, is_revoked: false, expires_at: '2020-01-01T00:00:00Z' },
+        NOW,
+      ),
+    ).toBe(false);
+    expect(
+      isSessionInUse(
+        { last_seen_at: new Date(NOW + 60_000).toISOString(), is_revoked: false },
+        NOW,
+      ),
+    ).toBe(false);
+    expect(isSessionInUse({ last_seen_at: '', is_revoked: false }, NOW)).toBe(false);
+    expect(SESSION_IN_USE_WINDOW_MS).toBe(300_000);
   });
 });
 

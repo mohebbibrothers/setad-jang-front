@@ -83,7 +83,8 @@ const SESSION: AuthSession = {
   is_revoked: false,
   revoked_at: null,
   revoked_by_email: null,
-  last_seen_at: new Date().toISOString(),
+  // آزادانه قدیمی — بیرونِ پنجره‌ی «در حال استفاده» تا بدج «فعال» بگیرد
+  last_seen_at: '2026-08-20T10:00:00Z',
   expires_at: null,
   created_at: '2023-05-10T10:00:00Z',
 };
@@ -325,6 +326,41 @@ describe('نشست‌ها — تشخیص و رفتارِ نشستِ فعلی', (
     expect(rows.length).toBeGreaterThanOrEqual(2);
     expect(rows[0].textContent).toContain('آنلاین');
     // نشستِ دیگر قابلِ لغو است
+    expect(screen.getByRole('button', { name: 'لغو نشست' })).toBeTruthy();
+  });
+
+  it('فلگِ سروری is_current مرجعِ قطعی است — حتی با UAِ نامتطابق', async () => {
+    login();
+    const flagged: AuthSession = {
+      ...SESSION,
+      id: 77,
+      user_agent: 'Some Other Agent/9.9', // عمداً نامتطابق — فلگِ سرور باید حرفِ آخر باشد
+      is_current: true,
+    };
+    listSessionsPageMock.mockResolvedValue({ results: [flagged], count: 1, next: null });
+    render(<ProfileApp />);
+    await waitFor(() => expect(screen.getByText('علی رضایی')).toBeTruthy());
+    switchTab('امنیت و نشست‌ها');
+
+    await waitFor(() => expect(screen.getByText('آنلاین')).toBeTruthy());
+    expect(screen.getByText('همین دستگاه')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'لغو نشست' })).toBeNull();
+  });
+
+  it('نشستِ دیگری با last_seen تازه: بدج «در حال استفاده» + لغوپذیر', async () => {
+    login();
+    const alive: AuthSession = {
+      ...SESSION,
+      id: 78,
+      user_agent: 'Android Chrome Other-Device',
+      last_seen_at: new Date(Date.now() - 2 * 60_000).toISOString(), // ۲ دقیقه پیش
+    };
+    listSessionsPageMock.mockResolvedValue({ results: [alive], count: 1, next: null });
+    render(<ProfileApp />);
+    await waitFor(() => expect(screen.getByText('علی رضایی')).toBeTruthy());
+    switchTab('امنیت و نشست‌ها');
+
+    await waitFor(() => expect(screen.getByText('در حال استفاده')).toBeTruthy());
     expect(screen.getByRole('button', { name: 'لغو نشست' })).toBeTruthy();
   });
 
