@@ -18,7 +18,7 @@ import { ChevronDown, IdCard, LogIn, LogOut, UserRound } from 'lucide-react';
 import { useAuth } from '@/lib/use-auth';
 import { formatIdentifierForDisplay } from '@/lib/auth-identifier';
 import { usePresence } from '@/lib/use-presence';
-import { cn } from '@/lib/utils';
+import { absoluteMediaUrl, cn } from '@/lib/utils';
 
 function displayName(user: ReturnType<typeof useAuth>['user']): string {
   if (!user) return '';
@@ -101,6 +101,7 @@ export function AuthControls({
   const name = displayName(user);
   const identifierText = displayIdentifier(user);
   const initial = (name || 'ب').trim().charAt(0);
+  const avatarUrl = absoluteMediaUrl(user?.profile?.avatar);
 
   return (
     <div ref={wrapRef} className={cn('relative', variant === 'block' && 'w-full')}>
@@ -115,12 +116,26 @@ export function AuthControls({
           loading && 'animate-pulse',
         )}
       >
-        <span
-          aria-hidden="true"
-          className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-[14px] font-extrabold text-white"
-        >
-          {initial}
-        </span>
+        {avatarUrl ? (
+          // آواتارِ واقعیِ کاربر (بارگذاری‌شده از پروفایل) — نسبت به originِ بک‌اند
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatarUrl}
+            alt=""
+            width={32}
+            height={32}
+            loading="lazy"
+            decoding="async"
+            className="h-8 w-8 shrink-0 rounded-lg object-cover ring-1 ring-ink-200/70"
+          />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-[14px] font-extrabold text-white"
+          >
+            {initial}
+          </span>
+        )}
         <span className="hidden max-w-[120px] truncate text-[13px] font-bold text-ink-900 sm:block">
           {loading ? '…' : name || 'حساب من'}
         </span>
@@ -133,58 +148,62 @@ export function AuthControls({
       </button>
 
       {menuRendered ? (
-        <div
-          role="menu"
-          aria-label="منوی حساب کاربری"
-          aria-hidden={menuClosing || undefined}
-          inert={menuClosing || undefined}
-          className={cn(
-            'absolute left-0 top-[calc(100%+8px)] z-[70] w-60 overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-[0_24px_48px_-16px_rgba(15,20,32,.25)]',
-            menuClosing ? 'ui-menu-exit pointer-events-none' : 'ui-menu-enter',
-          )}
-        >
-          <div className="border-b border-ink-100 bg-ink-50/50 px-4 py-3">
-            <p className="truncate text-[13.5px] font-extrabold text-ink-900">
-              {name || 'حساب من'}
-            </p>
-            {identifierText ? (
-              <p
-                className="mt-0.5 truncate text-[11.5px] font-medium text-ink-500"
-                dir="ltr"
-                style={{ textAlign: 'right' }}
-              >
-                {identifierText}
+        // لایه‌ی بیرونی: فقط جای‌گذاری — منو دقیقاً «وسطِ» تریگر و کاملاً
+        // زیر آن قرار می‌گیرد (left-1/2 + -translate-x-1/2). انیمیشنِ
+        // transform روی لایه‌ی درونی است تا با مبدأِ وسط‌چین تداخل نکند.
+        <div className="absolute left-1/2 top-[calc(100%+8px)] z-[70] w-60 -translate-x-1/2">
+          <div
+            role="menu"
+            aria-label="منوی حساب کاربری"
+            aria-hidden={menuClosing || undefined}
+            inert={menuClosing || undefined}
+            className={cn(
+              'overflow-hidden rounded-2xl border border-ink-200 bg-white text-center shadow-[0_24px_48px_-16px_rgba(15,20,32,.25)]',
+              menuClosing ? 'ui-menu-exit pointer-events-none' : 'ui-menu-enter',
+            )}
+          >
+            <div className="border-b border-ink-100 bg-ink-50/50 px-4 py-3">
+              <p className="truncate text-center text-[13.5px] font-extrabold text-ink-900">
+                {name || 'حساب من'}
               </p>
-            ) : null}
-          </div>
-          <div className="p-1.5">
-            <Link
-              href="/profile"
-              role="menuitem"
-              onClick={() => setMenuOpen(false)}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-bold text-ink-700 transition-colors hover:bg-ink-50"
-            >
-              <IdCard className="h-4 w-4 text-brand-600" />
-              حساب کاربری و پروفایل
-            </Link>
-            <button
-              type="button"
-              role="menuitem"
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  await logout();
-                } finally {
-                  setBusy(false);
-                  setMenuOpen(false);
-                }
-              }}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-bold text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-60"
-            >
-              <LogOut className="h-4 w-4" />
-              {busy ? 'در حال خروج…' : 'خروج از حساب'}
-            </button>
+              {identifierText ? (
+                <p
+                  className="mt-0.5 truncate text-center text-[11.5px] font-medium text-ink-500"
+                  dir="ltr"
+                >
+                  {identifierText}
+                </p>
+              ) : null}
+            </div>
+            <div className="p-1.5">
+              <Link
+                href="/profile"
+                role="menuitem"
+                onClick={() => setMenuOpen(false)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-bold text-ink-700 transition-colors hover:bg-ink-50"
+              >
+                <IdCard className="h-4 w-4 text-brand-600" />
+                حساب کاربری و پروفایل
+              </Link>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await logout();
+                  } finally {
+                    setBusy(false);
+                    setMenuOpen(false);
+                  }
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-bold text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-60"
+              >
+                <LogOut className="h-4 w-4" />
+                {busy ? 'در حال خروج…' : 'خروج از حساب'}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

@@ -64,7 +64,10 @@ export function ProfileHero({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="truncate text-[21px] font-extrabold sm:text-[24px]">{name}</h1>
+            {/* قاعده‌ی سراسریِ globals به h1 رنگِ تیره می‌دهد — اینجا صریحاً سفید */}
+            <h1 className="truncate text-[21px] font-extrabold text-white [text-shadow:0_1px_10px_rgba(6,60,52,.35)] sm:text-[24px]">
+              {name}
+            </h1>
             {user.role === 'admin' ? (
               <Badge tone="neutral" icon={<Crown className="h-3.5 w-3.5" />}>
                 مدیر سیستم
@@ -82,7 +85,7 @@ export function ProfileHero({
           </div>
           {identifier ? (
             <p
-              className="mt-1 truncate text-[13px] font-medium text-white/85"
+              className="mt-1 truncate text-[13px] font-semibold text-white/90"
               dir="ltr"
               style={{ textAlign: 'right' }}
             >
@@ -90,7 +93,10 @@ export function ProfileHero({
             </p>
           ) : null}
           {memberSince ? (
-            <p className="mt-1.5 text-[11.5px] font-medium text-white/70">عضو از {memberSince}</p>
+            <p className="mt-1.5 flex items-center gap-1 text-[11.5px] font-semibold text-white/80">
+              <span aria-hidden="true" className="inline-block h-1 w-1 rounded-full bg-white/60" />
+              عضو از {memberSince}
+            </p>
           ) : null}
         </div>
 

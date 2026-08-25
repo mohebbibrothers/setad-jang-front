@@ -32,7 +32,7 @@ import { toLatinDigits } from '@/lib/auth-identifier';
 import { isoToJalali, jalaliToIso, type JalaliDate } from '@/lib/jalali';
 import { Segmented } from '@/components/auth/segmented';
 import { Alert, Field, inputClass, SubmitButton } from '@/components/auth/ui';
-import { JalaliDateField } from './JalaliDateField';
+import { JalaliCalendarField } from './JalaliCalendarField';
 import { SectionCard, extractFieldErrors } from './account-ui';
 import { mapProfileCompletionHint } from './completion-hint';
 
@@ -169,7 +169,7 @@ export function IdentitySection({
               maxLength={100}
               disabled={busy}
               onChange={(e) => set('first_name', e.target.value)}
-              placeholder="مثلاً علی"
+              placeholder="علی"
               className={inputClass(Boolean(fieldErrors.first_name))}
             />
           </Field>
@@ -180,7 +180,7 @@ export function IdentitySection({
               maxLength={100}
               disabled={busy}
               onChange={(e) => set('last_name', e.target.value)}
-              placeholder="مثلاً رضایی"
+              placeholder="رضایی"
               className={inputClass(Boolean(fieldErrors.last_name))}
             />
           </Field>
@@ -227,9 +227,9 @@ export function IdentitySection({
           </div>
         </div>
 
-        <JalaliDateField
+        <JalaliCalendarField
           id="acc-birth-date"
-          label="تاریخ تولد (شمسی)"
+          label="تاریخ تولد"
           value={drafts.birth}
           disabled={busy}
           onChange={(v) => set('birth', v)}
@@ -244,7 +244,7 @@ export function IdentitySection({
               maxLength={100}
               disabled={busy}
               onChange={(e) => set('province', e.target.value)}
-              placeholder="مثلاً تهران"
+              placeholder="تهران"
               className={inputClass(Boolean(fieldErrors.province))}
             />
           </Field>
@@ -255,7 +255,7 @@ export function IdentitySection({
               maxLength={100}
               disabled={busy}
               onChange={(e) => set('city', e.target.value)}
-              placeholder="مثلاً تهران"
+              placeholder="تهران"
               className={inputClass(Boolean(fieldErrors.city))}
             />
           </Field>
