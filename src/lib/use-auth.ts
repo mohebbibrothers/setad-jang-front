@@ -1,43 +1,73 @@
 'use client';
 
 /**
- * React hook mirror of `lib/auth-tokens` + `lib/auth`.
+ * React hook mirror of `lib/auth-tokens` + `lib/auth` + `lib/auth-user-cache`.
  *
  *   const { isAuthenticated, user, loading, refresh, logout } = useAuth();
  *
  *  - Subscribes to token-store change events so `isAuthenticated` reacts
  *    to login / logout / cross-tab session revocation in real time.
  *  - Lazily fetches `/auth/me/` the first time the hook is used with a
- *    valid token, and caches the result at module scope so the second
- *    tab hitting the same session doesn't hit the network again.
+ *    valid token.
+ *  - خودِ کاربر در استورِ مشترکِ auth-user-cache زندگی می‌کند؛ پس
+ *    میوتیشن‌های پروفایل (ویرایش نام، عکس، شناسه‌ها) با applyUser/
+ *    applyUserPatch همان‌جا همه‌ی مصرف‌کننده‌ها (هدر، صفحه‌ی حساب…)
+ *    را در همان فریم سینک می‌کنند — بدون رفرشِ دستی.
  */
 
 import { useEffect, useState, useCallback, useSyncExternalStore } from 'react';
 import { hasSession, onAuthChange, clearTokens } from './auth-tokens';
 import { getMe, logout as apiLogout, type AuthUser } from './auth';
+import {
+  getCachedUser,
+  setCachedUser,
+  patchCachedUser,
+  subscribeCachedUser,
+} from './auth-user-cache';
 
-let cachedUser: AuthUser | null = null;
-
-function subscribe(cb: () => void) {
+function subscribeSession(cb: () => void) {
   return onAuthChange(cb);
 }
-function getSnapshot() {
+function getSessionSnapshot() {
   return hasSession();
 }
-function getServerSnapshot() {
+function getSessionServerSnapshot() {
   return false;
+}
+function getUserServerSnapshot() {
+  return null;
+}
+
+/**
+ * جایگزینیِ کشِ کاربر با UserMeِ کاملِ تازه از سرور — برای میوتیشن‌هایی
+ * که قراردادشان بازگشتِ UserMeSerializer است:
+ *   updateMe · identifierAddVerify · identifierMakePrimary · refresh
+ */
+export function applyUser(user: AuthUser | null): void {
+  setCachedUser(user);
+}
+
+/**
+ * مرجِ تدریجیِ کش — برای خروجی‌هایی که UserMeِ کامل نیستند
+ * (مثلاً ProfileSerializer از /auth/profile/ → کلید profile).
+ */
+export function applyUserPatch(patch: Partial<AuthUser>): void {
+  patchCachedUser(patch);
 }
 
 export function useAuth() {
-  const isAuthenticated = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const [user, setUser] = useState<AuthUser | null>(cachedUser);
-  const [loading, setLoading] = useState<boolean>(isAuthenticated && !cachedUser);
+  const isAuthenticated = useSyncExternalStore(
+    subscribeSession,
+    getSessionSnapshot,
+    getSessionServerSnapshot,
+  );
+  const user = useSyncExternalStore(subscribeCachedUser, getCachedUser, getUserServerSnapshot);
+  const [loading, setLoading] = useState<boolean>(isAuthenticated && !getCachedUser());
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!hasSession()) {
-      cachedUser = null;
-      setUser(null);
+      setCachedUser(null);
       setLoading(false);
       return;
     }
@@ -45,14 +75,12 @@ export function useAuth() {
     setError(null);
     try {
       const fresh = await getMe();
-      cachedUser = fresh;
-      setUser(fresh);
+      setCachedUser(fresh);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خطا در دریافت اطلاعات کاربر');
       // If /auth/me/ still fails after the refresh cycle in api.ts we
       // definitively lack a valid session — clean up.
-      cachedUser = null;
-      setUser(null);
+      setCachedUser(null);
       clearTokens();
     } finally {
       setLoading(false);
@@ -61,18 +89,16 @@ export function useAuth() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      if (!cachedUser) refresh();
+      if (!getCachedUser()) refresh();
     } else {
-      cachedUser = null;
-      setUser(null);
+      setCachedUser(null);
       setLoading(false);
     }
   }, [isAuthenticated, refresh]);
 
   const logout = useCallback(async () => {
     await apiLogout();
-    cachedUser = null;
-    setUser(null);
+    setCachedUser(null);
   }, []);
 
   return { isAuthenticated, user, loading, error, refresh, logout };

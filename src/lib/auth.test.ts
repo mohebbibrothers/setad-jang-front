@@ -172,8 +172,11 @@ describe('endpoint های درخواست کد — بدنه و مسیر دقیق'
       identifier: 'x@y.com',
       code: '12345',
     });
-    await identifierMakePrimary('09120000000');
+    // قرارداد از IdentifierMakePrimarySerializer: فقط identifier_kind —
+    // نه مقدارِ شناسه! پاسخِ موفقِ هر دو، UserMeِ کامل است.
+    await identifierMakePrimary('phone');
     expect(lastCall().path).toBe('/auth/identifiers/make-primary/');
+    expect(JSON.parse(lastCall().init.body as string)).toEqual({ identifier_kind: 'phone' });
   });
 });
 

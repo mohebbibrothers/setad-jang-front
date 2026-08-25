@@ -113,16 +113,24 @@ export type AuthProfile = {
   address?: string | null;
 };
 
+/**
+ * قراردادِ دقیقِ AuthSessionSerializer — از apps/authentication/
+ * serializers.py خوانده شده؛ هیچ فیلدِ فرضی‌ای (device_type/location/
+ * is_current) در خروجیِ واقعی وجود ندارد.
+ */
 export type AuthSession = {
   id: number | string;
+  /** برچسب کوتاهِ دستگاه که بک‌اند از UA می‌سازد («Mobile browser»…) */
+  device_label?: string;
+  ip_address?: string | null;
   user_agent?: string;
-  ip_address?: string;
-  device_type?: string;
-  location?: string;
-  is_current?: boolean;
-  created_at?: string;
+  request_id?: string;
+  is_revoked?: boolean;
+  revoked_at?: string | null;
+  revoked_by_email?: string | null;
   last_seen_at?: string;
-  expires_at?: string;
+  expires_at?: string | null;
+  created_at?: string;
 };
 
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -245,20 +253,30 @@ export function identifierAddRequest(identifier: string): Promise<AuthChallengeR
   });
 }
 
+/**
+ * تأیید اتصال شناسه — بک‌اند در پاسخِ موفق UserMeSerializerِ کامل
+ * برمی‌گرداند (data = کاربرِ تازه)؛ مصرف‌کننده با همان، کشِ کاربر را
+ * یک‌جا سینک می‌کند.
+ */
 export function identifierAddVerify(payload: {
   identifier: string;
   code: string;
-}): Promise<{ message?: string }> {
-  return apiFetch('/auth/identifiers/add/verify/', {
+}): Promise<AuthUser> {
+  return apiFetch<AuthUser>('/auth/identifiers/add/verify/', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
-export function identifierMakePrimary(identifier: string): Promise<{ message?: string }> {
-  return apiFetch('/auth/identifiers/make-primary/', {
+/**
+ * تغییر شناسه‌ی اصلی — قرارداد از IdentifierMakePrimarySerializer:
+ * بدنه فقط { identifier_kind: 'email' | 'phone' } است (نه مقدارِ
+ * شناسه!) و پاسخِ موفق دوباره UserMeِ کامل است.
+ */
+export function identifierMakePrimary(identifierKind: IdentifierKind): Promise<AuthUser> {
+  return apiFetch<AuthUser>('/auth/identifiers/make-primary/', {
     method: 'POST',
-    body: JSON.stringify({ identifier }),
+    body: JSON.stringify({ identifier_kind: identifierKind }),
   });
 }
 
@@ -300,14 +318,43 @@ export function changePassword(payload: {
 /*  Sessions                                                                  */
 /* ───────────────────────────────────────────────────────────────────────── */
 
-export function listSessions(): Promise<AuthSession[]> {
-  return apiFetch<AuthSession[] | { results: AuthSession[] }>('/auth/sessions/').then((res) =>
-    Array.isArray(res) ? res : (res.results ?? []),
-  );
+export type SessionsPage = {
+  results: AuthSession[];
+  count: number;
+  /** آیا صفحه‌ی بعدی هست؟ (برای «نمایش بیشتر») */
+  next: string | null;
+};
+
+/**
+ * نشست‌ها — خروجیِ بک‌اند صفحه‌بندی‌شده است:
+ * envelope.data = { count, next, previous, results }  (StandardPagination)
+ * تابع هر دو شکلِ ممکن (آرایه‌ی خام/شیٔ صفحه‌بندی) را نرمال می‌کند.
+ */
+export function listSessionsPage(page = 1): Promise<SessionsPage> {
+  const qs = page > 1 ? `?page=${page}` : '';
+  return apiFetch<AuthSession[] | (Partial<SessionsPage> & { results?: AuthSession[] })>(
+    `/auth/sessions/${qs}`,
+  ).then((res) => {
+    if (Array.isArray(res)) return { results: res, count: res.length, next: null };
+    return {
+      results: res?.results ?? [],
+      count: res?.count ?? res?.results?.length ?? 0,
+      next: res?.next ?? null,
+    };
+  });
 }
 
-export function revokeSession(sessionId: number | string): Promise<{ message?: string }> {
-  return apiFetch(`/auth/sessions/${sessionId}/revoke/`, { method: 'POST' });
+/** سازگاریِ عقب‌رو: فقط لیستِ صفحه‌ی اول برمی‌گرداند */
+export function listSessions(): Promise<AuthSession[]> {
+  return listSessionsPage(1).then((p) => p.results);
+}
+
+/**
+ * لغوی یک نشست — بک‌اند AuthSessionِ به‌روزشده (is_revoked=true) برمی‌گرداند
+ * و همان را جایگزینِ ردیفِ لیست می‌کنیم (سینکِ دقیق بدون رفرشِ کامل).
+ */
+export function revokeSession(sessionId: number | string): Promise<AuthSession> {
+  return apiFetch<AuthSession>(`/auth/sessions/${sessionId}/revoke/`, { method: 'POST' });
 }
 
 /* ───────────────────────────────────────────────────────────────────────── */

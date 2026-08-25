@@ -13,7 +13,8 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, LogIn, LogOut, UserRound } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronDown, IdCard, LogIn, LogOut, UserRound } from 'lucide-react';
 import { useAuth } from '@/lib/use-auth';
 import { formatIdentifierForDisplay } from '@/lib/auth-identifier';
 import { usePresence } from '@/lib/use-presence';
@@ -157,6 +158,15 @@ export function AuthControls({
             ) : null}
           </div>
           <div className="p-1.5">
+            <Link
+              href="/profile"
+              role="menuitem"
+              onClick={() => setMenuOpen(false)}
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-bold text-ink-700 transition-colors hover:bg-ink-50"
+            >
+              <IdCard className="h-4 w-4 text-brand-600" />
+              حساب کاربری و پروفایل
+            </Link>
             <button
               type="button"
               role="menuitem"
