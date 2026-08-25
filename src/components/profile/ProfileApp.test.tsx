@@ -283,6 +283,69 @@ describe('شناسه‌های ورود', () => {
   });
 });
 
+describe('نشست‌ها — تشخیص و رفتارِ نشستِ فعلی', () => {
+  it('نشستِ جاری: آنلاین + همین دستگاه + هم‌اکنون، بدون دکمه‌ی لغو و با راهنمای خروج', async () => {
+    login();
+    const current: AuthSession = {
+      ...SESSION,
+      id: 99,
+      device_label: 'Chrome browser',
+      user_agent: navigator.userAgent, // دقیقاً UAِ همین مرورگر — قراردادِ تشخیص
+    };
+    listSessionsPageMock.mockResolvedValue({ results: [current], count: 1, next: null });
+    render(<ProfileApp />);
+    await waitFor(() => expect(screen.getByText('علی رضایی')).toBeTruthy());
+    switchTab('امنیت و نشست‌ها');
+
+    await waitFor(() => expect(screen.getByText('آنلاین')).toBeTruthy());
+    expect(screen.getByText('همین دستگاه')).toBeTruthy();
+    expect(screen.getByText('آخرین فعالیت: هم‌اکنون')).toBeTruthy();
+    // دکمه‌ی لغو برای نشستِ فعلی وجود ندارد…
+    expect(screen.queryByRole('button', { name: 'لغو نشست' })).toBeNull();
+    // …و راهنمایِ «خروج از حساب» دیده می‌شود
+    expect(screen.getByText(/برای پایان دادن به این نشست، از «خروج از حساب»/)).toBeTruthy();
+  });
+
+  it('نشستِ جاری همیشه بالای لیست می‌نشیند حتی اگر سرور آن را دیرتر فرستاده باشد', async () => {
+    login();
+    const other: AuthSession = { ...SESSION, id: 2 };
+    const current: AuthSession = { ...SESSION, id: 99, user_agent: navigator.userAgent };
+    // ترتیبِ سرور: اول «دیگری» — چون UAِ جاری با ۹۹ یکی است باید بالا بیاید
+    listSessionsPageMock.mockResolvedValue({
+      results: [other, current],
+      count: 2,
+      next: null,
+    });
+    render(<ProfileApp />);
+    await waitFor(() => expect(screen.getByText('علی رضایی')).toBeTruthy());
+    switchTab('امنیت و نشست‌ها');
+
+    await waitFor(() => expect(screen.getByText('آنلاین')).toBeTruthy());
+    const rows = document.querySelectorAll('ul li');
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    expect(rows[0].textContent).toContain('آنلاین');
+    // نشستِ دیگر قابلِ لغو است
+    expect(screen.getByRole('button', { name: 'لغو نشست' })).toBeTruthy();
+  });
+
+  it('نشستِ منقضی: بدج «منقضی شده» و بدون دکمه‌ی لغو', async () => {
+    login();
+    const expired: AuthSession = {
+      ...SESSION,
+      id: 3,
+      user_agent: 'Totally/Different',
+      expires_at: '2020-01-01T00:00:00Z',
+    };
+    listSessionsPageMock.mockResolvedValue({ results: [expired], count: 1, next: null });
+    render(<ProfileApp />);
+    await waitFor(() => expect(screen.getByText('علی رضایی')).toBeTruthy());
+    switchTab('امنیت و نشست‌ها');
+
+    await waitFor(() => expect(screen.getByText('منقضی شده')).toBeTruthy());
+    expect(screen.queryByRole('button', { name: 'لغو نشست' })).toBeNull();
+  });
+});
+
 describe('امنیت', () => {
   it('تغییر رمز: خطای «رمز فعلی اشتباه است» به فیلدِ خودش می‌چسبد', async () => {
     login();

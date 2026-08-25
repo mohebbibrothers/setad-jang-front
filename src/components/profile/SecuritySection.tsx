@@ -11,18 +11,29 @@
  *   GET  /auth/sessions/  → {count,next,previous,results[]} صفحه‌بندی‌شده
  *   POST /auth/sessions/<id>/revoke/ → AuthSessionِ به‌روز (is_revoked)
  *     و همان را جایگزینِ ردیف می‌کنیم — بدون رفرشِ کاملِ لیست.
- *   نکته‌ی صادقانه: خروجیِ سریالایزر فیلد «نشست فعلی» ندارد؛ پس ردیفی
- *     را به‌دروغ «این دستگاه» نمی‌نامیم — فقط هشدارِ شفاف می‌دهیم که لغوِ
- *     نشستِ فعلی، خروج از حساب است.
+ *
+ * نشستِ فعلی (تحلیلِ ریشه‌ای — lib/current-session):
+ *   بک‌اند is_current برنمی‌گرداند و last_seen_at فقط لحظه‌ی ساختِ نشست
+ *   مقدار می‌گیرد؛ ولی رشته‌ی کاملِ User-Agentِ مرورگرِ لاگین‌کننده را
+ *   ذخیره می‌کند. پس نشستِ فعلی = تازه‌ترین نشستِ فعالِ نامنقضی با UAِ
+ *   یکسان — و چون همین لحظه کاربر از همین مرورگر API صدا زده، نمایشِ
+ *   «آنلاین / هم‌اکنون» برایش صادقانه است. برای نشستِ فعلی دکمه‌ی لغو
+ *   رندر نمی‌شود (پایانِ آن = خروج از حساب در همین صفحه).
  * ═══════════════════════════════════════════════════════════════════
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { KeyRound, MonitorSmartphone, ShieldCheck, LogOut } from 'lucide-react';
 import { changePassword, revokeSession, type AuthSession, type SessionsPage } from '@/lib/auth';
 import { firstErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/use-auth';
 import { formatJalaliDateTime, formatRelativeFa } from '@/lib/persian-time';
+import {
+  clientUserAgent,
+  findCurrentSessionId,
+  isSessionExpired,
+  orderSessionsForDisplay,
+} from '@/lib/current-session';
 import { Alert, SubmitButton } from '@/components/auth/ui';
 import { PasswordField, isPasswordAcceptable } from '@/components/auth/PasswordField';
 import {
@@ -143,14 +154,19 @@ function ChangePasswordCard() {
 
 function SessionRow({
   session,
+  isCurrent,
   onRevoked,
 }: {
   session: AuthSession;
+  /** نشستِ همین مرورگر در همین لحظه — آنلاین و غیرقابلِ لغو */
+  isCurrent: boolean;
   onRevoked: (fresh: AuthSession) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const expired = isSessionExpired(session);
 
   const revoke = async () => {
     if (busy) return;
@@ -171,20 +187,32 @@ function SessionRow({
     <li
       className={cn(
         'rounded-2xl border p-4 transition-all duration-200',
-        session.is_revoked
-          ? 'border-ink-100 bg-ink-50/40 opacity-70'
-          : 'border-ink-100 bg-white hover:shadow-[0_10px_26px_-16px_rgba(15,20,32,.22)]',
+        isCurrent
+          ? 'border-brand-500/30 bg-gradient-to-l from-brand-50/70 via-white to-white shadow-[0_14px_30px_-18px_rgba(13,128,116,.45)]'
+          : session.is_revoked || expired
+            ? 'border-ink-100 bg-ink-50/40 opacity-70'
+            : 'border-ink-100 bg-white hover:shadow-[0_10px_26px_-16px_rgba(15,20,32,.22)]',
       )}
     >
       <div className="flex flex-wrap items-center gap-3">
         <span
           aria-hidden="true"
           className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-            session.is_revoked ? 'bg-ink-100 text-ink-400' : 'bg-brand-50 text-brand-600',
+            'relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+            isCurrent
+              ? 'bg-brand-500/15 text-brand-600'
+              : session.is_revoked || expired
+                ? 'bg-ink-100 text-ink-400'
+                : 'bg-brand-50 text-brand-600',
           )}
         >
           <DeviceIcon label={session.device_label} className="h-[20px] w-[20px]" />
+          {isCurrent ? (
+            <span className="absolute -left-1 -top-1 flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+              <span className="relative inline-flex h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+            </span>
+          ) : null}
         </span>
 
         <div className="min-w-0 flex-1">
@@ -192,8 +220,21 @@ function SessionRow({
             <h3 className="text-[13.5px] font-extrabold text-ink-900">
               {deviceLabelFa(session.device_label)}
             </h3>
-            {session.is_revoked ? (
+            {isCurrent ? (
+              <>
+                <Badge tone="ok">
+                  <span aria-hidden="true" className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  </span>
+                  آنلاین
+                </Badge>
+                <Badge tone="neutral">همین دستگاه</Badge>
+              </>
+            ) : session.is_revoked ? (
               <Badge tone="danger">لغو شده</Badge>
+            ) : expired ? (
+              <Badge tone="neutral">منقضی شده</Badge>
             ) : (
               <Badge tone="ok">فعال</Badge>
             )}
@@ -204,16 +245,30 @@ function SessionRow({
                 IP: {session.ip_address}
               </span>
             ) : null}
-            {session.last_seen_at ? (
-              <span>آخرین فعالیت: {formatRelativeFa(session.last_seen_at)}</span>
-            ) : null}
-            {session.expires_at ? (
+            {isCurrent ? (
+              <>
+                <span className="font-bold text-emerald-600">آخرین فعالیت: هم‌اکنون</span>
+                {session.created_at ? (
+                  <span>ورود: {formatJalaliDateTime(session.created_at)}</span>
+                ) : null}
+              </>
+            ) : (
+              session.last_seen_at && (
+                <span>آخرین فعالیت: {formatRelativeFa(session.last_seen_at)}</span>
+              )
+            )}
+            {session.expires_at && !expired ? (
               <span>انقضا: {formatJalaliDateTime(session.expires_at)}</span>
             ) : null}
           </p>
         </div>
 
-        {!session.is_revoked ? (
+        {/* نشستِ فعلی و سوابقِ بسته‌شده، دکمه‌ی لغو ندارند */}
+        {isCurrent ? (
+          <span className="max-w-[220px] text-[11px] font-medium leading-5 text-ink-400">
+            برای پایان دادن به این نشست، از «خروج از حساب» در همین صفحه استفاده کنید.
+          </span>
+        ) : !session.is_revoked && !expired ? (
           confirming ? (
             <div className="flex items-center gap-2">
               <GhostButton danger busy={busy} onClick={revoke}>
@@ -253,24 +308,31 @@ export function SessionsCard({
   onLoadMore: () => void;
   loadingMore: boolean;
 }) {
-  const sessions = sessionsPage?.results ?? [];
+  const ua = useMemo(() => clientUserAgent(), []);
+  const sessions = useMemo(() => sessionsPage?.results ?? [], [sessionsPage]);
+  const currentId = useMemo(() => findCurrentSessionId(sessions, ua), [sessions, ua]);
+  const ordered = useMemo(
+    () => orderSessionsForDisplay(sessions, currentId),
+    [sessions, currentId],
+  );
+
   return (
     <SectionCard
       icon={<MonitorSmartphone className="h-[18px] w-[18px]" />}
       title="نشست‌ها و دستگاه‌ها"
-      description="هر ورودی که هنوز معتبر است این‌جا دیده می‌شود. لغوی نشستِ فعلی هم‌ارزِ خروج از حساب است."
+      description="دستگاه‌هایی که به حساب شما وارد شده‌اند. نشستِ فعلی با «آنلاین» مشخص است و پایانِ آن فقط از راه «خروج از حساب» انجام می‌شود؛ بقیه را می‌توانید همین‌جا لغو کنید."
       actions={
-        sessions.length ? <ShieldCheck className="h-4 w-4 text-brand-500" aria-label="امن" /> : null
+        ordered.length ? <ShieldCheck className="h-4 w-4 text-brand-500" aria-label="امن" /> : null
       }
     >
-      {sessions.length === 0 ? (
+      {ordered.length === 0 ? (
         <p className="rounded-xl bg-ink-50/60 px-4 py-6 text-center text-[12.5px] font-medium text-ink-500">
           نشستِ فعالی پیدا نشد.
         </p>
       ) : (
         <ul className="space-y-3">
-          {sessions.map((s) => (
-            <SessionRow key={s.id} session={s} onRevoked={onPatch} />
+          {ordered.map((s) => (
+            <SessionRow key={s.id} session={s} isCurrent={s.id === currentId} onRevoked={onPatch} />
           ))}
         </ul>
       )}
