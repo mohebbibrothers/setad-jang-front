@@ -605,26 +605,28 @@ export function TabyinSection({
               transition={{ duration: 0.28 }}
               className={
                 isSparse
-                  ? 'flex flex-wrap items-start justify-center gap-3.5 md:gap-4'
-                  : // ریتمِ موبایل‌محور: کاشیِ ۱۲۰pxِ قبلی در دو ستونِ
-                    // گوشی (~۱۵۸px پهنا) سطحِ کاریِ کمی برای تصویر+عنوان
-                    // می‌داد و دیوار «فشرده و به‌هم‌چسبیده» به‌نظر
-                    // می‌رسید (گزارشِ کارفرما). ردیف‌های بلندتر + گپِ
-                    // بازتر، نسبتِ تصویرِ متعادل (~۱:۱ برای کاشی‌های
-                    // کوتاه) و فضای تنفسیِ استاندارد می‌سازند.
+                  ? 'flex flex-wrap items-start justify-center gap-4 md:gap-5'
+                  : // چیدمانِ تحریریه‌ای (editorial) برای موبایل: کاشیِ اول
+                    // صفحه «شاخص» است و در دو ستونِ گوشی تمام‌عرضِ دو
+                    // ردیف می‌شود (max-md:col-span-2 در TabyinTile) — یک
+                    // کارتِ بزرگِ لیدر + بقیه‌ی دیوار. گپِ ۱۶px و ردیف‌های
+                    // ۱۵۰/۱۶۵/۱۷۵px فضای تنفسِ استاندارد می‌سازند؛ دیوارِ
+                    // مربع‌های کوچکِ به‌هم‌چسبیده‌ی قبلی (گزارشِ کارفرما)
+                    // با این ریتم جایگزین شد. دسکتاپ دست‌نخورده می‌ماند
+                    // (۴×۳ با دو کاشیِ بلند در اسلات‌های ۰ و ۱).
                     'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ' +
                     'auto-rows-[150px] sm:auto-rows-[165px] md:auto-rows-[175px]' +
-                    'gap-3.5 sm:gap-4'
+                    'gap-4 md:gap-5'
               }
               style={isSparse ? undefined : { gridAutoFlow: 'dense' }}
             >
               {visible.map((it, i) => {
-                // ── PAGE-LOCAL tall pattern ─────────────────────────────
-                // We need EXACTLY 2 tall + 8 short on every page so:
-                //   tall(=2 slots) × 2 + short(=1 slot) × 8 = 12 slots
-                //   - 4-col: 3 rows × 4 = 12 ✓
-                //   - 3-col: 4 rows × 3 = 12 ✓
-                //   - 2-col: 6 rows × 2 = 12 ✓
+                // ── PAGE-LOCAL span pattern ─────────────────────────────
+                // Desktop (4-col): EXACTLY 2 tall + 8 short per page so
+                //   tall(=2 slots) × 2 + short(=1 slot) × 8 = 12 slots = 3 ردیف
+                // Mobile (2-col): slot 0 علاوه بر row-span-2 پان‌دوستون هم
+                //   می‌شود (کارتِ شاخص؛ max-md:col-span-2) ⇒ مجموع =
+                //   2×2 + 1×2 + 8 = ۱۴ سلول = ۷ ردیفِ مرتب با dense-flow.
                 // We place tall on slots 0 and 1 — the EARLIEST positions —
                 // so `grid-auto-flow: dense` never has to spill a tall into
                 // the bottom row, where it would push the grid past its
@@ -723,21 +725,27 @@ function TabyinTile({
   // The data-driven `it.tall` is intentionally ignored here.
   // In SPARSE mode every tile is short (a single centred row).
   const tall = !sparse && forceTall;
+  // کاشیِ شاخصِ موبایل: اولین آیتمِ هر صفحه در دو ستونِ گوشی تمام‌عرضِ
+  // دو ردیف می‌شود (الگوی تحریریه‌ای: لیدر بزرگ + دیوار) — فقط <md
+  // تا ریتمِ دسکتاپ (۴×۳) حفظ شود. در صفحه‌ی ناقصِ آخر که tall نیست،
+  // featured به‌تنهایی یک باندِ خوش‌سایز می‌سازد.
+  const featured = !sparse && index === 0;
+  // کارتِ شاخص در موبایل ~تمام‌عرض رندر می‌شود — تصویرِ درست‌سایز می‌خواهد
+  const imageSizes = featured ? '(max-width: 768px) 96vw, 22vw' : '(max-width: 768px) 46vw, 22vw';
   const tileHref = `/tabyin/${it.slug}`;
   const tileTarget = undefined;
   const tileRel = undefined;
 
   // Width / height presets for sparse mode mirror each breakpoint's
-  // column count so the visual rhythm stays identical to the dense grid.
+  // column count AND the dense grid's row track + gap so the visual
+  // rhythm stays identical to the dense grid.
   const sparseSizing = sparse
-    ? 'w-[calc((100%-0.75rem)/2)] h-[120px] ' +
-      'sm:h-[140px] ' +
-      'md:w-[calc((100%-2*1rem)/3)] md:h-[160px] ' +
-      'lg:w-[calc((100%-3*1rem)/4)] ' +
+    ? 'w-[calc((100%-1rem)/2)] h-[150px] ' +
+      'sm:h-[165px] ' +
+      'md:w-[calc((100%-2*1.25rem)/3)] md:h-[175px] ' +
+      'lg:w-[calc((100%-3*1.25rem)/4)] ' +
       'flex-none'
-    : tall
-      ? 'row-span-2'
-      : 'row-span-1';
+    : `${tall ? 'row-span-2' : 'row-span-1'}${featured ? ' max-md:col-span-2' : ''}`;
 
   return (
     <motion.article
@@ -836,7 +844,7 @@ function TabyinTile({
               alt={it.title || 'محتوای تبیینی'}
               variant="tabyin"
               fill
-              sizes="(max-width: 768px) 45vw, 22vw"
+              sizes={imageSizes}
               className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
           )}
@@ -850,9 +858,14 @@ function TabyinTile({
             aria-hidden="true"
             className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/80 via-black/30 to-transparent"
           />
-          {/* Title overlay (only when there's a title) */}
+          {/* Title overlay (only when there's a title) — روی کارتِ شاخصِ
+              موبایل یک پله بزرگ‌تر تا ریتمِ «لیدر» خودش را بگیرد */}
           {it.title && (
-            <p className="absolute inset-x-3 bottom-3 line-clamp-2 text-[12.5px] font-extrabold leading-5 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,.6)] md:text-[13px]">
+            <p
+              className={`absolute inset-x-3 bottom-3 line-clamp-2 text-[12.5px] font-extrabold leading-5 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,.6)] md:text-[13px] ${
+                featured ? 'max-md:text-[15px] max-md:leading-6' : ''
+              }`}
+            >
               {it.title}
             </p>
           )}
@@ -883,7 +896,7 @@ function TabyinTile({
             alt={it.title || 'محتوای تبیینی'}
             variant="tabyin"
             fill
-            sizes="(max-width: 768px) 45vw, 22vw"
+            sizes={imageSizes}
           />
         </Link>
       )}

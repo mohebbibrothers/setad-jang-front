@@ -6,9 +6,10 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
  *   • مهمان → دکمه‌ی ورود/ثبت‌نام
  *   • واردشده بدون عکس → آواتارِ حرفِ اول
  *   • واردشده با عکس → تصویرِ واقعیِ آواتار (URL مطلق‌شده نسبت به بک‌اند)
- *   • منو: لنگرِ لبه‌ی چپِ تریگر (قراردادِ left-0 — تریگر در هدرِ RTL به
- *     لبه‌ی چپِ ویوپورت می‌چسبد و وسط‌چینِ قبلی روی گوشی از صفحه بیرون
- *     می‌زد) + سقفِ پهنای viewport-safe + آیتم‌های وسط‌چین + لینک پروفایل.
+ *   • منو: جای‌گذاریِ هوشمند (auto-flip + گیرِ افقیِ viewport-safe +
+ *     نوکِ فلِّش) — جای‌گزینِ لنگرهای ثابتی که در لبه‌ی هدر بیرون
+ *     می‌زدند و در کفِ شیت زیرِ صفحه می‌افتادند.
+ *   • variant=block → کارتِ کاملِ حساب (نام + شناسه) برای کفِ شیت.
  */
 
 vi.mock('next/link', () => ({
@@ -84,25 +85,67 @@ describe('AuthControls', () => {
     expect(img!.className).toContain('object-cover');
   });
 
-  it('منو: لنگرِ لبه‌ی چپِ تریگر (viewport-safe) + آیتم‌های وسط‌چین + لینک پروفایل', () => {
+  it('منو: جای‌گذاریِ هوشمند (پایینِ تریگر به‌صورت پیش‌فرض) + نوکِ فلِّش + لینک پروفایل', () => {
     login();
     render(<AuthControls onOpen={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: 'حساب کاربری علی رضایی' }));
 
     const menu = screen.getByRole('menu', { name: 'منوی حساب کاربری' });
-    // قراردادِ جای‌گذاری: منو از لبه‌ی چپِ تریگر «به داخلِ صفحه» باز
-    // می‌شود تا روی گوشی (تریگرِ چسبیده به لبه‌ی چپِ ویوپورت در هدرِ RTL)
-    // بیرونِ صفحه نرود؛ سقفِ پهنا هم viewport-safe است.
+    // قراردادِ جای‌گذاری: لایه‌ی بیرونی با anchor مطلق و سمتِ بازشو از
+    // rectِ واقعی تصمیم می‌گیرد — در happy-dom فضای پایین صفر-rect
+    // همیشه جادار است → down (نه top ثابت، نه translate وسط‌چین).
     const wrapper = menu.parentElement as HTMLElement;
-    expect(wrapper.className).toContain('left-0');
-    expect(wrapper.className).toContain('max-w-[calc(100vw-2rem)]');
+    expect(wrapper.style.top).toContain('calc(100%');
+    expect(wrapper.style.bottom).toBe('');
     expect(wrapper.className).not.toContain('-translate-x-1/2');
+    // نوکِ فلِّشِ منو همراه است
+    expect(screen.getByTestId('account-menu-caret')).toBeTruthy();
 
     const profileItem = screen.getByRole('menuitem', { name: /حساب کاربری و پروفایل/ });
     expect(profileItem.getAttribute('href')).toBe('/profile');
-    expect(profileItem.className).toContain('justify-center');
-    expect(screen.getByRole('menuitem', { name: 'خروج از حساب' }).className).toContain(
-      'justify-center',
-    );
+    expect(screen.getByRole('menuitem', { name: 'خروج از حساب' })).toBeTruthy();
+  });
+
+  it('منو: نزدیکِ کفِ ویوپورت، به‌طور خودکار رو به بالا باز می‌شود (auto-flip)', () => {
+    login();
+    render(<AuthControls onOpen={() => {}} />);
+    const chip = screen.getByRole('button', { name: 'حساب کاربری علی رضایی' });
+    const wrap = chip.parentElement as HTMLElement;
+    // تریگر را به کفِ ویوپورت می‌چسبانیم: فضای پایین ≈ ۱۶px
+    wrap.getBoundingClientRect = () =>
+      ({
+        top: window.innerHeight - 60,
+        bottom: window.innerHeight - 16,
+        left: 59,
+        right: 304,
+        width: 245,
+        height: 44,
+        x: 59,
+        y: window.innerHeight - 60,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    fireEvent.click(chip);
+
+    const menu = screen.getByRole('menu', { name: 'منوی حساب کاربری' });
+    const wrapper = menu.parentElement as HTMLElement;
+    expect(wrapper.style.bottom).toContain('calc(100%');
+    expect(wrapper.style.top).toBe('');
+  });
+
+  it('variant=block: کارتِ کاملِ حساب با نام + شناسه + منوی تمام‌عرض', () => {
+    login();
+    render(<AuthControls onOpen={() => {}} variant="block" />);
+
+    const chip = screen.getByRole('button', { name: 'حساب کاربری علی رضایی' });
+    expect(chip.textContent).toContain('user@example.com');
+
+    fireEvent.click(chip);
+    const menu = screen.getByRole('menu', { name: 'منوی حساب کاربری' });
+    const wrapper = menu.parentElement as HTMLElement;
+    expect(wrapper.className).toContain('w-full');
+    // در حالت block نوکِ فلِّش وسطِ کارت (نه گیر به لبه) قرار می‌گیرد
+    const caret = screen.getByTestId('account-menu-caret') as HTMLElement;
+    expect(caret.style.left).not.toBe('');
   });
 });
