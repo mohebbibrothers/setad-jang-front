@@ -268,7 +268,9 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                {/* روی گوشی، کنش‌ها به خطِ تمام‌عرضِ خودشان می‌روند تا
+                    کنارِ عنوان/شناسه له نشوند (ریسپانسیوِ ردیف‌ها). */}
+                <div className="flex flex-wrap items-center gap-2 max-sm:basis-full max-sm:justify-end">
                   {!card.value && !flowOpen ? (
                     <GhostButton onClick={() => startFlow(card.kind, null)} disabled={busy}>
                       افزودن {card.title}

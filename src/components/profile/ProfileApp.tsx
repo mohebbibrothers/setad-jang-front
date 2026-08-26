@@ -38,9 +38,23 @@ import { SecuritySection } from './SecuritySection';
 type Tab = 'identity' | 'identifiers' | 'security';
 
 const TABS = [
-  { value: 'identity', label: 'اطلاعات حساب', icon: <IdCard className="h-4 w-4" /> },
-  { value: 'identifiers', label: 'شناسه‌ها', icon: <KeyRound className="h-4 w-4" /> },
-  { value: 'security', label: 'امنیت و نشست‌ها', icon: <ShieldCheck className="h-4 w-4" /> },
+  // short: نسخه‌ی فشرده‌ی برچسب برای گوشی؛ سه تبِ سه‌ستونه در عرضِ ~۳۶۰px
+  // هرکدام فقط ~۹۰px جا دارند و برچسب‌های کامل (مخصوصاً «امنیت و
+  // نشست‌ها» + آیکن) از سلول خارج می‌زدند و کپسول «در هم» می‌رفت
+  // (گزارشِ کارفرما). نامِ دسترس‌پذیر همچنان برچسبِ کامل می‌ماند.
+  { value: 'identity', label: 'اطلاعات حساب', short: 'حساب', icon: <IdCard className="h-4 w-4" /> },
+  {
+    value: 'identifiers',
+    label: 'شناسه‌ها',
+    short: 'شناسه‌ها',
+    icon: <KeyRound className="h-4 w-4" />,
+  },
+  {
+    value: 'security',
+    label: 'امنیت و نشست‌ها',
+    short: 'امنیت',
+    icon: <ShieldCheck className="h-4 w-4" />,
+  },
 ] as const;
 
 /* ── اسکلتِ بارگذاری (بدون جهش چیدمان) ─────────────────────────────────── */
@@ -202,7 +216,7 @@ export function ProfileApp() {
             onChange={setTab}
             indicatorTestId="profile-tab-indicator"
             className="!bg-transparent !shadow-none !ring-0 sm:bg-ink-50 sm:shadow-[inset_0_1px_2px_rgba(15,20,32,0.06)] sm:ring-1 sm:ring-inset sm:ring-ink-900/[0.04]"
-            buttonClassName="flex h-11 items-center justify-center gap-1.5 rounded-lg text-[12.5px] font-bold transition-[color,transform] duration-150 active:scale-[0.97] sm:text-[13px]"
+            buttonClassName="flex h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-1 text-[12.5px] font-bold transition-[color,transform] duration-150 active:scale-[0.97] sm:text-[13px]"
             activeButtonClassName="text-brand-700"
             inactiveButtonClassName="text-ink-500 hover:text-ink-700"
             options={TABS.map((t) => ({
@@ -210,7 +224,13 @@ export function ProfileApp() {
               label: (
                 <>
                   {t.icon}
-                  <span>{t.label}</span>
+                  {/* دو نسخه‌ی متنی: کامل ≥sm و کوتاه <sm. نسخه‌ی کوتاه
+                      aria-hidden است تا نامِ دسترس‌پذیرِ تب (صفحه‌خوان‌ها و
+                      کوئریِ byRole در تست‌ها) همیشه برچسبِ کامل بماند. */}
+                  <span className="hidden sm:inline">{t.label}</span>
+                  <span aria-hidden="true" className="sm:hidden">
+                    {t.short}
+                  </span>
                 </>
               ),
             }))}

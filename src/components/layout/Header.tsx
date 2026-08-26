@@ -139,14 +139,17 @@ export function Header() {
         )}
         aria-hidden={!open}
       >
+        {/* لایه‌ی تیره‌ی پشت شیت: touch-none یعنی ژستِ لمسی روی این ناحیه
+            هرگز به اسکرولِ صفحه‌ی زیرین نشت نمی‌کند (scroll-chaining)؛
+            قفلِ خود صفحه هم iOS-Safe در scroll-lock انجام می‌شود. */}
         <button
-          className="absolute inset-0 bg-ink-900/45"
+          className="absolute inset-0 touch-none bg-ink-900/45"
           onClick={() => setOpen(false)}
           aria-label="بستن منو"
         />
         <aside
           className={cn(
-            'absolute right-0 top-0 h-full w-[88%] max-w-sm bg-white shadow-float',
+            'absolute right-0 top-0 h-full w-[88%] max-w-sm overscroll-contain bg-white shadow-float',
             'flex flex-col transition-transform duration-300 ease-out',
             open ? 'translate-x-0' : 'translate-x-full',
           )}
@@ -165,7 +168,7 @@ export function Header() {
             </button>
           </div>
           <nav
-            className="flex flex-1 flex-col gap-1 overflow-y-auto p-4"
+            className="flex flex-1 flex-col gap-1 overflow-y-auto overscroll-contain p-4"
             aria-label="ناوبری موبایل"
           >
             {NAV.map((item) => (

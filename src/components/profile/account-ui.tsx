@@ -105,6 +105,7 @@ export function GhostButton({
   danger,
   children,
   type = 'button',
+  className,
 }: {
   onClick?: () => void;
   disabled?: boolean;
@@ -112,6 +113,8 @@ export function GhostButton({
   danger?: boolean;
   children: ReactNode;
   type?: 'button' | 'submit';
+  /** افزودنیِ اختیاری (ادغام با cn) — مثلاً رفتارهای ریسپانسیوِ محلی */
+  className?: string;
 }) {
   return (
     <button
@@ -124,6 +127,7 @@ export function GhostButton({
         danger
           ? 'border-rose-200 bg-white text-rose-600 hover:border-rose-300 hover:bg-rose-50'
           : 'border-ink-200 bg-white text-ink-700 hover:border-brand-500/40 hover:bg-brand-50/40 hover:text-brand-700',
+        className,
       )}
     >
       {busy ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.4} /> : null}

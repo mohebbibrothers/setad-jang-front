@@ -274,14 +274,17 @@ function SessionRow({
           </p>
         </div>
 
-        {/* نشستِ فعلی و سوابقِ بسته‌شده، دکمه‌ی لغو ندارند */}
+        {/* نشستِ فعلی و سوابقِ بسته‌شده، دکمه‌ی لغو ندارند. روی گوشی
+            (max-sm) هر نوع «کنش» به خطِ تمام‌عرضِ خودش می‌رود
+            (basis-full) تا کنارِ آیکن+متن له نشود و ردیف «در هم»
+            نرود (گزارشِ کارفرما). */}
         {isCurrent ? (
-          <span className="max-w-[220px] text-[11px] font-medium leading-5 text-ink-400">
+          <span className="max-w-[220px] text-[11px] font-medium leading-5 text-ink-400 max-sm:max-w-none max-sm:basis-full">
             برای پایان دادن به این نشست، از «خروج از حساب» در همین صفحه استفاده کنید.
           </span>
         ) : !session.is_revoked && !expired ? (
           confirming ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 max-sm:basis-full max-sm:justify-end">
               <GhostButton danger busy={busy} onClick={revoke}>
                 بله، لغو شود
               </GhostButton>
@@ -295,7 +298,9 @@ function SessionRow({
               </button>
             </div>
           ) : (
-            <GhostButton onClick={() => setConfirming(true)}>لغو نشست</GhostButton>
+            <GhostButton onClick={() => setConfirming(true)} className="max-sm:basis-full">
+              لغو نشست
+            </GhostButton>
           )
         ) : null}
       </div>

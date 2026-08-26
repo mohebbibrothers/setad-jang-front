@@ -6,8 +6,9 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
  *   • مهمان → دکمه‌ی ورود/ثبت‌نام
  *   • واردشده بدون عکس → آواتارِ حرفِ اول
  *   • واردشده با عکس → تصویرِ واقعیِ آواتار (URL مطلق‌شده نسبت به بک‌اند)
- *   • منو: دقیقاً وسط‌چینِ تریگر (قراردادِ -translate-x-1/2) + آیتم‌های
- *     وسط‌چین + لینک پروفایل.
+ *   • منو: لنگرِ لبه‌ی چپِ تریگر (قراردادِ left-0 — تریگر در هدرِ RTL به
+ *     لبه‌ی چپِ ویوپورت می‌چسبد و وسط‌چینِ قبلی روی گوشی از صفحه بیرون
+ *     می‌زد) + سقفِ پهنای viewport-safe + آیتم‌های وسط‌چین + لینک پروفایل.
  */
 
 vi.mock('next/link', () => ({
@@ -83,16 +84,19 @@ describe('AuthControls', () => {
     expect(img!.className).toContain('object-cover');
   });
 
-  it('منو: وسط‌چینِ دقیقِ زیر تریگر + آیتم‌های وسط‌چین + لینک پروفایل', () => {
+  it('منو: لنگرِ لبه‌ی چپِ تریگر (viewport-safe) + آیتم‌های وسط‌چین + لینک پروفایل', () => {
     login();
     render(<AuthControls onOpen={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: 'حساب کاربری علی رضایی' }));
 
     const menu = screen.getByRole('menu', { name: 'منوی حساب کاربری' });
-    // قراردادِ جای‌گذاری: wrapper اطرافِ منو وسط‌چینِ تریگر است
+    // قراردادِ جای‌گذاری: منو از لبه‌ی چپِ تریگر «به داخلِ صفحه» باز
+    // می‌شود تا روی گوشی (تریگرِ چسبیده به لبه‌ی چپِ ویوپورت در هدرِ RTL)
+    // بیرونِ صفحه نرود؛ سقفِ پهنا هم viewport-safe است.
     const wrapper = menu.parentElement as HTMLElement;
-    expect(wrapper.className).toContain('left-1/2');
-    expect(wrapper.className).toContain('-translate-x-1/2');
+    expect(wrapper.className).toContain('left-0');
+    expect(wrapper.className).toContain('max-w-[calc(100vw-2rem)]');
+    expect(wrapper.className).not.toContain('-translate-x-1/2');
 
     const profileItem = screen.getByRole('menuitem', { name: /حساب کاربری و پروفایل/ });
     expect(profileItem.getAttribute('href')).toBe('/profile');
