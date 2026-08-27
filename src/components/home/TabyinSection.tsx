@@ -606,27 +606,29 @@ export function TabyinSection({
               className={
                 isSparse
                   ? 'flex flex-wrap items-start justify-center gap-4 md:gap-5'
-                  : // چیدمانِ تحریریه‌ای (editorial) برای موبایل: کاشیِ اول
-                    // صفحه «شاخص» است و در دو ستونِ گوشی تمام‌عرضِ دو
-                    // ردیف می‌شود (max-md:col-span-2 در TabyinTile) — یک
-                    // کارتِ بزرگِ لیدر + بقیه‌ی دیوار. گپِ ۱۶px و ردیف‌های
-                    // ۱۵۰/۱۶۵/۱۷۵px فضای تنفسِ استاندارد می‌سازند؛ دیوارِ
-                    // مربع‌های کوچکِ به‌هم‌چسبیده‌ی قبلی (گزارشِ کارفرما)
-                    // با این ریتم جایگزین شد. دسکتاپ دست‌نخورده می‌ماند
-                    // (۴×۳ با دو کاشیِ بلند در اسلات‌های ۰ و ۱).
-                    'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ' +
-                    'auto-rows-[150px] sm:auto-rows-[165px] md:auto-rows-[175px]' +
-                    'gap-4 md:gap-5'
+                  : // موبایل (<sm): پشته‌ی کارت‌های رسانه‌ایِ تمام‌عرض با
+                    // نسبتِ ۱۶:۱۰ — جایگزینِ دیوارِ مربع‌های کوچک. دو
+                    // گزارشِ متوالیِ کارفرما نشان داد گریدِ دوتاییِ
+                    // کاشی‌های ۱۵۰px روی گوشی «در هم و به‌هم‌چسبیده»
+                    // می‌نماید؛ الگوی استانداردِ اپ‌های رسانه‌ای (کارتِ
+                    // بزرگِ immersive + عنوانِ خوانا) جایگزین شد.
+                    // ≥sm: همان گریدِ متراکمِ قبلی (۲/۳/۴ ستونه + لیدرِ
+                    // شاخص در باندِ sm–md) — دسکتاپ کاملاً دست‌نخورده.
+                    'flex flex-col gap-4 ' +
+                    'sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' +
+                    'sm:auto-rows-[165px] md:auto-rows-[175px]' +
+                    'sm:gap-4 md:gap-5'
               }
               style={isSparse ? undefined : { gridAutoFlow: 'dense' }}
             >
               {visible.map((it, i) => {
-                // ── PAGE-LOCAL span pattern ─────────────────────────────
+                // ── PAGE-LOCAL span pattern (≥sm grid) ─────────────────
                 // Desktop (4-col): EXACTLY 2 tall + 8 short per page so
                 //   tall(=2 slots) × 2 + short(=1 slot) × 8 = 12 slots = 3 ردیف
-                // Mobile (2-col): slot 0 علاوه بر row-span-2 پان‌دوستون هم
+                // باندِ sm–md (2-col): اسلاتِ ۰ علاوه بر row-span-2 پان‌دوستون
                 //   می‌شود (کارتِ شاخص؛ max-md:col-span-2) ⇒ مجموع =
                 //   2×2 + 1×2 + 8 = ۱۴ سلول = ۷ ردیفِ مرتب با dense-flow.
+                // گوشیِ <sm: پشته‌ی کارت‌های تمام‌عرض — اسپن‌ها خنثی‌اند.
                 // We place tall on slots 0 and 1 — the EARLIEST positions —
                 // so `grid-auto-flow: dense` never has to spill a tall into
                 // the bottom row, where it would push the grid past its
@@ -725,13 +727,12 @@ function TabyinTile({
   // The data-driven `it.tall` is intentionally ignored here.
   // In SPARSE mode every tile is short (a single centred row).
   const tall = !sparse && forceTall;
-  // کاشیِ شاخصِ موبایل: اولین آیتمِ هر صفحه در دو ستونِ گوشی تمام‌عرضِ
-  // دو ردیف می‌شود (الگوی تحریریه‌ای: لیدر بزرگ + دیوار) — فقط <md
-  // تا ریتمِ دسکتاپ (۴×۳) حفظ شود. در صفحه‌ی ناقصِ آخر که tall نیست،
-  // featured به‌تنهایی یک باندِ خوش‌سایز می‌سازد.
+  // کاشیِ شاخص در باندِ sm–md (دو ستون): اولین آیتم تمام‌عرضِ دو ردیف
+  // می‌شود (لیدر + دیوار). روی گوشیِ <sm چیدمان پشته‌ایِ تمام‌عرض است
+  // و این اسپن‌ها خنثی‌اند (کانتینر flex).
   const featured = !sparse && index === 0;
-  // کارتِ شاخص در موبایل ~تمام‌عرض رندر می‌شود — تصویرِ درست‌سایز می‌خواهد
-  const imageSizes = featured ? '(max-width: 768px) 96vw, 22vw' : '(max-width: 768px) 46vw, 22vw';
+  // سایزِ درخواستیِ تصویر: گوشی ≈ تمام‌عرض (۹۲vw)، تبلت نصف‌عرض، دسکتاپ ربع
+  const imageSizes = '(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 22vw';
   const tileHref = `/tabyin/${it.slug}`;
   const tileTarget = undefined;
   const tileRel = undefined;
@@ -745,7 +746,9 @@ function TabyinTile({
       'md:w-[calc((100%-2*1.25rem)/3)] md:h-[175px] ' +
       'lg:w-[calc((100%-3*1.25rem)/4)] ' +
       'flex-none'
-    : `${tall ? 'row-span-2' : 'row-span-1'}${featured ? ' max-md:col-span-2' : ''}`;
+    : // روی گوشی: کارتِ رسانه‌ای با نسبتِ ثابت (row-spanها در فلکس خنثی
+      // می‌شوند)؛ ≥sm: اسپن‌های گریدِ متراکم.
+      `max-sm:aspect-[16/10] max-sm:w-full ${tall ? 'row-span-2' : 'row-span-1'}${featured ? ' max-md:col-span-2' : ''}`;
 
   return (
     <motion.article
@@ -858,11 +861,11 @@ function TabyinTile({
             aria-hidden="true"
             className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/80 via-black/30 to-transparent"
           />
-          {/* Title overlay (only when there's a title) — روی کارتِ شاخصِ
-              موبایل یک پله بزرگ‌تر تا ریتمِ «لیدر» خودش را بگیرد */}
+          {/* Title overlay (only when there's a title) — روی کارت‌های
+              بزرگِ موبایل یک پله درشت‌تر تا خوانایی از فاصله‌ی طبیعی */}
           {it.title && (
             <p
-              className={`absolute inset-x-3 bottom-3 line-clamp-2 text-[12.5px] font-extrabold leading-5 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,.6)] md:text-[13px] ${
+              className={`absolute inset-x-3 bottom-3 line-clamp-2 text-[14px] font-extrabold leading-6 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,.6)] sm:text-[12.5px] sm:leading-5 md:text-[13px] ${
                 featured ? 'max-md:text-[15px] max-md:leading-6' : ''
               }`}
             >

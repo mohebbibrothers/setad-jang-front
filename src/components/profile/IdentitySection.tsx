@@ -292,7 +292,8 @@ export function IdentitySection({
         ) : null}
 
         <div className="flex items-center gap-3">
-          <SubmitButton loading={busy} disabled={!dirty} className="max-w-[220px]">
+          {/* روی گوشی دکمه وسط‌چین می‌شود (درخواستِ کارفرما) — ≥sm مثل قبل */}
+          <SubmitButton loading={busy} disabled={!dirty} className="max-w-[220px] max-sm:mx-auto">
             ذخیره تغییرات
           </SubmitButton>
           {dirty && !busy ? (

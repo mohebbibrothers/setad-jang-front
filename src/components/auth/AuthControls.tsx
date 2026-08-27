@@ -177,7 +177,11 @@ export function AuthControls({
   );
 
   return (
-    <div ref={wrapRef} className={cn('relative', isBlock && 'w-full')}>
+    // نسخه‌ی inline فقط دسکتاپ/تبلت است: پس از لاگین، چیپِ آواتار روی
+    // گوشی (<lg) پنهان می‌شود — دسترسیِ حساب در موبایل از کارتِ کاملِ
+    // کفِ شیت انجام می‌شود (درخواستِ صریحِ کارفرما). میهمانِ inline هم
+    // از قبل hidden lg:inline-flex بود — یعنی هدرِ موبایل همیشه تمیز.
+    <div ref={wrapRef} className={cn('relative', isBlock ? 'w-full' : 'hidden lg:block')}>
       <button
         type="button"
         onClick={toggleMenu}

@@ -54,7 +54,10 @@ export function ProfileHero({
         className="pointer-events-none absolute -bottom-20 left-1/3 h-56 w-56 rounded-full bg-mint-400/20 blur-3xl"
       />
 
-      <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
+      {/* موبایل: ستونِ وسط‌چین (آواتار بالا، نام/نشان‌ها/شناسه زیرِ هم،
+          پنلِ تکمیل تمام‌عرض) — چیدمانِ قبلیِ سمت‌چسب در کادرِ سبز
+          «نامرتب» می‌نمود (گزارشِ کارفرما). ≥sm همان چیدمانِ ردیفی. */}
+      <div className="relative flex flex-col items-center gap-5 text-center sm:flex-row sm:items-center sm:gap-6 sm:text-right">
         <AvatarEditor
           avatar={profile?.avatar}
           fallbackText={name}
@@ -63,9 +66,9 @@ export function ProfileHero({
         />
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
             {/* قاعده‌ی سراسریِ globals به h1 رنگِ تیره می‌دهد — اینجا صریحاً سفید */}
-            <h1 className="truncate text-[21px] font-extrabold text-white [text-shadow:0_1px_10px_rgba(6,60,52,.35)] sm:text-[24px]">
+            <h1 className="text-[21px] font-extrabold text-white [text-shadow:0_1px_10px_rgba(6,60,52,.35)] sm:truncate sm:text-[24px]">
               {name}
             </h1>
             {user.role === 'admin' ? (
@@ -85,15 +88,14 @@ export function ProfileHero({
           </div>
           {identifier ? (
             <p
-              className="mt-1 truncate text-[13px] font-semibold text-white/90"
+              className="mt-1 truncate text-center text-[13px] font-semibold text-white/90 sm:text-right"
               dir="ltr"
-              style={{ textAlign: 'right' }}
             >
               {formatIdentifierForDisplay(identifier)}
             </p>
           ) : null}
           {memberSince ? (
-            <p className="mt-1.5 flex items-center gap-1 text-[11.5px] font-semibold text-white/80">
+            <p className="mt-1.5 flex items-center justify-center gap-1 text-[11.5px] font-semibold text-white/80 sm:justify-start">
               <span aria-hidden="true" className="inline-block h-1 w-1 rounded-full bg-white/60" />
               عضو از {memberSince}
             </p>
@@ -103,7 +105,7 @@ export function ProfileHero({
         <button
           type="button"
           onClick={onGoFields}
-          className="group flex items-center gap-3 self-start rounded-2xl bg-white/10 p-3 pl-4 ring-1 ring-inset ring-white/20 transition-all duration-200 hover:bg-white/15 sm:self-auto"
+          className="group flex w-full items-center justify-center gap-3 self-stretch rounded-2xl bg-white/10 p-3 pl-4 ring-1 ring-inset ring-white/20 transition-all duration-200 hover:bg-white/15 sm:w-auto sm:self-auto"
         >
           <CompletionRing percent={completion.percent} />
           <span className="text-right">

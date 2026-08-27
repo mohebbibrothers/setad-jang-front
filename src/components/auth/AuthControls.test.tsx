@@ -133,6 +133,17 @@ describe('AuthControls', () => {
     expect(wrapper.style.top).toBe('');
   });
 
+  it('variant=inline: چیپِ واردشده روی گوشی پنهان است (فقط ≥lg) — موبایل تمیز', () => {
+    login();
+    render(<AuthControls onOpen={() => {}} />);
+    const chip = screen.getByRole('button', { name: 'حساب کاربری علی رضایی' });
+    const wrap = chip.parentElement as HTMLElement;
+    // قراردادِ کارفرما: پس از لاگین، آیکونِ پروفایل در هدرِ موبایل نیاید؛
+    // دسترسیِ حساب در موبایل از کارتِ کفِ شیت (variant=block) است.
+    expect(wrap.className).toContain('hidden');
+    expect(wrap.className).toContain('lg:block');
+  });
+
   it('variant=block: کارتِ کاملِ حساب با نام + شناسه + منوی تمام‌عرض', () => {
     login();
     render(<AuthControls onOpen={() => {}} variant="block" />);
