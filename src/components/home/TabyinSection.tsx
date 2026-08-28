@@ -77,9 +77,6 @@ export type TabyinItem = {
   durationSeconds?: number;
   origin?: 'external' | 'user_submitted';
   authorName?: string;
-  /** Original publisher URL (e.g. Telegram channel post) — surfaces an
-   *  'منبع اصلی' affordance on the tile when present. */
-  sourceUrl?: string;
   toneFrom?: string;
   toneTo?: string;
 };
@@ -920,27 +917,10 @@ function TabyinTile({
         </span>
       )}
 
-      {/* Bottom-left action chips.
-          The "source" chip is BACKEND-DRIVEN: it opens the original
-          publisher URL (source_url from PublicTabyinContentListSerializer)
-          in a new tab. When the tabyin content isn't linked back to an
-          external source we hide the chip entirely — never render a
-          button that does nothing. */}
-      <div className="absolute bottom-2.5 left-2.5 z-10 flex items-center gap-1.5">
-        {it.sourceUrl ? (
-          <a
-            href={it.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="مشاهده‌ی منبع اصلی"
-            title="منبع اصلی"
-            onClick={(e) => e.stopPropagation()}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-ink-700 shadow-[0_2px_6px_-2px_rgba(0,0,0,.25)] backdrop-blur-md transition-all duration-150 hover:scale-110 hover:bg-white"
-          >
-            <Icon name="link" className="h-3.5 w-3.5" />
-          </a>
-        ) : null}
-      </div>
+      {/* قاعده‌ی کارفرما: هیچ لینک/دکمه‌ای به سایتِ منبع (محتوانگار) در
+          هیچ بخشِ سایت رندر نمی‌شود — کاربر به آن دسترسی ندارد. چیپِ
+          «منبع اصلی»ی قبلی از روی کاشی‌ها حذف شد؛ مقصدِ همه‌ی کاشی‌ها
+          فقط صفحه‌ی جزئیاتِ داخلی است. */}
     </motion.article>
   );
 }

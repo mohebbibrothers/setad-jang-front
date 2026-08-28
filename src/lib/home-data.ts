@@ -719,7 +719,8 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
       durationSeconds: videoOrAudio?.duration,
       origin: t.origin,
       authorName: t.author_username,
-      sourceUrl: t.source_url,
+      // توجه: source_url (نشانیِ محتوانگار) آگاهانه به UI نگاشت نمی‌شود —
+      // قاعده‌ی کارفرما: هیچ لینکی به سایتِ منبع نمایش داده نمی‌شود.
     };
   });
 }

@@ -1,140 +1,307 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
+import { ArrowRight, CalendarDays, Captions, Layers, Sparkles, UserRound } from 'lucide-react';
 import { safeApiFetch } from '@/lib/api';
+import { formatJalaliDate } from '@/lib/persian-time';
+import {
+  formatClockFa,
+  formatFileSizeFa,
+  mediaTypeFa,
+  videoThumbnailGifUrl,
+} from '@/lib/media-meta';
+import { formatPersianNumber } from '@/lib/utils';
+import { TabyinStage, type TabyinStageAttachment } from '@/components/tabyin/TabyinStage';
 
-type TabyinAttachment = {
-  id?: number;
-  url: string;
-  media_type?: 'image' | 'video' | 'audio' | 'other';
-  media_type_display?: string;
-  duration?: number;
-  title?: string;
-};
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * tabyin/[slug] — صفحه‌ی جزئیاتِ محتوای جهاد تبیین
+ *
+ * اصولِ طراحی (قراردادِ کارفرما):
+ *   ۱) هر آنچه در دیتابیس داریم نمایش داده می‌شود: عنوان، کپشن،
+ *      پدیدآورنده، نوع رسانه، تاریخ انتشار، مدت، ابعاد، حجم، تعداد
+ *      رسانه و منشأ (مردمی/همگام‌شده) — در یک «برگه‌ی مشخصات»ی تمیز.
+ *   ۲) تجربه‌ی رسانه مبتنی بر نوع است (سینما/گالری/پادکست/نقل‌قول) —
+ *      در TabyinStage.
+ *   ۳) هیچ لینک/دکمه‌ای به سایتِ منبع (محتوانگار) رندر نمی‌شود:
+ *      کاربر به آن دسترسی ندارد. فیلد source_url حتی به لایه‌ی UI
+ *      نگاشت نمی‌شود.
+ * ═══════════════════════════════════════════════════════════════════
+ */
 
 type TabyinContent = {
   external_id: string;
   title?: string;
   description?: string;
   author_username?: string;
+  origin?: 'external' | 'user_submitted';
   source_created_at?: string;
-  source_url?: string;
   primary_media_type?: 'image' | 'video' | 'audio' | 'other';
-  attachments?: TabyinAttachment[];
+  attachments?: TabyinStageAttachment[];
 };
-
-function videoThumb(url?: string): string | undefined {
-  if (!url) return undefined;
-  return url.replace('/org/uploads/', '/thumbnail/uploads/').replace(/\.[a-z0-9]+$/i, '.gif');
-}
 
 export const revalidate = 180;
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const item = await safeApiFetch<TabyinContent>(
-    '/tabyin/contents/' + encodeURIComponent(slug) + '/',
-    { revalidate: 180, tags: ['tabyin'] },
+async function fetchContent(slug: string) {
+  return safeApiFetch<TabyinContent>('/tabyin/contents/' + encodeURIComponent(slug) + '/', {
+    revalidate: 180,
+    tags: ['tabyin'],
+  });
+}
+
+function heroMedia(item: TabyinContent): TabyinStageAttachment | undefined {
+  const list = item.attachments ?? [];
+  return (
+    list.find((a) => a.media_type === 'video' && a.url) ||
+    list.find((a) => a.media_type === 'audio' && a.url) ||
+    list.find((a) => a.media_type === 'image' && a.url) ||
+    list.find((a) => a.url)
   );
+}
+
+function ogImage(item: TabyinContent): string | undefined {
+  const list = item.attachments ?? [];
+  const img = list.find((a) => a.media_type === 'image' && a.url)?.url;
+  if (img) return img;
+  const vid = list.find((a) => a.media_type === 'video' && a.url)?.url;
+  return videoThumbnailGifUrl(vid);
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const item = await fetchContent(slug);
+  const title = item?.title ? `${item.title} | جهاد تبیین` : 'جهاد تبیین | بعثت مردم';
+  const description = item?.description?.slice(0, 160) || 'محتوای جهاد تبیین — بعثت مردم';
+  const image = item ? ogImage(item) : undefined;
   return {
-    title: item?.title ? item.title + ' | جهاد تبیین' : 'جهاد تبیین',
-    description: item?.description || 'محتوای جهاد تبیین',
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      ...(image ? { images: [{ url: image }] } : {}),
+    },
+    twitter: {
+      card: image ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
   };
+}
+
+/* ── داده‌ی ساخت‌یافته (SEO) — بدون هیچ اشاره‌ای به سایتِ منبع ── */
+function buildJsonLd(item: TabyinContent) {
+  const hero = heroMedia(item);
+  const base = {
+    '@context': 'https://schema.org',
+    name: item.title || 'محتوای جهاد تبیین',
+    description: item.description || undefined,
+    datePublished: item.source_created_at || undefined,
+    author: item.author_username ? { '@type': 'Person', name: item.author_username } : undefined,
+  };
+  if (hero?.media_type === 'video') {
+    return {
+      ...base,
+      '@type': 'VideoObject',
+      contentUrl: hero.url,
+      thumbnailUrl: videoThumbnailGifUrl(hero.url),
+    };
+  }
+  if (hero?.media_type === 'audio') {
+    return { ...base, '@type': 'AudioObject', contentUrl: hero.url };
+  }
+  if (hero?.media_type === 'image') {
+    return { ...base, '@type': 'ImageObject', contentUrl: hero.url };
+  }
+  return { ...base, '@type': 'Article' };
 }
 
 export default async function TabyinDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const item = await safeApiFetch<TabyinContent>(
-    '/tabyin/contents/' + encodeURIComponent(slug) + '/',
-    { revalidate: 180, tags: ['tabyin'] },
-  );
+  const item = await fetchContent(slug);
   if (!item) notFound();
 
-  const attachments = item.attachments ?? [];
-  const firstVideo = attachments.find((a) => a.media_type === 'video' && a.url);
-  const firstImage = attachments.find((a) => a.media_type === 'image' && a.url);
-  const hero = firstVideo || firstImage || attachments[0];
+  const attachments = (item.attachments ?? []).filter((a) => a.url);
+  const hero = heroMedia(item);
+  const isUser = item.origin === 'user_submitted';
+  const title = item.title?.trim() || 'محتوای جهاد تبیین';
+  const publishDate = formatJalaliDate(item.source_created_at);
+  const typeLabel = mediaTypeFa(item.primary_media_type, hero?.media_type_display ?? undefined);
+
+  /* برگه‌ی مشخصات — فقط ردیف‌های دارای مقدار رندر می‌شوند */
+  const specRows: { label: string; value: string }[] = [
+    item.author_username?.trim() ? { label: 'پدیدآورنده', value: item.author_username } : null,
+    typeLabel ? { label: 'نوع محتوا', value: typeLabel } : null,
+    publishDate ? { label: 'تاریخ انتشار', value: publishDate } : null,
+    formatClockFa(hero?.duration) ? { label: 'مدت', value: formatClockFa(hero?.duration)! } : null,
+    formatFileSizeFa(hero?.file_size)
+      ? { label: 'حجم فایل', value: formatFileSizeFa(hero?.file_size)! }
+      : null,
+    attachments.length
+      ? { label: 'تعداد رسانه', value: `${formatPersianNumber(attachments.length)} رسانه` }
+      : null,
+    { label: 'منشأ', value: isUser ? 'ارسالی کاربران (مردمی)' : 'منتشرشده در جهاد تبیین' },
+  ].filter((r): r is { label: string; value: string } => Boolean(r));
+
+  const jsonLd = JSON.stringify(buildJsonLd(item)).replace(/</g, '\\u003c');
 
   return (
     <main className="bg-white">
-      <section className="container-edge py-10 md:py-14">
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <Link href="/#tabyin" className="btn-outline btn-sm">
-            بازگشت به خانه
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
+      <section className="container-edge py-8 md:py-12">
+        {/* ── راهنمای بالای صفحه ── */}
+        <div className="mx-auto mb-6 flex max-w-4xl items-center justify-between gap-3">
+          <Link
+            href="/tabyin"
+            className="inline-flex h-10 items-center gap-2 rounded-full border border-ink-200 bg-white px-4 text-[13px] font-extrabold text-ink-700 transition-all hover:border-brand-500/50 hover:bg-brand-50/60 hover:text-brand-700"
+          >
+            <ArrowRight className="h-4 w-4" />
+            بازگشت به آرشیو
           </Link>
-          <Link href="/tabyin" className="btn-outline btn-sm">
-            آرشیو تبیین
+          <Link
+            href="/#tabyin"
+            className="hidden text-[12.5px] font-bold text-ink-400 transition-colors hover:text-brand-700 sm:block"
+          >
+            جهاد تبیین در صفحه‌ی اصلی
           </Link>
         </div>
-        <article className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-black/5 bg-white shadow-[0_20px_70px_-45px_rgba(0,0,0,.35)]">
-          <div className="bg-ink-950">
-            {hero?.media_type === 'video' && hero.url ? (
-              <video
-                src={hero.url}
-                poster={videoThumb(hero.url)}
-                controls
-                playsInline
-                preload="metadata"
-                className="mx-auto max-h-[72vh] w-full bg-black object-contain"
-              />
-            ) : hero?.media_type === 'image' && hero.url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={hero.url}
-                alt={item.title || 'محتوای تبیین'}
-                className="mx-auto max-h-[72vh] w-full object-contain"
-              />
+
+        <article className="mx-auto max-w-4xl">
+          {/* ── چیپ‌ها + عنوان + متا ── */}
+          <header>
+            <div className="flex flex-wrap items-center gap-2">
+              {typeLabel ? (
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-brand-50 px-3.5 text-[12.5px] font-extrabold text-brand-700 ring-1 ring-inset ring-brand-600/10">
+                  <Layers className="h-3.5 w-3.5" />
+                  {typeLabel}
+                </span>
+              ) : null}
+              {isUser ? (
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-mint-500/15 px-3.5 text-[12.5px] font-extrabold text-mint-700 ring-1 ring-inset ring-mint-500/25">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  محتوای مردمی
+                </span>
+              ) : null}
+              <span className="inline-flex h-8 items-center rounded-full bg-ink-50 px-3.5 text-[12.5px] font-bold text-ink-500">
+                جهاد تبیین
+              </span>
+            </div>
+            <h1 className="mt-4 text-[23px] font-black leading-[1.8] text-ink-900 sm:text-[27px] md:text-[32px] md:leading-[1.8]">
+              {title}
+            </h1>
+            <div className="mt-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] font-semibold text-ink-500">
+              {item.author_username?.trim() ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-700">
+                    <UserRound className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="text-ink-700">{item.author_username}</span>
+                  <span className="text-ink-400">پدیدآورنده</span>
+                </span>
+              ) : null}
+              {publishDate ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarDays className="h-4 w-4 text-brand-600" />
+                  {publishDate}
+                </span>
+              ) : null}
+            </div>
+          </header>
+
+          {/* ── استیجِ رسانه ── */}
+          <div className="mt-7">
+            {attachments.length > 0 ? (
+              <TabyinStage attachments={attachments} title={title} originLabel="جهاد تبیین" />
             ) : (
-              <div className="flex min-h-[280px] items-center justify-center bg-gradient-to-br from-brand-600 to-brand-900 text-white">
-                <span className="text-2xl font-black">جهاد تبیین</span>
+              /* محتوای بدون رسانه: پنلِ نقل‌قولِ برند (خوانشِ متن‌محور) */
+              <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-brand-500 via-brand-600 to-brand-800 p-8 text-white shadow-[0_30px_70px_-30px_rgba(13,128,116,.6)] sm:p-10">
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -left-16 -top-24 h-64 w-64 rounded-full bg-white/10 blur-2xl"
+                />
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                  className="relative h-9 w-9 text-white/50"
+                >
+                  <path d="M7.17 6C4.31 6 2 8.31 2 11.17v6.66h6.66v-6.66H5c0-1.84 1.49-3.33 3.33-3.33V6H7.17zm10 0c-2.86 0-5.17 2.31-5.17 5.17v6.66h6.66v-6.66H15c0-1.84 1.49-3.33 3.33-3.33V6h-1.16z" />
+                </svg>
+                {item.description ? (
+                  <p className="relative mt-5 whitespace-pre-line text-[16px] font-bold leading-8 text-white/95 md:text-[18px] md:leading-9">
+                    {item.description}
+                  </p>
+                ) : (
+                  <p className="relative mt-5 text-[16px] font-bold text-white/90">جهاد تبیین</p>
+                )}
               </div>
             )}
           </div>
-          <div className="p-5 md:p-8">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-brand-700">
-              <span className="rounded-full bg-brand-50 px-3 py-1">جهاد تبیین</span>
-              {item.primary_media_type && (
-                <span className="rounded-full bg-mint-50 px-3 py-1">{item.primary_media_type}</span>
-              )}
-              {item.author_username && (
-                <span className="rounded-full bg-ink-50 px-3 py-1">{item.author_username}</span>
-              )}
-            </div>
-            <h1 className="mt-5 text-2xl font-black leading-10 text-ink-900 md:text-4xl md:leading-[1.5]">
-              {item.title || 'بدون عنوان'}
-            </h1>
-            {item.description && (
-              <p className="mt-5 whitespace-pre-line text-[15px] leading-9 text-ink-700">
+
+          {/* ── کپشن (وقتی متن‌محور نیست یا متن اضافه‌ای دارد) ── */}
+          {item.description && attachments.length > 0 ? (
+            <section className="mt-8 rounded-[24px] border border-ink-100 bg-gradient-to-l from-brand-50/50 via-white to-white p-6 ring-1 ring-black/[0.03] sm:p-8">
+              <h2 className="flex items-center gap-2 text-[15px] font-extrabold text-ink-900">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-500/15 text-brand-700">
+                  <Captions className="h-4 w-4" />
+                </span>
+                کپشن
+              </h2>
+              <p className="mt-4 whitespace-pre-line text-[15px] leading-9 text-ink-700">
                 {item.description}
               </p>
-            )}
-            {attachments.length > 1 && (
-              <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {attachments.map((att, index) => (
-                  <a
-                    key={(att.id ?? index) + '-' + att.url}
-                    href={att.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-2xl border border-black/5 p-3 text-sm font-bold text-ink-700 hover:bg-ink-50"
-                  >
-                    پیوست {index + 1} — {att.media_type_display || att.media_type || 'فایل'}
-                  </a>
-                ))}
-              </div>
-            )}
-            {item.source_url && (
-              <div className="mt-8">
-                <a
-                  href={item.source_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-primary btn-md"
+            </section>
+          ) : null}
+
+          {/* ── برگه‌ی مشخصات: هرچه در دیتابیس داریم ── */}
+          <section className="mt-6 overflow-hidden rounded-[24px] border border-ink-100 bg-white ring-1 ring-black/[0.03]">
+            <h2 className="border-b border-ink-100 bg-ink-50/60 px-6 py-4 text-[13.5px] font-extrabold text-ink-800 sm:px-8">
+              مشخصات محتوا
+            </h2>
+            <dl className="grid sm:grid-cols-2">
+              {specRows.map((row, i) => (
+                <div
+                  key={row.label}
+                  className={
+                    'flex items-center justify-between gap-4 px-6 py-3.5 sm:px-8 ' +
+                    (i % 2 === 0 ? 'sm:border-l sm:border-ink-100' : '') +
+                    (i < specRows.length - (specRows.length % 2 === 0 ? 2 : 1)
+                      ? 'border-b border-ink-100/80'
+                      : '')
+                  }
                 >
-                  مشاهده در محتوانگار
-                </a>
-              </div>
-            )}
-          </div>
+                  <dt className="text-[12.5px] font-bold text-ink-400">{row.label}</dt>
+                  <dd className="truncate text-[13px] font-extrabold text-ink-800">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          {/* ── مسیرهای بعدی ── */}
+          <nav
+            aria-label="مسیرهای بعدی"
+            className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center"
+          >
+            <Link
+              href="/tabyin"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-full border-2 border-brand-500 bg-white px-7 text-[14px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
+            >
+              آرشیو جهاد تبیین
+            </Link>
+            <Link
+              href="/tabyin/new"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-mint-500 px-7 text-[14px] font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(37,197,186,.5)] transition-all hover:scale-[1.02] hover:bg-mint-600 active:scale-[.98]"
+            >
+              <Sparkles className="h-4 w-4" strokeWidth={2.5} />
+              محتوای شما هم در تبیین
+            </Link>
+          </nav>
         </article>
       </section>
     </main>

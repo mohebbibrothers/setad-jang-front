@@ -43,7 +43,8 @@ export default async function TabyinIndexPage() {
           <p className="text-sm font-extrabold text-brand-700">جهاد تبیین</p>
           <h1 className="mt-3 text-2xl font-black text-ink-900 md:text-4xl">آرشیو روایت‌ها</h1>
           <p className="mt-4 leading-8 text-ink-600">
-            روایت‌های تصویری، ویدئویی و متنی گردآوری‌شده از محتوانگار.
+            روایت‌های تصویری، ویدئویی، صوتی و متنی جهاد تبیین — از رسانه‌ی رسمی تا ارسال‌های مردمیِ
+            شما.
           </p>
         </div>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
