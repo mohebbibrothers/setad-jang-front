@@ -8,13 +8,21 @@
  *
  *   ویدئو  → سینما: قابِ مشکیِ سینمایی + پلیرِ بومی با پوسترِ GIF
  *   تصویر  → گالری: تصویر روی پس‌زمینه‌ی محو‌شده از خودِ تصویر
- *   صوت    → پادکست: پنلِ برند با کاور (اگر پیوستِ تصویری هست — نکته‌ی
- *            کارفرما درباره‌ی پادکست‌ها)، اکولایزرِ زنده و پلیر
- *   سایر   → کارتِ نقل‌قول برند / کارتِ دریافتِ فایل
+ *   پادکست → پنلِ برند با کاور (اگر پیوستِ تصویری هست)، اکولایزرِ
+ *            زنده و پلیر — برچسبِ کانونیکالِ این حالت «پادکست» است
+ *   سایر   → کارتِ دریافتِ فایل
  *
- * چند پیوست → نوارِ بندانگشتیِ قابلِ جابه‌جایی (snap) زیرِ استیج که با
- * انتخابِ هرکدام، استیج همان را نشان می‌دهد. چیپ‌های ابرداده‌ی پیوستِ
- * فعال (مدت/ابعاد/حجم) — فقط وقتی مقدار دارند — زیرِ استیج می‌آیند.
+ * چند پیوست → نوارِ بندانگشتیِ قابلِ جابه‌جایی (snap) زیرِ استیج.
+ * چیپ‌های ابرداده (مدت/ابعاد/حجم) — فقط وقتی مقدار دارند.
+ *
+ * ── تاب‌ماندگاری (قراردادِ جدید) ──
+ *   اگر لودِ هر رسانه‌ای — به هر دلیل (قطعیِ لحظه‌ایِ شبکه، 404ِ فایل،
+ *   CORS، codec) — شکست بخورد، به‌جای قابِ شکسته‌ی مرورگر یک پنلِ
+ *   برندشده‌ی «رسانه فعلاً در دسترس نیست» با دکمه‌ی «بارگذاری دوباره»
+ *   (با cache-bust واقعی) نمایش داده می‌شود؛ نوارِ بندانگشتی فعال
+ *   می‌ماند تا کاربر بتواند به پیوستِ دیگری برود. کاورِ پادکست و
+ *   بندانگشتی‌هایی که لود نشوند به آیکونِ برند فرو می‌افتند. حتی در
+ *   بدترین سناریو هم صفحه از وقار نمی‌افتد.
  *
  * قاعده‌ی طلاییِ کارفرما: این کامپوننت هیچ نشانیِ بیرونی (منبع) رندر
  * نمی‌کند؛ فقط رسانه‌های خودِ دیتابیس.
@@ -22,12 +30,24 @@
  */
 
 import { useMemo, useState } from 'react';
-import { FileDown, Music2, Play, Image as ImageIcon, AudioLines } from 'lucide-react';
+import { motion } from 'framer-motion';
+import {
+  AlertTriangle,
+  AudioLines,
+  FileDown,
+  FileWarning,
+  Image as ImageIcon,
+  ImageOff,
+  MicOff,
+  Music2,
+  Play,
+  RefreshCw,
+  VideoOff,
+} from 'lucide-react';
 import {
   formatClockFa,
   formatDimensionsFa,
   formatFileSizeFa,
-  mediaTypeFa,
   videoThumbnailGifUrl,
 } from '@/lib/media-meta';
 import { cn } from '@/lib/utils';
@@ -43,7 +63,7 @@ export interface TabyinStageAttachment {
   title?: string;
 }
 
-/** انتخابِ هوشمندِ پیوستِ اولیه: ویدئو > صوت > تصویر > اولین فایل */
+/** انتخابِ هوشمندِ پیوستِ اولیه: ویدئو > پادکست > تصویر > اولین فایل */
 function pickInitial(list: TabyinStageAttachment[]): number {
   const find = (t: string) => list.findIndex((a) => a.media_type === t);
   const order = [find('video'), find('audio'), find('image')];
@@ -62,6 +82,126 @@ const EQ_BARS = [
   { h: 24, d: '.36s' },
 ];
 
+/* ───────────────────────────────────────────────────────────────── */
+/*  تاب‌ماندگاریِ رسانه                                               */
+/* ───────────────────────────────────────────────────────────────── */
+
+/**
+ * cache-bust برای «بارگذاری دوباره»: با یک پارامترِ بی‌اثر، فایل واقعاً
+ * دوباره از شبکه درخواست می‌شود (نه از کشِ خرابِ مرورگر).
+ */
+function bustUrl(url: string, tick: number): string {
+  if (!tick) return url;
+  return url + (url.includes('?') ? '&' : '?') + '_tabyin_retry=' + tick;
+}
+
+/**
+ * تصویر با ورودِ نرم (fade-in پس از لود کامل) + گزارشِ خطا به بالادست.
+ * کلید (key) آن در محلِ استفاده به نشانی بسته می‌شود تا با تعویض پیوست
+ * یا تلاشِ دوباره، state درونی‌اش تازه شود.
+ */
+function FadeImg({
+  src,
+  alt,
+  className,
+  hidden,
+  loading = 'lazy',
+  onError,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  hidden?: boolean;
+  loading?: 'lazy' | 'eager';
+  onError?: () => void;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      aria-hidden={hidden || undefined}
+      loading={loading}
+      decoding="async"
+      draggable={false}
+      onLoad={() => setLoaded(true)}
+      onError={onError}
+      className={cn(
+        className,
+        'transition-opacity duration-500',
+        loaded ? 'opacity-100' : 'opacity-0',
+      )}
+    />
+  );
+}
+
+/**
+ * پنلِ «رسانه فعلاً در دسترس نیست» — عمداً به اندازه‌ی خودِ استیج
+ * طراحی شده تا حتی خطا هم لحظه‌ای برندساز باشد، نه شکستی نمایشی.
+ * متن و مشخصاتِ صفحه بیرون از این پنل دست‌نخورده باقی می‌مانند.
+ */
+function StageUnavailable({
+  kind,
+  onRetry,
+}: {
+  kind: TabyinStageAttachment['media_type'];
+  onRetry: () => void;
+}) {
+  const { Glyph, label } =
+    kind === 'video'
+      ? { Glyph: VideoOff, label: 'ویدئو' }
+      : kind === 'audio'
+        ? { Glyph: MicOff, label: 'پادکست' }
+        : kind === 'image'
+          ? { Glyph: ImageOff, label: 'تصویر' }
+          : { Glyph: FileWarning, label: 'این فایل' };
+  return (
+    <div
+      role="alert"
+      className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-ink-900 via-brand-900 to-brand-800 px-6 py-10 text-center text-white shadow-[0_30px_70px_-35px_rgba(11,53,48,.65)] ring-1 ring-brand-800/40 sm:px-10 sm:py-12"
+    >
+      {/* عمقِ نوریِ لایه‌ای */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-brand-400/15 blur-3xl"
+      />
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-28 -left-20 h-64 w-64 rounded-full bg-mint-400/15 blur-3xl"
+      />
+      {/* بافتِ نقطه‌ایِ ظریف */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-[0.07]"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.9) 1px, transparent 1px)',
+          backgroundSize: '16px 16px',
+        }}
+      />
+      <div className="relative mx-auto flex max-w-sm flex-col items-center">
+        <span className="flex h-20 w-20 items-center justify-center rounded-3xl bg-white/10 ring-2 ring-white/20 backdrop-blur-sm">
+          <Glyph className="h-9 w-9 text-white/90" strokeWidth={1.7} />
+        </span>
+        <p className="mt-5 text-[16px] font-black sm:text-[17px]">{label} فعلاً در دسترس نیست</p>
+        <p className="mt-2.5 text-[12.5px] font-semibold leading-7 text-white/70">
+          شاید اتصال لحظه‌ای قطع شده یا فایل هنوز آماده نشده است؛ با یک تلاشِ دوباره معمولاً
+          برمی‌گردد. متن و مشخصاتِ همین صفحه در دسترس شماست.
+        </p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-white px-6 text-[13px] font-extrabold text-brand-800 shadow-[0_12px_30px_-10px_rgba(0,0,0,.5)] transition-all hover:scale-[1.03] hover:bg-mint-50 active:scale-[.97]"
+        >
+          <RefreshCw className="h-4 w-4" />
+          بارگذاری دوباره
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function TabyinStage({
   attachments,
   title,
@@ -69,20 +209,40 @@ export function TabyinStage({
 }: {
   attachments: TabyinStageAttachment[];
   title: string;
-  /** برچسبی که روی پنلِ صوتی/نقل‌قولی می‌نشیند (مثلاً «جهاد تبیین») */
+  /** برچسبی که روی پنلِ پادکست می‌نشیند (مثلاً «جهاد تبیین») */
   originLabel?: string;
 }) {
   const usable = useMemo(() => attachments.filter((a) => a.url), [attachments]);
   const [index, setIndex] = useState(() => pickInitial(usable));
   const [playing, setPlaying] = useState(false);
+  /* تاب‌ماندگاری: نشانی‌هایی که لودشان شکست خورد + شمارنده‌ی تلاشِ دوباره. */
+  const [broken, setBroken] = useState<Record<string, true>>({});
+  const [retryTick, setRetryTick] = useState<Record<string, number>>({});
 
   if (usable.length === 0) return null;
 
   const selected = usable[Math.min(index, usable.length - 1)];
+  const tick = retryTick[selected.url] ?? 0;
+  const mediaSrc = bustUrl(selected.url, tick);
+  const selectedBroken = Boolean(broken[selected.url]);
+
+  const markBroken = (url: string) => setBroken((m) => (m[url] ? m : { ...m, [url]: true }));
+  const retrySelected = () => {
+    setBroken((m) => {
+      if (!m[selected.url]) return m;
+      const next = { ...m };
+      delete next[selected.url];
+      return next;
+    });
+    setRetryTick((m) => ({ ...m, [selected.url]: (m[selected.url] ?? 0) + 1 }));
+  };
+
   // کاورِ پادکست: اگر پیوستِ فعال صوت است و پیوستِ تصویری هم هست، از آن
-  // به‌عنوان آرت‌ورک استفاده می‌کنیم (نکته‌ی کارفرما درباره‌ی پادکست‌ها)
+  // به‌عنوان آرت‌ورک استفاده می‌کنیم (نکته‌ی کارفرما درباره‌ی پادکست‌ها).
+  // اگر کاور لود نشود، بی‌سروصدا به دیسکِ برند فرو می‌افتیم — پنل نمی‌شکند.
   const audioCover =
     selected.media_type === 'audio' ? usable.find((a) => a.media_type === 'image')?.url : undefined;
+  const coverBroken = audioCover ? Boolean(broken[audioCover]) : false;
 
   const metaChips = [
     formatClockFa(selected.duration),
@@ -91,23 +251,32 @@ export function TabyinStage({
   ].filter((c): c is string => Boolean(c));
 
   return (
-    <div>
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: 'easeOut' }}
+    >
       {/* ── استیج ── */}
-      {selected.media_type === 'video' ? (
+      {selectedBroken ? (
+        <StageUnavailable kind={selected.media_type} onRetry={retrySelected} />
+      ) : selected.media_type === 'video' ? (
         <div className="overflow-hidden rounded-[24px] bg-black shadow-[0_30px_70px_-35px_rgba(11,53,48,.6)] ring-1 ring-ink-900/10">
           <video
-            key={selected.url}
-            src={selected.url}
+            key={mediaSrc}
+            src={mediaSrc}
             poster={videoThumbnailGifUrl(selected.url)}
             controls
             playsInline
             preload="metadata"
+            onError={() => markBroken(selected.url)}
             className="mx-auto max-h-[68dvh] w-full bg-black object-contain"
           />
         </div>
       ) : selected.media_type === 'image' ? (
         <div className="bg-ink-950 relative overflow-hidden rounded-[24px] shadow-[0_30px_70px_-35px_rgba(11,53,48,.6)] ring-1 ring-ink-900/10">
-          {/* پس‌زمینه‌ی محو از خودِ تصویر — قابِ گالری‌وار */}
+          {/* پس‌زمینه‌ی محو از خودِ تصویر — قابِ گالری‌وار.
+              plain <img>: پس‌زمینه‌ی تزئینی است و خطایش از رویِ تصویرِ
+              اصلی (که همان نشانی است) شناسایی می‌شود. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={selected.url}
@@ -115,11 +284,12 @@ export function TabyinStage({
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
           />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            key={selected.url}
-            src={selected.url}
+          <FadeImg
+            key={mediaSrc}
+            src={mediaSrc}
             alt={title || 'محتوای تبیین'}
+            loading="eager"
+            onError={() => markBroken(selected.url)}
             className="relative mx-auto max-h-[68dvh] w-auto max-w-full object-contain"
           />
         </div>
@@ -142,11 +312,12 @@ export function TabyinStage({
           <div className="relative flex flex-col items-center gap-5 text-center sm:flex-row sm:items-stretch sm:gap-7 sm:text-right">
             {/* آرت‌ورک: کاورِ واقعیِ پیوستِ تصویری، یا دیسکِ برند */}
             <div className="relative shrink-0">
-              {audioCover ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+              {audioCover && !coverBroken ? (
+                <FadeImg
+                  key={audioCover}
                   src={audioCover}
-                  alt={title || 'کاور صوت'}
+                  alt={title || 'کاور پادکست'}
+                  onError={() => markBroken(audioCover)}
                   className="h-36 w-36 rounded-2xl object-cover shadow-[0_20px_45px_-18px_rgba(0,0,0,.5)] ring-2 ring-white/25 sm:h-44 sm:w-44"
                 />
               ) : (
@@ -156,7 +327,7 @@ export function TabyinStage({
               )}
               <span className="absolute -bottom-2.5 right-3 inline-flex items-center gap-1 rounded-full bg-mint-500 px-2.5 py-1 text-[10.5px] font-extrabold shadow-[0_6px_16px_-6px_rgba(37,197,186,.7)]">
                 <AudioLines className="h-3 w-3" />
-                {mediaTypeFa(selected.media_type, selected.media_type_display) || 'صوت'}
+                پادکست
               </span>
             </div>
 
@@ -182,10 +353,11 @@ export function TabyinStage({
                 </p>
               ) : null}
               <audio
-                key={selected.url}
-                src={selected.url}
+                key={mediaSrc}
+                src={mediaSrc}
                 controls
                 preload="metadata"
+                onError={() => markBroken(selected.url)}
                 onPlay={() => setPlaying(true)}
                 onPause={() => setPlaying(false)}
                 onEnded={() => setPlaying(false)}
@@ -211,8 +383,7 @@ export function TabyinStage({
                 {selected.title || title || 'فایل پیوست'}
               </span>
               <span className="mt-0.5 block text-[12px] font-semibold text-ink-500">
-                {mediaTypeFa(selected.media_type, selected.media_type_display) || 'فایل'} برای
-                مشاهده یا دریافت
+                فایل برای مشاهده یا دریافت
               </span>
             </span>
           </span>
@@ -236,10 +407,13 @@ export function TabyinStage({
         </div>
       ) : null}
 
-      {/* ── نوارِ بندانگشتی (وقتی بیش از یک پیوست هست) ── */}
+      {/* ── نوارِ بندانگشتی (وقتی بیش از یک پیوست هست) ──
+          p-1.5 دور تا دور: رینگِ فعال (2.5px) + آفستِ آن (2px) برای نفس
+          کشیدن جا دارد و دیگر لبه‌هایش با overflow برش نمی‌خورد — باگِ
+          گزارش‌شده‌ی «آیکون‌های کناری ناقص/کات‌شده» همین بود. */}
       {usable.length > 1 ? (
         <div
-          className="no-scrollbar mt-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1"
+          className="no-scrollbar mt-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto p-1.5"
           role="tablist"
           aria-label="پیوست‌ها"
         >
@@ -248,6 +422,8 @@ export function TabyinStage({
             const isVideo = att.media_type === 'video';
             const isImage = att.media_type === 'image';
             const thumb = isImage ? att.url : isVideo ? videoThumbnailGifUrl(att.url) : undefined;
+            const thumbBroken = thumb ? Boolean(broken[thumb]) : false;
+            const attBroken = Boolean(broken[att.url]);
             return (
               <button
                 key={(att.id ?? i) + '-' + att.url}
@@ -266,13 +442,12 @@ export function TabyinStage({
                     : 'opacity-75 ring-1 ring-ink-200 hover:opacity-100 hover:ring-brand-300',
                 )}
               >
-                {thumb ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                {thumb && !thumbBroken ? (
+                  <FadeImg
+                    key={thumb}
                     src={thumb}
                     alt=""
-                    loading="lazy"
-                    decoding="async"
+                    onError={() => markBroken(thumb)}
                     className="h-full w-full object-cover"
                   />
                 ) : (
@@ -291,11 +466,21 @@ export function TabyinStage({
                     <Play className="h-2.5 w-2.5" />
                   </span>
                 ) : null}
+                {/* نشانِ «لود نشد»: بندانگشتیِ پیوستِ شکست‌خورده با هشدارِ
+                    ظریف دیده می‌شود تا کاربر بفهمد کدام پیوست مشکل دارد. */}
+                {attBroken ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 flex items-center justify-center bg-ink-900/55"
+                  >
+                    <AlertTriangle className="h-4 w-4 text-amber-300" />
+                  </span>
+                ) : null}
               </button>
             );
           })}
         </div>
       ) : null}
-    </div>
+    </motion.div>
   );
 }

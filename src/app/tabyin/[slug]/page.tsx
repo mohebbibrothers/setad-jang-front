@@ -1,16 +1,27 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { ArrowRight, CalendarDays, Captions, Layers, Sparkles, UserRound } from 'lucide-react';
+import {
+  ArrowRight,
+  CalendarDays,
+  Captions,
+  Image as ImageIcon,
+  PenLine,
+  Podcast,
+  Sparkles,
+  UserRound,
+  Video as VideoIcon,
+} from 'lucide-react';
 import { safeApiFetch } from '@/lib/api';
 import { formatJalaliDate } from '@/lib/persian-time';
 import {
+  contentKindFa,
   formatClockFa,
   formatFileSizeFa,
-  mediaTypeFa,
+  resolveContentKind,
   videoThumbnailGifUrl,
 } from '@/lib/media-meta';
-import { formatPersianNumber } from '@/lib/utils';
+import { cn, formatPersianNumber } from '@/lib/utils';
 import { asText, normalizeTabyinAttachments } from '@/lib/tabyin-attachments';
 import { TabyinStage, type TabyinStageAttachment } from '@/components/tabyin/TabyinStage';
 
@@ -138,12 +149,27 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
   const authorName = asText(item.author_username).trim();
   const caption = asText(item.description);
   const publishDate = formatJalaliDate(asText(item.source_created_at) || undefined);
-  const typeLabel = mediaTypeFa(item.primary_media_type, hero?.media_type_display ?? undefined);
+  /* نوعِ مؤثر (قراردادِ کارفرما): پیوستِ واقعی بر طبقه‌بندیِ بالادست
+     غلبه دارد — پادکستی که به‌غلط با نوعِ «ویدئو» همگام شده، اینجا
+     درست به «پادکست» تگ می‌خورد — و هرچه رسانه‌ی تصویر/ویدئو/پادکست
+     ندارد «نوشته» است. */
+  const kind = resolveContentKind(hero?.media_type, item.primary_media_type);
+  const typeLabel = contentKindFa(kind);
+  const KindGlyph =
+    kind === 'image'
+      ? ImageIcon
+      : kind === 'video'
+        ? VideoIcon
+        : kind === 'audio'
+          ? Podcast
+          : PenLine;
 
-  /* برگه‌ی مشخصات — فقط ردیف‌های دارای مقدار رندر می‌شوند */
+  /* برگه‌ی مشخصات — فقط ردیف‌های دارای مقدار رندر می‌شوند.
+     قراردادِ کارفرما: ردیفِ «منشأ» در هیچ اسلاگی نمایش داده نمی‌شود
+     (هویتِ مردمی‌بودن همان چیپِ «محتوای مردمی» در سربرگ است). */
   const specRows: { label: string; value: string }[] = [
     authorName ? { label: 'پدیدآورنده', value: authorName } : null,
-    typeLabel ? { label: 'نوع محتوا', value: typeLabel } : null,
+    { label: 'نوع محتوا', value: typeLabel },
     publishDate ? { label: 'تاریخ انتشار', value: publishDate } : null,
     formatClockFa(hero?.duration) ? { label: 'مدت', value: formatClockFa(hero?.duration)! } : null,
     formatFileSizeFa(hero?.file_size)
@@ -152,7 +178,6 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
     attachments.length
       ? { label: 'تعداد رسانه', value: `${formatPersianNumber(attachments.length)} رسانه` }
       : null,
-    { label: 'منشأ', value: isUser ? 'ارسالی کاربران (مردمی)' : 'منتشرشده در جهاد تبیین' },
   ].filter((r): r is { label: string; value: string } => Boolean(r));
 
   const jsonLd = JSON.stringify(buildJsonLd(item, hero)).replace(/</g, '\\u003c');
@@ -182,12 +207,10 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
           {/* ── چیپ‌ها + عنوان + متا ── */}
           <header>
             <div className="flex flex-wrap items-center gap-2">
-              {typeLabel ? (
-                <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-brand-50 px-3.5 text-[12.5px] font-extrabold text-brand-700 ring-1 ring-inset ring-brand-600/10">
-                  <Layers className="h-3.5 w-3.5" />
-                  {typeLabel}
-                </span>
-              ) : null}
+              <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-brand-50 px-3.5 text-[12.5px] font-extrabold text-brand-700 ring-1 ring-inset ring-brand-600/10">
+                <KindGlyph className="h-3.5 w-3.5" />
+                {typeLabel}
+              </span>
               {isUser ? (
                 <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-mint-500/15 px-3.5 text-[12.5px] font-extrabold text-mint-700 ring-1 ring-inset ring-mint-500/25">
                   <Sparkles className="h-3.5 w-3.5" />
@@ -271,21 +294,36 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
               مشخصات محتوا
             </h2>
             <dl className="grid sm:grid-cols-2">
-              {specRows.map((row, i) => (
-                <div
-                  key={row.label}
-                  className={
-                    'flex items-center justify-between gap-4 px-6 py-3.5 sm:px-8 ' +
-                    (i % 2 === 0 ? 'sm:border-l sm:border-ink-100' : '') +
-                    (i < specRows.length - (specRows.length % 2 === 0 ? 2 : 1)
-                      ? 'border-b border-ink-100/80'
-                      : '')
-                  }
-                >
-                  <dt className="text-[12.5px] font-bold text-ink-400">{row.label}</dt>
-                  <dd className="truncate text-[13px] font-extrabold text-ink-800">{row.value}</dd>
-                </div>
-              ))}
+              {specRows.map((row, i) => {
+                const isLast = i === specRows.length - 1;
+                /* ردیفِ یتیمِ چیدمانِ دوستونه (وقتی تعداد ردیف‌ها فرد است):
+                   تمام‌عرض و وسط‌چین می‌شود تا اصلاً «تکه‌ی خالی» شکل
+                   نگیرد — باگِ گزارش‌شده‌ی کارفرما. */
+                const isOrphanLast = isLast && specRows.length % 2 === 1;
+                /* خطوطِ جداکننده، ریسپانسیو-آگاه:
+                   موبایل (یک‌ستونه): هر ردیف جز آخری خطِ زیر دارد؛
+                   دسکتاپ (دوستونه): جفتِ ردیفِ آخر بدون خطِ زیر است و
+                   سلولِ ستونِ راست (اندیسِ زوج در چیدمانِ RTL) خطِ چپ دارد. */
+                const isSecondLastOfEvenPair =
+                  specRows.length % 2 === 0 && i === specRows.length - 2;
+                return (
+                  <div
+                    key={row.label}
+                    className={cn(
+                      'flex items-center justify-between gap-4 px-6 py-3.5 sm:px-8',
+                      !isLast && 'border-b border-ink-100/80',
+                      isSecondLastOfEvenPair && 'sm:border-b-0',
+                      i % 2 === 0 && !isOrphanLast && 'sm:border-l sm:border-ink-100',
+                      isOrphanLast && 'sm:col-span-2 sm:justify-center sm:gap-8',
+                    )}
+                  >
+                    <dt className="text-[12.5px] font-bold text-ink-400">{row.label}</dt>
+                    <dd className="truncate text-[13px] font-extrabold text-ink-800">
+                      {row.value}
+                    </dd>
+                  </div>
+                );
+              })}
             </dl>
           </section>
 

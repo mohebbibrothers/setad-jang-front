@@ -50,26 +50,45 @@ export function formatDimensionsFa(size: string | null | undefined): string | nu
 }
 
 /**
- * برچسبِ فارسیِ نوع رسانه. مقدارِ display آمده از بک‌اند (labels فارسیِ
- * TextChoices) در اولویت است؛ در غیابش، نقشه‌ی محلی. هیچ‌وقت مقدارِ
- * خامِ انگلیسی ('image'، 'video') به کاربر نشان داده نمی‌شود.
+ * ── نوعِ مؤثرِ محتوا (قراردادِ نمایشِ صفحه‌ی جزئیات) ──────────────
+ *
+ *  چرا این لایه هست؟ طبقه‌بندیِ بالادست (primary_media_type) گاهی با
+ *  واقعیتِ پیوست‌ها ناسازگار است: پادکستی که فقط «صوت + کاورِ تصویری»
+ *  داشت با برچسبِ «ویدئو» همگام شده بود و صفحه به‌غلط تگِ ویدئو می‌زد.
+ *
+ *  قاعده‌ی تثبیت‌شده با کارفرما:
+ *    نوعِ مؤثر = پیوستِ قهرمان (همان چیزی که استیج واقعاً نمایش می‌دهد)
+ *    در غیابِ پیوست → primary_media_type؛ در غیابِ هر دو → متن‌محور.
+ *
+ *  برچسب‌های کانونیکال (قراردادِ کارفرما، به‌جای display خامِ بالادست):
+ *    image → تصویر · video → ویدئو · audio → پادکست · سایر‌اش → نوشته
+ *    («هر چیزی که تصویری، ویدئویی و پادکست نباشد، نوشته است»)
  */
-export function mediaTypeFa(
-  type: string | null | undefined,
-  display?: string | null,
-): string | null {
-  if (display && display !== type) return display;
-  switch (type) {
+export type ContentKind = 'image' | 'video' | 'audio' | 'other';
+
+function asKind(v: string | null | undefined): ContentKind | undefined {
+  return v === 'image' || v === 'video' || v === 'audio' || v === 'other' ? v : undefined;
+}
+
+/** نوعِ مؤثر را با اولویتِ «پیوستِ واقعی» از روی دو سرچشمه تشخیص می‌دهد. */
+export function resolveContentKind(
+  heroType: string | null | undefined,
+  primaryType: string | null | undefined,
+): ContentKind {
+  return asKind(heroType) ?? asKind(primaryType) ?? 'other';
+}
+
+/** برچسبِ فارسیِ کانونیکال — همیشه مقدار دارد، هیچ‌وقت انگلیسی نیست. */
+export function contentKindFa(kind: ContentKind): string {
+  switch (kind) {
     case 'image':
       return 'تصویر';
     case 'video':
       return 'ویدئو';
     case 'audio':
-      return 'صوت';
-    case 'other':
-      return 'سایر';
+      return 'پادکست';
     default:
-      return null;
+      return 'نوشته';
   }
 }
 

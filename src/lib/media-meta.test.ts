@@ -4,7 +4,8 @@ import {
   formatClockFa,
   formatDimensionsFa,
   formatFileSizeFa,
-  mediaTypeFa,
+  resolveContentKind,
+  contentKindFa,
 } from './media-meta';
 
 /**
@@ -62,21 +63,37 @@ describe('formatDimensionsFa — ابعاد تصویر', () => {
   });
 });
 
-describe('mediaTypeFa — برچسبِ فارسیِ نوع رسانه', () => {
-  it('displayِ بک‌اند در اولویت است', () => {
-    expect(mediaTypeFa('video', 'ویدئو')).toBe('ویدئو');
+describe('resolveContentKind — نوعِ مؤثرِ محتوا', () => {
+  it('پیوستِ قهرمان بر طبقه‌بندیِ بالادست غلبه دارد (پادکست ≠ ویدئو)', () => {
+    // سناریوی گزارشِ کارفرما: صوت + کاور، اما primary = video
+    expect(resolveContentKind('audio', 'video')).toBe('audio');
+    expect(resolveContentKind('image', 'video')).toBe('image');
   });
 
-  it('نقشه‌ی محلی در غیابِ display', () => {
-    expect(mediaTypeFa('image')).toBe('تصویر');
-    expect(mediaTypeFa('video')).toBe('ویدئو');
-    expect(mediaTypeFa('audio')).toBe('صوت');
-    expect(mediaTypeFa('other')).toBe('سایر');
+  it('در غیابِ پیوست، primary_media_type ملاک است', () => {
+    expect(resolveContentKind(undefined, 'video')).toBe('video');
+    expect(resolveContentKind(null, 'image')).toBe('image');
+    expect(resolveContentKind(undefined, 'audio')).toBe('audio');
   });
 
-  it('مقدارِ ناشناخته/غایب → null (هیچ‌وقت انگلیسی رندر نمی‌شود)', () => {
-    expect(mediaTypeFa(undefined)).toBeNull();
-    expect(mediaTypeFa('weird')).toBeNull();
+  it('هرچه رسانه‌ی تصویر/ویدئو/پادکست ندارد → نوشته', () => {
+    expect(resolveContentKind(undefined, undefined)).toBe('other');
+    expect(resolveContentKind(undefined, 'other')).toBe('other');
+    expect(resolveContentKind('other', undefined)).toBe('other');
+  });
+
+  it('مقادیرِ ناشناخته به سمتِ نوشته فرو می‌غلتند', () => {
+    expect(resolveContentKind('hologram', 'weird')).toBe('other');
+    expect(resolveContentKind('hologram', 'video')).toBe('video');
+  });
+});
+
+describe('contentKindFa — برچسبِ کانونیکالِ فارسی', () => {
+  it('قراردادِ کارفرما: تصویر / ویدئو / پادکست / نوشته', () => {
+    expect(contentKindFa('image')).toBe('تصویر');
+    expect(contentKindFa('video')).toBe('ویدئو');
+    expect(contentKindFa('audio')).toBe('پادکست');
+    expect(contentKindFa('other')).toBe('نوشته');
   });
 });
 

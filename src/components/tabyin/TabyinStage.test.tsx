@@ -103,4 +103,55 @@ describe('TabyinStage', () => {
     );
     expect(anchors.every((h) => !h || !h.includes('armansky.ir/panel'))).toBe(true);
   });
+
+  it('پادکست: برچسبِ کانونیکال «پادکست» روی پنل می‌نشیند (نه «صوت»/«ویدئو»)', () => {
+    render(<TabyinStage attachments={[AUDIO, IMAGE]} title="قسمت سوم" />);
+    expect(screen.getByText('پادکست')).toBeTruthy();
+  });
+
+  it('تاب‌ماندگاری — تصویر: خطا → پنلِ برندشده، سپس «بارگذاری دوباره» با cache-bust', () => {
+    const { container } = render(<TabyinStage attachments={[IMAGE]} title="پوستر" />);
+    fireEvent.error(screen.getByAltText('پوستر'));
+    // قابِ شکسته جایش را به پنلِ برندشده می‌دهد — صفحه نمی‌شکند
+    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(screen.getByText('تصویر فعلاً در دسترس نیست')).toBeTruthy();
+    fireEvent.click(screen.getByText('بارگذاری دوباره'));
+    expect(screen.queryByRole('alert')).toBeNull();
+    const again = container.querySelector('img[alt="پوستر"]');
+    expect(again!.getAttribute('src')).toContain('_tabyin_retry=1');
+  });
+
+  it('تاب‌ماندگاری — ویدئو: خطا → پنلِ برندشده، سپس retry با src جدید', () => {
+    const { container } = render(<TabyinStage attachments={[VIDEO]} title="کلیپ" />);
+    fireEvent.error(container.querySelector('video')!);
+    expect(screen.getByText('ویدئو فعلاً در دسترس نیست')).toBeTruthy();
+    fireEvent.click(screen.getByText('بارگذاری دوباره'));
+    expect(container.querySelector('video')!.getAttribute('src')).toContain('_tabyin_retry=1');
+  });
+
+  it('تاب‌ماندگاری — پادکست: شکستِ کاور، پلیر را نمی‌شکند (فروافت به دیسکِ برند)', () => {
+    const { container } = render(<TabyinStage attachments={[AUDIO, IMAGE]} title="قسمت سوم" />);
+    fireEvent.error(screen.getByAltText('قسمت سوم'));
+    expect(screen.queryByAltText('قسمت سوم')).toBeNull(); // کاور → دیسکِ برند
+    expect(container.querySelector('audio')).not.toBeNull(); // پلیر سالم
+    expect(screen.getByText('پادکست')).toBeTruthy();
+  });
+
+  it('نوارِ بندانگشتی: پدینگِ تنفسی دارد تا رینگِ فعال از لبه‌ها کات نشود', () => {
+    render(<TabyinStage attachments={[VIDEO, IMAGE]} title="ترکیبی" />);
+    const strip = screen.getByRole('tablist');
+    expect(strip.className).toContain('overflow-x-auto');
+    expect(strip.className).toContain('p-1.5');
+  });
+
+  it('تاب‌ماندگاری — بندانگشتی: تامنیلِ شکست‌خورده به آیکونِ برند فرو می‌افتد', () => {
+    const { container } = render(<TabyinStage attachments={[VIDEO, IMAGE]} title="ترکیبی" />);
+    const gifThumb = container.querySelector('img[src*="/thumbnail/uploads/"]');
+    expect(gifThumb).not.toBeNull();
+    fireEvent.error(gifThumb!);
+    expect(container.querySelector('img[src*="/thumbnail/uploads/"]')).toBeNull();
+    // دکمه‌ها همچنان زنده‌اند — کاربر به پیوستِ دیگر می‌رود
+    fireEvent.click(screen.getAllByRole('tab')[1]);
+    expect(screen.getByAltText('ترکیبی')).toBeTruthy();
+  });
 });
