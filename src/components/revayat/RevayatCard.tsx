@@ -275,7 +275,7 @@ export function RevayatCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-[0_2px_16px_-8px_rgba(15,20,32,.08)] ring-1 ring-black/[0.02]"
+      className="w-full break-inside-avoid overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-[0_2px_16px_-8px_rgba(15,20,32,.08)] ring-1 ring-black/[0.02] lg:mb-6"
     >
       {/* ── سربرگِ پست ── */}
       <header className="flex items-center gap-3 px-4 py-3 sm:px-5">
@@ -458,7 +458,6 @@ export function RevayatCard({
               !expanded && 'line-clamp-3',
             )}
           >
-            {name ? <span className="ml-1 font-extrabold text-ink-900">{name}</span> : null}
             {caption}
           </p>
         ) : null}

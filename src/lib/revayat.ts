@@ -146,14 +146,14 @@ export function buildFeedQuery(
   return p.toString();
 }
 
-/** مسیرِ /revayat با فیلترها — برای سینکِ URL (قابل‌اشتراک‌گذاری). */
+/** مسیرِ /tabyin با فیلترها — برای سینکِ URL (قابل‌اشتراک‌گذاری). */
 export function buildFeedPath(filters: FeedFilters): string {
   const p = new URLSearchParams();
   if (filters.q.trim()) p.set('q', filters.q.trim());
   if (filters.type) p.set('type', filters.type);
   if (filters.author.trim()) p.set('author', filters.author.trim());
   const s = p.toString();
-  return s ? `/revayat?${s}` : '/revayat';
+  return s ? `/tabyin?${s}` : '/tabyin';
 }
 
 /** خواندنِ فیلترها از searchParamsِ سرور (امن در برابر آرایه/نویز). */

@@ -117,8 +117,8 @@ describe('buildFeedQuery / buildFeedPath', () => {
   });
 
   it('مسیرِ صفحه فقط فیلترهای پر را می‌گذارد', () => {
-    expect(buildFeedPath({ q: '', type: '', author: '' })).toBe('/revayat');
-    expect(buildFeedPath({ q: 'ایران', type: 'video', author: '' })).toContain('/revayat?');
+    expect(buildFeedPath({ q: '', type: '', author: '' })).toBe('/tabyin');
+    expect(buildFeedPath({ q: 'ایران', type: 'video', author: '' })).toContain('/tabyin?');
     const p = new URLSearchParams(
       buildFeedPath({ q: 'ایران', type: 'video', author: '' }).split('?')[1],
     );

@@ -5,7 +5,10 @@
  * RevayatFeed — فیدِ اینستاگرام‌وارِ «روایت‌ها»
  *
  * تجربه:
- *   • ستونِ تک‌خطیِ پست‌ها وسطِ صفحه (max-w-xl) — مثل فیدِ اینستاگرام؛
+ *   • موبایل/تبلت: ستونِ تک‌خطیِ پست‌ها وسطِ صفحه (max-w-xl) — مثل
+ *     فیدِ اینستاگرام؛ دسکتاپ: چیدمانِ بناعلیِ ۲ ستونه (lg) و ۳ ستونه
+ *     (2xl) با columns چندستونه‌ی CSS تا پهنای صفحه پر شود — ترتیبِ
+ *     راست‌به‌چپ حفظ می‌شود و کارت‌ها با break-inside-avoid سالم می‌مانند؛
  *   • اسکرولِ بی‌پایان: نگهبانِ IntersectionObserver صفحه‌ی بعد را
  *     ۸۰۰px قبل از رسیدن واکشی می‌کند؛ دکمه‌ی دستیِ «روایت‌های بیشتر»
  *     هم همیشه هست (fallback + دسترس‌پذیری)؛
@@ -237,7 +240,7 @@ export function RevayatFeed({
             <div className="feed-loader-bar h-full w-1/3 bg-gradient-to-l from-brand-400 via-mint-400 to-brand-500" />
           </div>
         ) : null}
-        <div className="mx-auto flex max-w-xl flex-col gap-2.5 px-4 py-3">
+        <div className="mx-auto flex max-w-xl flex-col gap-2.5 px-4 py-3 lg:max-w-6xl 2xl:max-w-7xl">
           <div className="relative">
             <Search className="pointer-events-none absolute right-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-ink-400" />
             <input
@@ -247,7 +250,7 @@ export function RevayatFeed({
               onChange={(e) => setQInput(e.target.value)}
               placeholder="جست‌وجو در روایت‌ها… (کپشن، نویسنده، شهر)"
               aria-label="جست‌وجو در روایت‌ها"
-              className="h-12 w-full rounded-2xl border border-ink-200 bg-ink-50/70 pe-11 ps-11 text-[13.5px] font-semibold text-ink-900 outline-none transition placeholder:text-ink-400 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10"
+              className="h-12 w-full rounded-2xl border border-ink-200 bg-ink-50/70 pe-11 ps-11 text-[13.5px] font-semibold text-ink-900 outline-none transition placeholder:text-ink-400 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
             />
             {qInput ? (
               <button
@@ -307,16 +310,26 @@ export function RevayatFeed({
         </div>
       </div>
 
-      {/* ── ستونِ فید ── */}
-      <div className="mx-auto flex max-w-xl flex-col gap-5 px-3 pt-5 sm:px-4">
+      {/* ── ستونِ فید — موبایل: تک‌ستونه‌ی اینستاگرامی؛ دسکتاپ: بناعلیِ ۲/۳ ستونه ── */}
+      <div className="mx-auto max-w-xl px-3 pt-5 sm:px-4 lg:max-w-6xl 2xl:max-w-7xl">
         {loading && items.length === 0 ? (
-          <>
-            <SkeletonCard />
-            <SkeletonCard />
-          </>
+          <div className="flex flex-col gap-5 lg:block lg:columns-2 lg:gap-6 2xl:columns-3">
+            <div className="break-inside-avoid lg:mb-6">
+              <SkeletonCard />
+            </div>
+            <div className="break-inside-avoid lg:mb-6">
+              <SkeletonCard />
+            </div>
+            <div className="hidden break-inside-avoid lg:mb-6 lg:block">
+              <SkeletonCard />
+            </div>
+            <div className="hidden break-inside-avoid lg:mb-6 lg:block">
+              <SkeletonCard />
+            </div>
+          </div>
         ) : items.length === 0 && error === null ? (
           /* ── حالتِ خالی ── */
-          <div className="rounded-3xl border border-dashed border-ink-200 bg-ink-50/40 px-6 py-14 text-center">
+          <div className="mx-auto max-w-xl rounded-3xl border border-dashed border-ink-200 bg-ink-50/40 px-6 py-14 text-center">
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-brand-600 shadow-sm ring-1 ring-ink-100">
               <Search className="h-6 w-6" />
             </span>
@@ -335,7 +348,7 @@ export function RevayatFeed({
           </div>
         ) : error === 'load' && items.length === 0 ? (
           /* ── خطای بارِ اول ── */
-          <div className="rounded-3xl border border-rose-100 bg-rose-50/50 px-6 py-14 text-center">
+          <div className="mx-auto max-w-xl rounded-3xl border border-rose-100 bg-rose-50/50 px-6 py-14 text-center">
             <p className="text-[15px] font-black text-ink-900">ارتباط برقرار نشد</p>
             <p className="mt-1.5 text-[12.5px] font-semibold leading-6 text-ink-500">
               خطایی در دریافتِ روایت‌ها رخ داد؛ معمولاً با یک تلاشِ دوباره درست می‌شود.
@@ -350,14 +363,16 @@ export function RevayatFeed({
             </button>
           </div>
         ) : (
-          items.map((item) => (
-            <RevayatCard key={item.external_id} item={item} onLocationClick={pickLocation} />
-          ))
+          <div className="flex flex-col gap-5 lg:block lg:columns-2 lg:gap-6 2xl:columns-3">
+            {items.map((item) => (
+              <RevayatCard key={item.external_id} item={item} onLocationClick={pickLocation} />
+            ))}
+          </div>
         )}
 
         {/* ── نگهبان + ادامه‌ی فید ── */}
         {items.length > 0 && error !== 'load' ? (
-          <div ref={sentinelRef} className="flex flex-col items-center gap-3 py-2">
+          <div ref={sentinelRef} className="mt-5 flex flex-col items-center gap-3 py-2">
             {loadingMore ? (
               <span className="inline-flex items-center gap-2 text-[12px] font-bold text-ink-400">
                 <Loader2 className="h-4 w-4 animate-spin text-brand-600" />
@@ -393,7 +408,7 @@ export function RevayatFeed({
           <button
             type="button"
             onClick={clearAll}
-            className="mx-auto text-[11.5px] font-bold text-ink-400 underline decoration-ink-200 underline-offset-4 transition-colors hover:text-brand-700"
+            className="mx-auto mt-5 flex text-[11.5px] font-bold text-ink-400 underline decoration-ink-200 underline-offset-4 transition-colors hover:text-brand-700"
           >
             حذفِ همه‌ی فیلترها و دیدنِ کلِ روایت‌ها
           </button>
