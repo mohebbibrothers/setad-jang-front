@@ -50,6 +50,10 @@ export function truncate(text: string, maxLen = 120): string {
  *   "https://cdn.example/x"     → passthrough (already absolute)
  *   "http://…"                  → passthrough
  *   "//cdn.example/x"           → passthrough (protocol-relative)
+ *   "http://<API_HOST>/x"       → scheme upgraded to the API URL's scheme
+ *                                 (e.g. http→https) so a same-origin media
+ *                                 URL never trips mixed-content blocking
+ *                                 or a next/image remotePatterns mismatch
  *   "/media/x.jpg"              → `${API_URL}/media/x.jpg`
  *   "media/x.jpg"               → `${API_URL}/media/x.jpg`
  */
@@ -57,7 +61,26 @@ export function absoluteMediaUrl(url: string | null | undefined): string | undef
   if (!url) return undefined;
   const trimmed = String(url).trim();
   if (!trimmed) return undefined;
-  if (/^(https?:)?\/\//i.test(trimmed)) return trimmed;
+  if (/^(https?:)?\/\//i.test(trimmed)) return normalizeSameOriginScheme(trimmed);
   const base = siteConfig.apiUrl.replace(/\/+$/, '');
   return `${base}/${trimmed.replace(/^\/+/, '')}`;
+}
+
+/**
+ * نشانیِ مطلقی که به میزبانِ خودِ API اشاره می‌کند باید با همان پروتکلِ
+ * API سرو شود؛ در غیر این صورت مرورگر (mixed content) یا لودرِ
+ * next/image (remotePatterns) آن را پس می‌زند. نشانیِ میزبانِ خارجی
+ * هرگز دست‌نخورده برمی‌گردد.
+ */
+function normalizeSameOriginScheme(url: string): string {
+  try {
+    const base = new URL(siteConfig.apiUrl);
+    const abs = new URL(url, base);
+    if (abs.host !== base.host) return url;
+    if (abs.protocol === base.protocol) return url;
+    abs.protocol = base.protocol;
+    return abs.href;
+  } catch {
+    return url;
+  }
 }

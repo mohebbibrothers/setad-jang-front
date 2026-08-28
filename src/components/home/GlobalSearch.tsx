@@ -1142,6 +1142,32 @@ function ResultsBody({
                             }}
                           />
                         )}
+                        {(h.kind === 'video' || h.kind === 'audio') && (
+                          <span
+                            aria-hidden="true"
+                            className="absolute bottom-0.5 end-0.5 z-10 inline-flex h-4 w-4 items-center justify-center rounded-full bg-black/55 text-white ring-1 ring-white/40 backdrop-blur-[2px]"
+                          >
+                            {h.kind === 'video' ? (
+                              <svg viewBox="0 0 24 24" className="h-2 w-2" fill="currentColor">
+                                <path d="M8 5.14v13.72c0 .9.97 1.45 1.74.98l11-6.86a1.13 1.13 0 0 0 0-1.96l-11-6.86A1.13 1.13 0 0 0 8 5.14Z" />
+                              </svg>
+                            ) : (
+                              <svg
+                                viewBox="0 0 24 24"
+                                className="h-2 w-2"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2.6}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <rect x="9" y="3" width="6" height="11" rx="3" />
+                                <path d="M5 11a7 7 0 0 0 14 0" />
+                                <path d="M12 18v3" />
+                              </svg>
+                            )}
+                          </span>
+                        )}
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[13.5px] font-extrabold text-ink-900">

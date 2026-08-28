@@ -120,3 +120,18 @@ export function videoThumbnailGifUrl(url: string | null | undefined): string | u
   if (!url) return undefined;
   return url.replace('/org/uploads/', '/thumbnail/uploads/').replace(/\.[a-z0-9]+$/i, '.gif');
 }
+
+/**
+ * کاورِ امنِ ویدئو برای نمایشِ تصویری (کارت‌های جست‌وجو و…).
+ *
+ * برخلاف videoThumbnailGifUrl که نگاشت را «کورکورانه» روی هر نشانی اجرا
+ * می‌کند (و روی هاستِ بیگانه یک آدرسِ gifِ ساختگی و شکسته می‌سازد)، این
+ * نسخه فقط وقتی خروجی می‌دهد که نشانی دقیقاً قراردادِ تامنیل‌سازِ منبع
+ * (/org/uploads/) را داشته باشد؛ در هر حالتِ دیگر undefined برمی‌گردد تا
+ * UI جایگزینِ طراحی‌شده‌ی خودش را رندر کند — نه یک <img> با آدرسِ MP4.
+ */
+export function videoCoverUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  if (!url.includes('/org/uploads/')) return undefined;
+  return videoThumbnailGifUrl(url);
+}

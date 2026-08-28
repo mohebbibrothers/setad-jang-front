@@ -231,17 +231,58 @@ export function feedContentKey(item: RevayatItem): string {
 }
 
 /**
+ * کلیدِ «فشرده» — پاسِ دومِ شکارِ تکرار، مخصوص نوشته‌ها.
+ *
+ * چرا لازم است؟ پاسِ اول (feedContentKey) دو پست را فقط وقتی یکی می‌داند
+ * که متنِ نرمال‌شده‌شان «حرف به حرف» برابر باشد؛ اما سندیکای بالادست
+ * گاهی دو نسخه‌ی یک نوشته را با تفاوت‌های «نامرئی» می‌فرستد: نشانه‌های
+ * جهت‌دهیِ یونیکد (ALM/RLM/LRM)، نویسه‌های bidi embedding
+ * (\u202A-\u202E و \u2066-\u2069)، تفاوتِ سجاوند (نقطه/ویرگول/سه‌نقطه)، یا
+ * اینکه عنوان در یکی خالی و در دیگری در کپشن تکرار شده باشد. دو نسخه
+ * روی صفحه «عیناً یکسان» دیده می‌شوند ولی کلیدِ پاسِ اول‌شان فرق
+ * می‌کند. پاسِ فشرده فقط «حروف و ارقامِ معنادار» را نگه می‌دارد
+ * (NFKC + حذفِ هر نویسه‌ی غیر L/N) تا این شباهت‌ها گیر نیفتند.
+ *
+ * حاشیه‌های امن (داده هرگز قربانی نمی‌شود):
+ *   • فقط برای نوشته‌ها فعال است — آیتمِ رسانه‌دار (عکس/ویدئو/صوت)
+ *     کلیدِ فشرده نمی‌گیرد چون دو پست با متنِ همسان و رسانه‌های متفاوت
+ *     محتواهای متمایزی‌اند و باید هر دو بمانند؛
+ *   • پستِ کاملاً تهی (بدون هیچ حرفِ معنادار) کلید نمی‌گیرد و رفتارِ
+ *     فروافتادنِ پاسِ اول به external_id حفظ می‌شود؛
+ *   • اگر کپشن عین عنوان باشد، فقط یک نسخه‌ی آن در کلید می‌آید تا
+ *     «عنوانِ خالی + کپشنِ پر» با «عنوانِ پر + کپشنِ خالی» برابر شود.
+ */
+export function feedLooseKey(item: RevayatItem): string | null {
+  if (feedAttachments(item).length) return null;
+  const toLoose = (s: string | null | undefined): string =>
+    normalizeForKey(s)
+      .normalize('NFKC')
+      .replace(/[^\p{L}\p{N}]+/gu, '');
+  const title = toLoose(item.title);
+  const desc = toLoose(item.description);
+  const parts = [...new Set([title, desc].filter(Boolean))];
+  if (!parts.length) return null;
+  return `loose:${parts.join('|')}`;
+}
+
+/**
  * حذفِ نسخه‌های تکراریِ «عیناً یکسان» از لیست — اولین نسخه می‌ماند.
- * در هر فیلتر (همه/متن/…) و بعد از هر واکشی اعمال می‌شود و مخصوصاً
- * نوشته‌های سندیکا‌شده را که چندبار سینک شده‌اند تکی می‌کند.
+ * دو پاسِ متوالی: (۱) کلیدِ دقیق — متنِ نرمال‌شده + مجموعه‌ی رسانه‌ها؛
+ * (۲) کلیدِ فشرده برای نوشته‌ها — فقط حروف/ارقامِ معنادار، که نسخه‌هایی
+ * را هم می‌گیرد که تنها در نویسه‌های نامرئی/سجاوند فرق دارند. در هر
+ * فیلتر (همه/متن/…) و بعد از هر واکشی اعمال می‌شود.
  */
 export function dedupeFeedContent(items: RevayatItem[]): RevayatItem[] {
   const seen = new Set<string>();
+  const seenLoose = new Set<string>();
   const out: RevayatItem[] = [];
   for (const item of items) {
     const key = feedContentKey(item);
     if (seen.has(key)) continue;
+    const loose = feedLooseKey(item);
+    if (loose && seenLoose.has(loose)) continue;
     seen.add(key);
+    if (loose) seenLoose.add(loose);
     out.push(item);
   }
   return out;

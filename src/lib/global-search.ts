@@ -57,6 +57,7 @@
 
 import { apiFetch } from './api';
 import { absoluteMediaUrl } from './utils';
+import { contentKindTagFa, resolveContentKind, videoCoverUrl } from './media-meta';
 
 /* ───────────────────────────────────────────────────────────────────────── */
 /*  Public types                                                              */
@@ -76,6 +77,12 @@ export type SearchHit = {
   badge?: string;
   /** Left-of-hit chip (e.g. مقدماتی، ویدئو، نیازمند کمک، فعال) */
   pill?: string;
+  /**
+   * نوعِ مؤثرِ محتوا (فعلاً فقط برای تبیین پر می‌شود) — از روی پیوست‌های
+   * واقعی با همان قراردادِ فید/جزئیات («صوت همیشه می‌برد») تشخیص داده
+   * می‌شود تا روی تامنیل، نشانِ ▶/🎙 کوچک رندر شود.
+   */
+  kind?: 'video' | 'audio' | 'image' | 'other';
 };
 
 export type SearchSourceMeta = {
@@ -214,13 +221,6 @@ const LEVEL_LABEL: Record<string, string> = {
   professional: 'حرفه‌ای',
 };
 
-const MEDIA_LABEL: Record<string, string> = {
-  image: 'تصویر',
-  video: 'ویدئو',
-  audio: 'صوت',
-  other: 'سایر',
-};
-
 const CAMPAIGN_STATUS_LABEL: Record<string, string> = {
   // Backend stores CampaignStatus in lowercase (draft/published/…).
   // Keep both casings mapped defensively.
@@ -278,15 +278,19 @@ function unwrapCounted<T>(p: Paginated<T> | null | undefined): { items: T[]; cou
 const PER_SOURCE_LIMIT = 5;
 /** سقفِ هر گروه در صفحه‌ی اختصاصی /search — مرورِ عمیق‌تر. */
 export const SEARCH_PAGE_GROUP_LIMIT = 12;
+/** اندازه‌ی هر دسته‌ی «نمایشِ بیشتر» در همان صفحه‌ی /search. */
+export const SEARCH_MORE_PAGE_SIZE = 12;
 
 function buildQueryString(
   q: string,
   limit: number,
   extra?: Record<string, string | boolean | undefined>,
+  page = 1,
 ): string {
   const params = new URLSearchParams();
   params.set('search', q);
   params.set('page_size', String(limit));
+  if (page > 1) params.set('page', String(page));
   if (extra) {
     Object.entries(extra).forEach(([k, v]) => {
       // NOTE — we DO want to send `false` (django BooleanFilter reads it
@@ -307,6 +311,7 @@ async function fetchMadadkar(
   facets: SearchFacets['madadkar'] | undefined,
   signal: AbortSignal | undefined,
   limit: number,
+  page = 1,
 ): Promise<SourceResult> {
   type C = {
     slug: string;
@@ -320,13 +325,18 @@ async function fetchMadadkar(
     participant_count?: number;
     total_amount?: number;
   };
-  const qs = buildQueryString(q, limit, {
-    status: facets?.status,
-    has_deadline: facets?.has_deadline,
-    is_fully_funded: facets?.is_fully_funded,
-    sponsor_slug: facets?.sponsor_slug,
-    ordering: '-published_at',
-  });
+  const qs = buildQueryString(
+    q,
+    limit,
+    {
+      status: facets?.status,
+      has_deadline: facets?.has_deadline,
+      is_fully_funded: facets?.is_fully_funded,
+      sponsor_slug: facets?.sponsor_slug,
+      ordering: '-published_at',
+    },
+    page,
+  );
   const data = await apiFetch<Paginated<C>>(`/madadkar/campaigns/?${qs}`, {
     signal,
     revalidate: 30,
@@ -363,11 +373,36 @@ async function fetchMadadkar(
   };
 }
 
+/**
+ * استخراجِ مقاومِ عکسِ اصلیِ پرونده‌ی عدالت. قراردادِ رسمیِ سریالایزرِ
+ * عمومی primary_photo = {id, image} است، اما این استخراج در برابر همه‌ی
+ * قالب‌های ممکن (آبجکت/رشته‌ی خالی/گالری photos[]/فیلدهای جایگزین)
+ * تسلیم‌ناپذیر است تا عکسِ موجود هرگز به‌خاطرِ شکلِ پاکت جا نماند.
+ */
+function firstR4JPhotoUrl(p: {
+  primary_photo?: { image?: string } | string | null;
+  photo?: string;
+  image?: string;
+  photos?: ({ image?: string } | null)[];
+}): string | undefined {
+  const pp = p.primary_photo;
+  const candidates: unknown[] = [
+    typeof pp === 'string' ? pp : pp?.image,
+    p.photo,
+    p.image,
+    Array.isArray(p.photos)
+      ? p.photos.find((g) => g && typeof g.image === 'string')?.image
+      : undefined,
+  ];
+  return candidates.find((c): c is string => typeof c === 'string' && c.trim() !== '');
+}
+
 async function fetchR4J(
   q: string,
   facets: SearchFacets['r4j'] | undefined,
   signal: AbortSignal | undefined,
   limit: number,
+  page = 1,
 ): Promise<SourceResult> {
   type P = {
     slug: string;
@@ -376,17 +411,27 @@ async function fetchR4J(
     country?: string;
     province?: string;
     city?: string;
-    primary_photo?: { image?: string } | null;
+    // سریالایزرِ عمومی آبجکت {id, image} برمی‌گرداند، ولی برای مقاومتِ
+    // کامل در برابر انحرافِ داده، قالب‌های جایگزین هم پذیرفته می‌شوند.
+    primary_photo?: { image?: string } | string | null;
+    photo?: string;
+    image?: string;
+    photos?: ({ image?: string } | null)[];
     total_bounty_toman?: number;
     bounties_count?: number;
   };
-  const qs = buildQueryString(q, limit, {
-    country: facets?.country,
-    province: facets?.province,
-    city: facets?.city,
-    gender: facets?.gender,
-    ordering: '-total_bounty_toman',
-  });
+  const qs = buildQueryString(
+    q,
+    limit,
+    {
+      country: facets?.country,
+      province: facets?.province,
+      city: facets?.city,
+      gender: facets?.gender,
+      ordering: '-total_bounty_toman',
+    },
+    page,
+  );
   const data = await apiFetch<Paginated<P>>(`/r4j/criminals/?${qs}`, {
     signal,
     revalidate: 60,
@@ -403,7 +448,7 @@ async function fetchR4J(
         id: `r4j:${p.slug}`,
         title: fullName,
         subtitle: loc || undefined,
-        thumb: absoluteMediaUrl(p.primary_photo?.image ?? null),
+        thumb: absoluteMediaUrl(firstR4JPhotoUrl(p)),
         // See note above — R4J detail route TBD, fall back to anchor.
         href: `/#justice`,
         badge: p.total_bounty_toman ? formatToman(p.total_bounty_toman) : undefined,
@@ -418,6 +463,7 @@ async function fetchLms(
   facets: SearchFacets['lms'] | undefined,
   signal: AbortSignal | undefined,
   limit: number,
+  page = 1,
 ): Promise<SourceResult> {
   type Co = {
     slug: string;
@@ -431,11 +477,16 @@ async function fetchLms(
     estimated_duration_seconds?: number;
     enrollments_count?: number;
   };
-  const qs = buildQueryString(q, limit, {
-    category: facets?.category,
-    level: facets?.level,
-    ordering: '-published_at',
-  });
+  const qs = buildQueryString(
+    q,
+    limit,
+    {
+      category: facets?.category,
+      level: facets?.level,
+      ordering: '-published_at',
+    },
+    page,
+  );
   const data = await apiFetch<Paginated<Co>>(`/lms/courses/?${qs}`, {
     signal,
     revalidate: 30,
@@ -471,6 +522,7 @@ async function fetchKindness(
   facets: SearchFacets['kindness'] | undefined,
   signal: AbortSignal | undefined,
   limit: number,
+  page = 1,
 ): Promise<SourceResult> {
   type L = {
     slug: string;
@@ -482,13 +534,18 @@ async function fetchKindness(
     cover_image?: string;
     view_count?: number;
   };
-  const qs = buildQueryString(q, limit, {
-    listing_type: facets?.listing_type,
-    category: facets?.category,
-    province: facets?.province,
-    city: facets?.city,
-    ordering: '-published_at',
-  });
+  const qs = buildQueryString(
+    q,
+    limit,
+    {
+      listing_type: facets?.listing_type,
+      category: facets?.category,
+      province: facets?.province,
+      city: facets?.city,
+      ordering: '-published_at',
+    },
+    page,
+  );
   const data = await apiFetch<Paginated<L>>(`/kindness-wall/listings/?${qs}`, {
     signal,
     revalidate: 30,
@@ -525,6 +582,7 @@ async function fetchTabyin(
   facets: SearchFacets['tabyin'] | undefined,
   signal: AbortSignal | undefined,
   limit: number,
+  page = 1,
 ): Promise<SourceResult> {
   type T = {
     external_id: string;
@@ -535,11 +593,33 @@ async function fetchTabyin(
     attachments?: { url?: string; media_type?: string }[];
     origin?: string;
   };
-  const qs = buildQueryString(q, limit, {
-    media_type: facets?.media_type,
-    author: facets?.author,
-    ordering: '-source_created_at',
-  });
+  /**
+   * قراردادِ تامنیلِ کارتِ جست‌وجو برای روایت‌ها:
+   *   ۱) نخستین پیوستِ تصویری (عکسِ واقعی یا کاورِ پادکست)؛
+   *   ۲) در نبودِ عکس: کاورِ GIFِ فریمِ اولِ ویدئو (نگاشتِ امنِ سرویسِ
+   *      تامنیل‌سازِ منبع — videoCoverUrl)؛
+   *   ۳) در غیر این صورت undefined تا جایگزینِ طراحی‌شده رندر شود.
+   * نکته‌ی حساس: URLِ فایلِ MP4 هرگز به‌عنوانِ تامنیلِ <img> برگردانده
+   * نمی‌شود — همان ریشه‌ی باگِ قبلی بود که کارت‌های ویدئویی را بی‌عکس
+   * (آیکنِ بنفش) نشان می‌داد.
+   */
+  const tabyinThumb = (t: T): string | undefined => {
+    const atts = Array.isArray(t.attachments) ? t.attachments : [];
+    const image = atts.find((a) => a?.media_type === 'image' && a?.url)?.url;
+    if (image) return absoluteMediaUrl(image);
+    const video = atts.find((a) => a?.media_type === 'video' && a?.url)?.url;
+    return videoCoverUrl(absoluteMediaUrl(video));
+  };
+  const qs = buildQueryString(
+    q,
+    limit,
+    {
+      media_type: facets?.media_type,
+      author: facets?.author,
+      ordering: '-source_created_at',
+    },
+    page,
+  );
   const data = await apiFetch<Paginated<T>>(`/tabyin/contents/?${qs}`, {
     signal,
     revalidate: 30,
@@ -549,8 +629,11 @@ async function fetchTabyin(
   return {
     count,
     hits: items.slice(0, limit).map((t) => {
-      const image =
-        t.attachments?.find((a) => a.media_type === 'image')?.url ?? t.attachments?.[0]?.url;
+      const atts = Array.isArray(t.attachments) ? t.attachments : [];
+      // نوعِ مؤثر از روی پیوست‌های واقعی — با همان قانونِ فید و صفحه‌ی
+      // جزئیات («صوت همیشه می‌برد»)؛ برچسبِ بالادست primary_media_type
+      // گاهی پادکستِ دارای کاورِ ویدئویی را به‌غلط «ویدئو» معرفی می‌کند.
+      const kind = resolveContentKind(atts.map((a) => a?.media_type));
       const title =
         clean(t.title) ||
         (t.description ? clean(t.description).slice(0, 60) + '…' : 'محتوای تبیینی');
@@ -559,11 +642,10 @@ async function fetchTabyin(
         id: `tabyin:${t.external_id}`,
         title,
         subtitle: t.author_username ? `@${clean(t.author_username)}` : undefined,
-        thumb: absoluteMediaUrl(image),
+        thumb: tabyinThumb(t),
         href: `/tabyin/${t.external_id}`,
-        pill: t.primary_media_type
-          ? (MEDIA_LABEL[t.primary_media_type] ?? t.primary_media_type)
-          : undefined,
+        pill: contentKindTagFa(kind),
+        kind,
         badge: t.origin === 'user_submitted' ? 'مردمی' : undefined,
       };
     }),
@@ -576,6 +658,7 @@ const FETCHERS: {
     facets: SearchFacets[K] | undefined,
     signal: AbortSignal | undefined,
     limit: number,
+    page?: number,
   ) => Promise<SourceResult>;
 } = {
   madadkar: fetchMadadkar,
@@ -648,6 +731,61 @@ export async function searchAll(
   );
 
   return { q: cleaned, groups, total, errored };
+}
+
+/* ───────────────────────────────────────────────────────────────────────── */
+/*  واکشیِ صفحه‌ایِ تکیِ یک منبع — موتورِ «نمایشِ بیشتر» در /search           */
+/* ───────────────────────────────────────────────────────────────────────── */
+
+export type SearchSourcePage = {
+  source: SearchSource;
+  q: string;
+  page: number;
+  pageSize: number;
+  hits: SearchHit[];
+  count: number;
+  /** آیا بعد از این صفحه هنوز نتیجه‌ی نمایش‌نیافته روی سرور هست؟ */
+  hasMore: boolean;
+};
+
+/**
+ * نتیجه‌ی «فقط یک منبع» را صفحه‌به‌صفحه می‌آورد — مکملِ searchAll که همه‌ی
+ * منابع را با هم و فقط صفحه‌ی اول را می‌گیرد. صفحه‌ی /search برشِ اولیه را
+ * سرور-ساید رندر می‌کند و دکمه‌ی «نمایش بیشتر» همین تابع را کلاینت-ساید
+ * صدا می‌زند تا کاربر بدون ترکِ صفحه، هر ۷۲ نتیجه را ببیند.
+ *
+ * صفحه و اندازه‌ی صفحه سخت clamp می‌شوند (page ∈ [1,1000]،
+ * pageSize ∈ [1,100] — مطابق سقفِ page_size در StandardPaginationِ بک‌اند).
+ */
+export async function searchSourcePage(
+  source: SearchSource,
+  q: string,
+  opts?: { page?: number; pageSize?: number; signal?: AbortSignal },
+): Promise<SearchSourcePage> {
+  const cleaned = (q ?? '').trim();
+  const page = Math.max(1, Math.min(1000, Math.trunc(opts?.page ?? 1) || 1));
+  const pageSize = Math.max(
+    1,
+    Math.min(100, Math.trunc(opts?.pageSize ?? SEARCH_MORE_PAGE_SIZE) || SEARCH_MORE_PAGE_SIZE),
+  );
+  if (!cleaned || cleaned.length < 2) {
+    return { source, q: cleaned, page, pageSize, hits: [], count: 0, hasMore: false };
+  }
+  const fn = FETCHERS[source];
+  // TypeScript can't correlate per-source facets through the discriminant;
+  // page-fetching never combines facets (they belong to the server-rendered
+  // first slice via searchAll), so `undefined` is the honest value here.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { hits, count } = await (fn as any)(cleaned, undefined, opts?.signal, pageSize, page);
+  return {
+    source,
+    q: cleaned,
+    page,
+    pageSize,
+    hits,
+    count,
+    hasMore: page * pageSize < count,
+  };
 }
 
 /* ───────────────────────────────────────────────────────────────────────── */

@@ -5,6 +5,7 @@ import {
   dedupeFeed,
   dedupeFeedContent,
   feedContentKey,
+  feedLooseKey,
   feedFiltersFromSearchParams,
   feedItemKind,
   heroOfFeedItem,
@@ -195,5 +196,64 @@ describe('dedupeFeedContent — محتوای «عیناً یکسان» فقط ی
     expect(feedContentKey(item('x', 'بعثت‌مردم', 'مهمَترین روایت'))).toBe(
       feedContentKey(item('y', 'بعثتمردم', 'مهمترین روایت')),
     );
+  });
+});
+
+describe('feedLooseKey / پاسِ فشرده — نسخه‌هایی که فقط در نویسه‌های نامرئی فرق دارند', () => {
+  const item = (id: string, title?: string, desc?: string, url?: string): RevayatItem => ({
+    external_id: id,
+    title,
+    description: desc,
+    attachments: url ? [{ url, media_type: 'image' }] : [],
+  });
+
+  it('نشانه‌های نامرئیِ جهت‌دهی (ALM/RLM و bidi embedding) در کلید بی‌اثرند', () => {
+    const plain = item('a', 'روایتِ روز', 'دشمن را بشناسید');
+    const marked = item('b', 'روایتِ روز', '‏‪دشمن را بشناسید‬');
+    expect(feedLooseKey(plain)).toBe(feedLooseKey(marked));
+    expect(dedupeFeedContent([plain, marked])).toHaveLength(1);
+  });
+
+  it('تفاوتِ سجاوند (نقطه/سه‌نقطه/ویرگول) دو نسخه‌ی یک متن نمی‌سازد', () => {
+    const a = item('a', 'بیانیه', 'پیروزی نزدیک است.');
+    const b = item('b', 'بیانیه', 'پیروزی نزدیک است…!');
+    const c = item('c', 'بیانیه', 'پیروزی، نزدیک است؟');
+    expect(dedupeFeedContent([a, b, c]).map((i) => i.external_id)).toEqual(['a']);
+  });
+
+  it('«عنوانِ پر + کپشنِ خالی» با «عنوانِ خالی + کپشنِ پر» برابر است', () => {
+    const a = item('a', 'روایتِ جهاد تبیین', undefined);
+    const b = item('b', undefined, 'روایتِ جهاد تبیین');
+    expect(feedLooseKey(a)).toBe(feedLooseKey(b));
+    expect(dedupeFeedContent([a, b])).toHaveLength(1);
+  });
+
+  it('متنِ واقعاً متفاوت هرگز یکی شمرده نمی‌شود', () => {
+    const a = item('a', 'روایتِ روز', 'متنِ نخست');
+    const b = item('b', 'روایتِ روز', 'متنِ دومِ متفاوت');
+    expect(dedupeFeedContent([a, b])).toHaveLength(2);
+    const c = item('c', 'روایتِ یک', undefined);
+    const d = item('d', 'روایتِ دو', undefined);
+    expect(dedupeFeedContent([c, d])).toHaveLength(2);
+  });
+
+  it('آیتمِ رسانه‌دار کلیدِ فشرده نمی‌گیرد — حتی با متنِ عیناً یکسان', () => {
+    const a = item('a', 'گزارشِ تصویری', 'کپشنِ همسان', 'https://m/9.jpg');
+    const b = item('b', 'گزارشِ تصویری', 'کپشنِ همسان', 'https://m/10.jpg');
+    expect(feedLooseKey(a)).toBeNull();
+    expect(dedupeFeedContent([a, b])).toHaveLength(2);
+  });
+
+  it('پستِ کاملاً تهی کلید نمی‌گیرد و رفتارِ external_id محفوظ می‌ماند', () => {
+    expect(feedLooseKey({ external_id: 'x' })).toBeNull();
+    expect(feedLooseKey(item('y', '  ', '…'))).toBeNull();
+    expect(dedupeFeedContent([{ external_id: 'x' }, { external_id: 'z' }])).toHaveLength(2);
+  });
+
+  it('سه نسخه‌ی سندیکاشده با موجِ کوتاه و نویسه‌های ترکیبی → فقط یکی', () => {
+    const a = item('a', 'وصیت‌نامه', 'شهید راهِ آزادی را گشود');
+    const b = item('b', 'وصیت‌نامه', 'شهید راهِ آزادی را گشود‏');
+    const c = item('c', 'وصیت‌نامه', 'شهید راهِ آزادی را گشود؟');
+    expect(dedupeFeedContent([a, b, c]).map((i) => i.external_id)).toEqual(['a']);
   });
 });

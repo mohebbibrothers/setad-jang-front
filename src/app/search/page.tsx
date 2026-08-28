@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Suspense } from 'react';
-import { SmartImage, type SmartImageVariant } from '@/components/ui/SmartImage';
+import type { SmartImageVariant } from '@/components/ui/SmartImage';
 import {
   searchAll,
   SEARCH_PAGE_GROUP_LIMIT,
@@ -10,12 +9,14 @@ import {
   type SearchSource,
 } from '@/lib/global-search';
 import { GlobalSearch } from '@/components/home/GlobalSearch';
+import { SearchGroupSection } from '@/components/search/SearchGroupSection';
 
 /**
  * Full-page search results — server-rendered against the same omni-search
  * pipeline used by the homepage hero bar. Lets users land here from
  * `Enter` in the search pill (or from `/search?q=&source=`) and browse
- * every matching hit grouped by source.
+ * every matching hit grouped by source. هر گروه یک برشِ اولیه‌ی سرور-رندر
+ * دارد و دکمه‌ی «نمایش بیشتر» بقیه‌ی نتایج را همان‌جا در کلاینت می‌آورد.
  */
 export const dynamic = 'force-dynamic';
 
@@ -98,70 +99,18 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             {data.groups.map((g) => {
               const meta = SEARCH_SOURCES[g.source];
               return (
-                <div key={g.source}>
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="text-[15px] font-extrabold text-ink-900 md:text-[16px]">
-                      {meta.label}
-                      <span className="mr-2 font-bold tabular-nums text-ink-400">
-                        ({g.count.toLocaleString('fa-IR')})
-                      </span>
-                      {g.count > g.hits.length ? (
-                        <span className="mr-2 text-[11.5px] font-semibold tabular-nums text-ink-400">
-                          — نمایش {g.hits.length.toLocaleString('fa-IR')} از{' '}
-                          {g.count.toLocaleString('fa-IR')}
-                        </span>
-                      ) : null}
-                    </h2>
-                    <Link
-                      href={meta.seeAllHref(q)}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand-50 px-3.5 text-[12.5px] font-extrabold text-brand-700 ring-1 ring-inset ring-brand-600/10 transition-colors hover:bg-brand-100 hover:text-brand-800"
-                    >
-                      مشاهده همه در {meta.shortLabel} ←
-                    </Link>
-                  </div>
-
-                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-                    {g.hits.map((h) => (
-                      <li key={h.id}>
-                        <Link
-                          href={h.href}
-                          className="group flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-ink-100 transition-all duration-200 hover:shadow-[0_14px_30px_-18px_rgba(11,53,48,.25)] hover:ring-brand-200"
-                        >
-                          <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-ink-100">
-                            <SmartImage
-                              src={h.thumb}
-                              alt={h.title}
-                              variant={SOURCE_TO_VARIANT[g.source] ?? 'image'}
-                              fill
-                              sizes="56px"
-                              className="object-cover"
-                            />
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[13.5px] font-extrabold text-ink-900">
-                              {h.title}
-                            </span>
-                            {h.subtitle && (
-                              <span className="mt-0.5 block truncate text-[11.5px] text-ink-500">
-                                {h.subtitle}
-                              </span>
-                            )}
-                            {(h.badge || h.pill) && (
-                              <span className="mt-1.5 flex items-center gap-1.5 text-[11px] font-bold">
-                                {h.pill && (
-                                  <span className="inline-flex h-5 items-center rounded-full bg-brand-50 px-2 text-brand-700">
-                                    {h.pill}
-                                  </span>
-                                )}
-                                {h.badge && <span className="text-ink-600">{h.badge}</span>}
-                              </span>
-                            )}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <SearchGroupSection
+                  key={g.source}
+                  source={g.source}
+                  q={data.q}
+                  initialHits={g.hits}
+                  count={g.count}
+                  pageSize={SEARCH_PAGE_GROUP_LIMIT}
+                  label={meta.label}
+                  shortLabel={meta.shortLabel}
+                  seeAllHref={meta.seeAllHref(q)}
+                  variant={SOURCE_TO_VARIANT[g.source] ?? 'image'}
+                />
               );
             })}
           </div>

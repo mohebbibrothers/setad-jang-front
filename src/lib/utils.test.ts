@@ -8,6 +8,7 @@ import {
   truncate,
   absoluteMediaUrl,
 } from './utils';
+import { siteConfig } from './site';
 
 describe('cn', () => {
   it('کلاس‌های متضاد tailwind را ادغام می‌کند (آخری برنده)', () => {
@@ -78,5 +79,19 @@ describe('absoluteMediaUrl', () => {
     expect(absoluteMediaUrl('media/b.jpg')?.endsWith('/media/b.jpg')).toBe(true);
     // اسلش‌های اضافه‌ی مرز base/path تکثیر نمی‌شوند
     expect(absoluteMediaUrl('//media/double.jpg')).toBe('//media/double.jpg');
+  });
+
+  it('نشانیِ همان میزبانِ API با پروتکلِ ناهمساز به پروتکلِ API ارتقا می‌یابد', () => {
+    const base = new URL(siteConfig.apiUrl);
+    const other = base.protocol === 'https:' ? 'http:' : 'https:';
+    expect(absoluteMediaUrl(`${other}//${base.host}/media/x.jpg`)).toBe(
+      `${base.protocol}//${base.host}/media/x.jpg`,
+    );
+  });
+
+  it('نشانیِ همان میزبان با همان پروتکل دست‌نخورده برمی‌گردد', () => {
+    const base = new URL(siteConfig.apiUrl);
+    const u = `${base.protocol}//${base.host}/media/ok.jpg`;
+    expect(absoluteMediaUrl(u)).toBe(u);
   });
 });

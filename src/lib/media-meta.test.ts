@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  videoCoverUrl,
   videoThumbnailGifUrl,
   formatClockFa,
   formatDimensionsFa,
@@ -117,5 +118,25 @@ describe('videoThumbnailGifUrl — تامنیلِ GIFِ ویدئو', () => {
   it('ورودی غایب → undefined', () => {
     expect(videoThumbnailGifUrl(undefined)).toBeUndefined();
     expect(videoThumbnailGifUrl(null)).toBeUndefined();
+  });
+});
+
+describe('videoCoverUrl — کاورِ امنِ ویدئو برای کارت‌های تصویری', () => {
+  it('فقط روی نشانیِ قراردادِ تامنیل‌ساز (/org/uploads/) خروجی می‌دهد', () => {
+    expect(videoCoverUrl('https://app-media.armansky.ir/org/uploads/v/film.mp4')).toBe(
+      'https://app-media.armansky.ir/thumbnail/uploads/v/film.gif',
+    );
+  });
+
+  it('هاستِ بیگانه یا مسیرِ خارج از قرارداد → undefined (نه آدرسِ gifِ ساختگی)', () => {
+    expect(videoCoverUrl('https://cdn.example.com/v/clip.mp4')).toBeUndefined();
+    expect(videoCoverUrl('https://app-media.armansky.ir/files/clip.mp4')).toBeUndefined();
+  });
+
+  it('آدرسِ MP4 هرگز به‌عنوانِ تامنیل برگردانده نمی‌شود؛ ورودیِ غایب → undefined', () => {
+    expect(videoCoverUrl('https://x/org/uploads/a.mp4')).not.toContain('.mp4');
+    expect(videoCoverUrl(undefined)).toBeUndefined();
+    expect(videoCoverUrl(null)).toBeUndefined();
+    expect(videoCoverUrl('')).toBeUndefined();
   });
 });
