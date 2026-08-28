@@ -603,29 +603,26 @@ export function TabyinSection({
               className={
                 isSparse
                   ? 'flex flex-wrap items-start justify-center gap-4 md:gap-5'
-                  : // موبایل (<sm): پشته‌ی کارت‌های رسانه‌ایِ تمام‌عرض با
-                    // نسبتِ ۱۶:۱۰ — جایگزینِ دیوارِ مربع‌های کوچک. دو
-                    // گزارشِ متوالیِ کارفرما نشان داد گریدِ دوتاییِ
-                    // کاشی‌های ۱۵۰px روی گوشی «در هم و به‌هم‌چسبیده»
-                    // می‌نماید؛ الگوی استانداردِ اپ‌های رسانه‌ای (کارتِ
-                    // بزرگِ immersive + عنوانِ خوانا) جایگزین شد.
-                    // ≥sm: همان گریدِ متراکمِ قبلی (۲/۳/۴ ستونه + لیدرِ
-                    // شاخص در باندِ sm–md) — دسکتاپ کاملاً دست‌نخورده.
-                    'flex flex-col gap-4 ' +
-                    'sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' +
-                    'sm:auto-rows-[165px] md:auto-rows-[175px]' +
-                    'sm:gap-4 md:gap-5'
+                  : // گریدِ اصلی دیوار — قراردادِ تثبیت‌شده‌ی چیدمانِ
+                    // نسخه‌های نخست (۲/۳/۴ ستونه، ردیف ۱۲۰/۱۴۰/۱۶۰، گپ
+                    // ۱۲/۱۶) که کارفرما تأیید کرده‌اند. قانونِ حیاتی: این
+                    // رشته عمداً «یکجا» است — نسخه‌های میانی آن را با +
+                    // می‌چسباندند و مرزِ چسبندگی، توکن‌های Tailwind را به
+                    // یک توکنِ نامعتبرِ واحد قفل می‌کرد (مثلاً
+                    // md:auto-rows-[175px]sm:gap-4) — پس گپ‌ها و
+                    // auto-rowsها در بیلد تولید نمی‌شدند و دیوار فرو
+                    // می‌ریخت/می‌چسبید. هرگز این رشته را تکه‌تکه نکنید.
+                    'grid auto-rows-[120px] grid-cols-2 gap-3 sm:auto-rows-[140px] md:auto-rows-[160px] md:grid-cols-3 md:gap-4 lg:grid-cols-4'
               }
               style={isSparse ? undefined : { gridAutoFlow: 'dense' }}
             >
               {visible.map((it, i) => {
-                // ── PAGE-LOCAL span pattern (≥sm grid) ─────────────────
-                // Desktop (4-col): EXACTLY 2 tall + 8 short per page so
-                //   tall(=2 slots) × 2 + short(=1 slot) × 8 = 12 slots = 3 ردیف
-                // باندِ sm–md (2-col): اسلاتِ ۰ علاوه بر row-span-2 پان‌دوستون
-                //   می‌شود (کارتِ شاخص؛ max-md:col-span-2) ⇒ مجموع =
-                //   2×2 + 1×2 + 8 = ۱۴ سلول = ۷ ردیفِ مرتب با dense-flow.
-                // گوشیِ <sm: پشته‌ی کارت‌های تمام‌عرض — اسپن‌ها خنثی‌اند.
+                // ── PAGE-LOCAL tall pattern ─────────────────────────────
+                // We need EXACTLY 2 tall + 8 short on every page so:
+                //   tall(=2 slots) × 2 + short(=1 slot) × 8 = 12 slots
+                //   - 4-col: 3 rows × 4 = 12 ✓
+                //   - 3-col: 4 rows × 3 = 12 ✓
+                //   - 2-col: 6 rows × 2 = 12 ✓
                 // We place tall on slots 0 and 1 — the EARLIEST positions —
                 // so `grid-auto-flow: dense` never has to spill a tall into
                 // the bottom row, where it would push the grid past its
@@ -679,17 +676,17 @@ export function TabyinSection({
             - 'افزودن محتوا'      → primary, mint pill (action intent,
               routes through the auth-required user-submission flow that
               maps to POST /api/v1/tabyin/me/submissions/)                */}
-        <div className="mt-6 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/tabyin"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-full border-2 border-brand-500 bg-white px-7 text-[14px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
+            className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-brand-500 bg-white px-7 text-[14px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
           >
             <span>مشاهده همه محتوا</span>
             <Icon name="arrow-left" className="h-4 w-4" />
           </Link>
           <Link
             href="/tabyin/new"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-mint-500 px-7 text-[14px] font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(37,197,186,.5)] transition-all hover:scale-[1.02] hover:bg-mint-600 active:scale-[.98]"
+            className="inline-flex h-12 items-center gap-2 rounded-full bg-mint-500 px-7 text-[14px] font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(37,197,186,.5)] transition-all hover:scale-[1.02] hover:bg-mint-600 active:scale-[.98]"
           >
             <Icon name="plus" className="h-4 w-4" strokeWidth={2.5} />
             <span>افزودن محتوا</span>
@@ -724,28 +721,19 @@ function TabyinTile({
   // The data-driven `it.tall` is intentionally ignored here.
   // In SPARSE mode every tile is short (a single centred row).
   const tall = !sparse && forceTall;
-  // کاشیِ شاخص در باندِ sm–md (دو ستون): اولین آیتم تمام‌عرضِ دو ردیف
-  // می‌شود (لیدر + دیوار). روی گوشیِ <sm چیدمان پشته‌ایِ تمام‌عرض است
-  // و این اسپن‌ها خنثی‌اند (کانتینر flex).
-  const featured = !sparse && index === 0;
-  // سایزِ درخواستیِ تصویر: گوشی ≈ تمام‌عرض (۹۲vw)، تبلت نصف‌عرض، دسکتاپ ربع
-  const imageSizes = '(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 22vw';
   const tileHref = `/tabyin/${it.slug}`;
   const tileTarget = undefined;
   const tileRel = undefined;
 
   // Width / height presets for sparse mode mirror each breakpoint's
-  // column count AND the dense grid's row track + gap so the visual
-  // rhythm stays identical to the dense grid.
+  // column count so the visual rhythm stays identical to the dense grid.
+  // توجه: این رشته‌ها نیز عمداً یکجا و بدون چسبندگیِ + میانی هستند —
+  // مرزِ چسبندگیِ بدون فاصله توکن‌های Tailwind را نابود می‌کند.
   const sparseSizing = sparse
-    ? 'w-[calc((100%-1rem)/2)] h-[150px] ' +
-      'sm:h-[165px] ' +
-      'md:w-[calc((100%-2*1.25rem)/3)] md:h-[175px] ' +
-      'lg:w-[calc((100%-3*1.25rem)/4)] ' +
-      'flex-none'
-    : // روی گوشی: کارتِ رسانه‌ای با نسبتِ ثابت (row-spanها در فلکس خنثی
-      // می‌شوند)؛ ≥sm: اسپن‌های گریدِ متراکم.
-      `max-sm:aspect-[16/10] max-sm:w-full ${tall ? 'row-span-2' : 'row-span-1'}${featured ? ' max-md:col-span-2' : ''}`;
+    ? 'w-[calc((100%-0.75rem)/2)] h-[120px] sm:h-[140px] md:w-[calc((100%-2*1rem)/3)] md:h-[160px] lg:w-[calc((100%-3*1rem)/4)] flex-none'
+    : tall
+      ? 'row-span-2'
+      : 'row-span-1';
 
   return (
     <motion.article
@@ -844,7 +832,7 @@ function TabyinTile({
               alt={it.title || 'محتوای تبیینی'}
               variant="tabyin"
               fill
-              sizes={imageSizes}
+              sizes="(max-width: 768px) 45vw, 22vw"
               className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
           )}
@@ -858,14 +846,9 @@ function TabyinTile({
             aria-hidden="true"
             className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/80 via-black/30 to-transparent"
           />
-          {/* Title overlay (only when there's a title) — روی کارت‌های
-              بزرگِ موبایل یک پله درشت‌تر تا خوانایی از فاصله‌ی طبیعی */}
+          {/* Title overlay (only when there's a title) */}
           {it.title && (
-            <p
-              className={`absolute inset-x-3 bottom-3 line-clamp-2 text-[14px] font-extrabold leading-6 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,.6)] sm:text-[12.5px] sm:leading-5 md:text-[13px] ${
-                featured ? 'max-md:text-[15px] max-md:leading-6' : ''
-              }`}
-            >
+            <p className="absolute inset-x-3 bottom-3 line-clamp-2 text-[12.5px] font-extrabold leading-5 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,.6)] md:text-[13px]">
               {it.title}
             </p>
           )}
@@ -896,7 +879,7 @@ function TabyinTile({
             alt={it.title || 'محتوای تبیینی'}
             variant="tabyin"
             fill
-            sizes={imageSizes}
+            sizes="(max-width: 768px) 45vw, 22vw"
           />
         </Link>
       )}

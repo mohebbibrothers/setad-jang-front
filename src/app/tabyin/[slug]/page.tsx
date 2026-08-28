@@ -11,6 +11,7 @@ import {
   videoThumbnailGifUrl,
 } from '@/lib/media-meta';
 import { formatPersianNumber } from '@/lib/utils';
+import { asText, normalizeTabyinAttachments } from '@/lib/tabyin-attachments';
 import { TabyinStage, type TabyinStageAttachment } from '@/components/tabyin/TabyinStage';
 
 /**
@@ -49,8 +50,9 @@ async function fetchContent(slug: string) {
   });
 }
 
-function heroMedia(item: TabyinContent): TabyinStageAttachment | undefined {
-  const list = item.attachments ?? [];
+/* heroMedia/ogImage روی لیستِ «نرمالایزشده» کار می‌کنند — هرگز روی
+   payload خامِ API، تا انحراف داده‌ی بالادست نتواند صفحه را بترکاند. */
+function heroMedia(list: TabyinStageAttachment[]): TabyinStageAttachment | undefined {
   return (
     list.find((a) => a.media_type === 'video' && a.url) ||
     list.find((a) => a.media_type === 'audio' && a.url) ||
@@ -59,8 +61,7 @@ function heroMedia(item: TabyinContent): TabyinStageAttachment | undefined {
   );
 }
 
-function ogImage(item: TabyinContent): string | undefined {
-  const list = item.attachments ?? [];
+function ogImage(list: TabyinStageAttachment[]): string | undefined {
   const img = list.find((a) => a.media_type === 'image' && a.url)?.url;
   if (img) return img;
   const vid = list.find((a) => a.media_type === 'video' && a.url)?.url;
@@ -74,9 +75,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const item = await fetchContent(slug);
-  const title = item?.title ? `${item.title} | جهاد تبیین` : 'جهاد تبیین | بعثت مردم';
-  const description = item?.description?.slice(0, 160) || 'محتوای جهاد تبیین — بعثت مردم';
-  const image = item ? ogImage(item) : undefined;
+  const safeTitle = asText(item?.title);
+  const title = safeTitle ? `${safeTitle} | جهاد تبیین` : 'جهاد تبیین | بعثت مردم';
+  const description = asText(item?.description).slice(0, 160) || 'محتوای جهاد تبیین — بعثت مردم';
+  const image = item ? ogImage(normalizeTabyinAttachments(item.attachments)) : undefined;
   return {
     title,
     description,
@@ -96,14 +98,14 @@ export async function generateMetadata({
 }
 
 /* ── داده‌ی ساخت‌یافته (SEO) — بدون هیچ اشاره‌ای به سایتِ منبع ── */
-function buildJsonLd(item: TabyinContent) {
-  const hero = heroMedia(item);
+function buildJsonLd(item: TabyinContent, hero: TabyinStageAttachment | undefined) {
+  const author = asText(item.author_username);
   const base = {
     '@context': 'https://schema.org',
-    name: item.title || 'محتوای جهاد تبیین',
-    description: item.description || undefined,
-    datePublished: item.source_created_at || undefined,
-    author: item.author_username ? { '@type': 'Person', name: item.author_username } : undefined,
+    name: asText(item.title) || 'محتوای جهاد تبیین',
+    description: asText(item.description) || undefined,
+    datePublished: asText(item.source_created_at) || undefined,
+    author: author ? { '@type': 'Person', name: author } : undefined,
   };
   if (hero?.media_type === 'video') {
     return {
@@ -127,16 +129,20 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
   const item = await fetchContent(slug);
   if (!item) notFound();
 
-  const attachments = (item.attachments ?? []).filter((a) => a.url);
-  const hero = heroMedia(item);
+  /* عادی‌سازیِ دفاعی: ورودیِ API هر شکلی داشته باشد، از اینجا به بعد
+     فقط پیوست‌های تمیز و type-safe به لایه‌ی UI می‌رسند. */
+  const attachments = normalizeTabyinAttachments(item.attachments);
+  const hero = heroMedia(attachments);
   const isUser = item.origin === 'user_submitted';
-  const title = item.title?.trim() || 'محتوای جهاد تبیین';
-  const publishDate = formatJalaliDate(item.source_created_at);
+  const title = asText(item.title).trim() || 'محتوای جهاد تبیین';
+  const authorName = asText(item.author_username).trim();
+  const caption = asText(item.description);
+  const publishDate = formatJalaliDate(asText(item.source_created_at) || undefined);
   const typeLabel = mediaTypeFa(item.primary_media_type, hero?.media_type_display ?? undefined);
 
   /* برگه‌ی مشخصات — فقط ردیف‌های دارای مقدار رندر می‌شوند */
   const specRows: { label: string; value: string }[] = [
-    item.author_username?.trim() ? { label: 'پدیدآورنده', value: item.author_username } : null,
+    authorName ? { label: 'پدیدآورنده', value: authorName } : null,
     typeLabel ? { label: 'نوع محتوا', value: typeLabel } : null,
     publishDate ? { label: 'تاریخ انتشار', value: publishDate } : null,
     formatClockFa(hero?.duration) ? { label: 'مدت', value: formatClockFa(hero?.duration)! } : null,
@@ -149,7 +155,7 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
     { label: 'منشأ', value: isUser ? 'ارسالی کاربران (مردمی)' : 'منتشرشده در جهاد تبیین' },
   ].filter((r): r is { label: string; value: string } => Boolean(r));
 
-  const jsonLd = JSON.stringify(buildJsonLd(item)).replace(/</g, '\\u003c');
+  const jsonLd = JSON.stringify(buildJsonLd(item, hero)).replace(/</g, '\\u003c');
 
   return (
     <main className="bg-white">
@@ -196,12 +202,12 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
               {title}
             </h1>
             <div className="mt-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] font-semibold text-ink-500">
-              {item.author_username?.trim() ? (
+              {authorName ? (
                 <span className="inline-flex items-center gap-2">
                   <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-700">
                     <UserRound className="h-3.5 w-3.5" />
                   </span>
-                  <span className="text-ink-700">{item.author_username}</span>
+                  <span className="text-ink-700">{authorName}</span>
                   <span className="text-ink-400">پدیدآورنده</span>
                 </span>
               ) : null}
@@ -233,9 +239,9 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
                 >
                   <path d="M7.17 6C4.31 6 2 8.31 2 11.17v6.66h6.66v-6.66H5c0-1.84 1.49-3.33 3.33-3.33V6H7.17zm10 0c-2.86 0-5.17 2.31-5.17 5.17v6.66h6.66v-6.66H15c0-1.84 1.49-3.33 3.33-3.33V6h-1.16z" />
                 </svg>
-                {item.description ? (
+                {caption ? (
                   <p className="relative mt-5 whitespace-pre-line text-[16px] font-bold leading-8 text-white/95 md:text-[18px] md:leading-9">
-                    {item.description}
+                    {caption}
                   </p>
                 ) : (
                   <p className="relative mt-5 text-[16px] font-bold text-white/90">جهاد تبیین</p>
@@ -245,7 +251,7 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
           </div>
 
           {/* ── کپشن (وقتی متن‌محور نیست یا متن اضافه‌ای دارد) ── */}
-          {item.description && attachments.length > 0 ? (
+          {caption && attachments.length > 0 ? (
             <section className="mt-8 rounded-[24px] border border-ink-100 bg-gradient-to-l from-brand-50/50 via-white to-white p-6 ring-1 ring-black/[0.03] sm:p-8">
               <h2 className="flex items-center gap-2 text-[15px] font-extrabold text-ink-900">
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-500/15 text-brand-700">
@@ -254,7 +260,7 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
                 کپشن
               </h2>
               <p className="mt-4 whitespace-pre-line text-[15px] leading-9 text-ink-700">
-                {item.description}
+                {caption}
               </p>
             </section>
           ) : null}
