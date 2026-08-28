@@ -209,18 +209,16 @@ function normalizeForKey(s: string | null | undefined): string {
   /* eslint-enable no-misleading-character-class, no-irregular-whitespace */
 }
 
-/**
- * کلیدِ هویتِ محتواییِ یک روایت. دو پست «عیناً یکسان» — یعنی عنوان و
- * کپشنِ نرمال‌شده‌ی یکسان **و** مجموعه‌ی رسانه‌های یکسان (URL به URL) —
- * کلیدِ مشترک می‌گیرند و فقط نخستین‌شان در فید می‌ماند.
- *
- * حاشیه‌های امن (داده هرگز قربانی نمی‌شود):
- *   • متنِ یکسان + رسانه‌ی متفاوت (مثلاً دو عکسِ مختلف با کپشنِ همسان)
- *     کلیدِ متفاوت دارد و هر دو نمایش داده می‌شوند؛
- *   • پستِ کاملاً تهی (نه عنوان، نه کپشن، نه پیوست) روی external_id
- *     فرو می‌افتد تا کلیدهای تهی به‌هم نچسبند.
- */
-export function feedContentKey(item: RevayatItem): string {
+/** شکلِ حداقلیِ سازگار با یک محتوای تبیینی — برای استفاده‌ی دیوار و فید. */
+export type DedupeableContent = {
+  external_id: string;
+  title?: string | null;
+  description?: string | null;
+  author_username?: string | null;
+  attachments?: unknown;
+};
+
+export function feedContentKey(item: DedupeableContent): string {
   const title = normalizeForKey(item.title);
   const desc = normalizeForKey(item.description);
   const urls = feedAttachments(item)
@@ -230,6 +228,9 @@ export function feedContentKey(item: RevayatItem): string {
   return `${title}|${desc}|${urls}`;
 }
 
+/** پیوستِ «رسانه‌ای قابل‌رؤیت» — تصویر/ویدئو/صوت هویتِ بصریِ کارت را می‌سازند. */
+const RENDERABLE_MEDIA = new Set(['image', 'video', 'audio']);
+
 /**
  * کلیدِ «فشرده» — پاسِ دومِ شکارِ تکرار، مخصوص نوشته‌ها.
  *
@@ -237,45 +238,70 @@ export function feedContentKey(item: RevayatItem): string {
  * که متنِ نرمال‌شده‌شان «حرف به حرف» برابر باشد؛ اما سندیکای بالادست
  * گاهی دو نسخه‌ی یک نوشته را با تفاوت‌های «نامرئی» می‌فرستد: نشانه‌های
  * جهت‌دهیِ یونیکد (ALM/RLM/LRM)، نویسه‌های bidi embedding
- * (\u202A-\u202E و \u2066-\u2069)، تفاوتِ سجاوند (نقطه/ویرگول/سه‌نقطه)، یا
- * اینکه عنوان در یکی خالی و در دیگری در کپشن تکرار شده باشد. دو نسخه
+ * (\u202A-\u202E و \u2066-\u2069)، تفاوتِ سجاوند (نقطه/ویرگول/سه‌نقطه)،
+ * اینکه عنوان در یکی خالی و در دیگری در کپشن تکرار شده باشد، یا اینکه
+ * مرزِ پیوست‌ها فرق کند (مثلاً یکی فایلِ «سایر» داشته باشد). دو نسخه
  * روی صفحه «عیناً یکسان» دیده می‌شوند ولی کلیدِ پاسِ اول‌شان فرق
- * می‌کند. پاسِ فشرده فقط «حروف و ارقامِ معنادار» را نگه می‌دارد
- * (NFKC + حذفِ هر نویسه‌ی غیر L/N) تا این شباهت‌ها گیر نیفتند.
+ * می‌کند. پاسِ فشرده هویتِ متنی را می‌گیرد تا این شباهت‌ها گیر نیفتند.
  *
- * حاشیه‌های امن (داده هرگز قربانی نمی‌شود):
- *   • فقط برای نوشته‌ها فعال است — آیتمِ رسانه‌دار (عکس/ویدئو/صوت)
- *     کلیدِ فشرده نمی‌گیرد چون دو پست با متنِ همسان و رسانه‌های متفاوت
- *     محتواهای متمایزی‌اند و باید هر دو بمانند؛
- *   • پستِ کاملاً تهی (بدون هیچ حرفِ معنادار) کلید نمی‌گیرد و رفتارِ
- *     فروافتادنِ پاسِ اول به external_id حفظ می‌شود؛
- *   • اگر کپشن عین عنوان باشد، فقط یک نسخه‌ی آن در کلید می‌آید تا
- *     «عنوانِ خالی + کپشنِ پر» با «عنوانِ پر + کپشنِ خالی» برابر شود.
+ * مرزِ دقیقِ پاس (داده هرگز قربانی نمی‌شود):
+ *   • فقط وقتی فعال است که آیتم **هیچ رسانه‌ی قابل‌رؤیتی** (تصویر/
+ *     ویدئو/صوت) نداشته باشد — دو پست با متنِ همسان ولی عکس/ویدئو/صوتِ
+ *     متفاوت محتواهای متمایزی‌اند و هر دو می‌مانند؛
+ *   • پیوست‌های «سایر» (سند/فایل) در کلید با **عنوانِ** فایل لحاظ
+ *     می‌شوند، نه URL — چون URLِ ذخیره‌سازی بین دو سینک فرق می‌کند
+ *     ولی عنوانِ فایل هویتِ واقعی‌اش است؛ دو متنِ همسان با سندهایِ
+ *     متفاوت تیترشان، جدا می‌مانند و هر دو نمایش داده می‌شوند؛
+ *   • پوسته‌های کاملاً تهی (نه متنِ خواندنی، نه رسانه، نه فایلِ
+ *     عنوانی‌دار) با کلیدِ `void:<نویسنده>` ادغام می‌شوند — دوتایی که
+ *     همان نویسنده را دارد دقیقاً یکی می‌ماند، پوسته‌ی نویسنده‌های
+ *     متفاوت نجوا به‌هم نمی‌چسبند (چون نامِ نویسنده تنها تفاوتِ
+ *     دیداری‌شان است و باید باقی بماند).
  */
-export function feedLooseKey(item: RevayatItem): string | null {
-  if (feedAttachments(item).length) return null;
+export function feedLooseKey(item: DedupeableContent): string | null {
+  const attachments = feedAttachments(item);
+  if (attachments.some((a) => a.media_type && RENDERABLE_MEDIA.has(a.media_type))) return null;
+
+  /* eslint-disable no-misleading-character-class, no-irregular-whitespace --
+     عمدی: فقط «حروف و ارقامِ یونیکدِ معنادار» می‌مانند؛ نویسه‌های فرمتینگ،
+     سجاوند، فاصله‌ها و نشانه‌های نامرئی (ALM/RLM/bidi و…) همگی در
+     کلیدِ قیاس بی‌اثرند چون الگوی نگاتیوِ L/N همه‌ی آنان را حذف می‌کند. */
   const toLoose = (s: string | null | undefined): string =>
     normalizeForKey(s)
       .normalize('NFKC')
       .replace(/[^\p{L}\p{N}]+/gu, '');
+  /* eslint-enable no-misleading-character-class, no-irregular-whitespace */
+
   const title = toLoose(item.title);
   const desc = toLoose(item.description);
-  const parts = [...new Set([title, desc].filter(Boolean))];
-  if (!parts.length) return null;
-  return `loose:${parts.join('|')}`;
+  const textParts = [...new Set([title, desc].filter(Boolean))];
+  const otherTitles = attachments
+    .map((a) => toLoose(a.title))
+    .filter(Boolean)
+    .sort()
+    .join('#');
+
+  if (!textParts.length && !otherTitles) {
+    /* پوستهٔ تهی: با نویسندهٔ عیناً یکسان ادغام می‌شود. */
+    const author = toLoose(item.author_username);
+    return author ? `void:${author}` : 'void:';
+  }
+  return `loose:${textParts.join('|')}${otherTitles ? `#${otherTitles}` : ''}`;
 }
 
 /**
- * حذفِ نسخه‌های تکراریِ «عیناً یکسان» از لیست — اولین نسخه می‌ماند.
+ * حذفِ نسخه‌های تکراریِ «عیناً یکسان» با keep-first — نه کلاً حذف،
+ * نه هر دو نسخه: دقیقاً یک نسخه از هر محتوا.
  * دو پاسِ متوالی: (۱) کلیدِ دقیق — متنِ نرمال‌شده + مجموعه‌ی رسانه‌ها؛
- * (۲) کلیدِ فشرده برای نوشته‌ها — فقط حروف/ارقامِ معنادار، که نسخه‌هایی
- * را هم می‌گیرد که تنها در نویسه‌های نامرئی/سجاوند فرق دارند. در هر
- * فیلتر (همه/متن/…) و بعد از هر واکشی اعمال می‌شود.
+ * (۲) کلیدِ فشرده برای مواردِ بدونِ رسانه‌ی قابل‌رؤیت — فقط هویتِ
+ * متنی/نویسنده، که نسخه‌های سندیکاشده‌ی بصری‌ی‌یکسان را هم می‌گیرد.
+ * در هر فیلتر (همه/متن/…) و بعد از هر واکشی اعمال می‌شود و همان
+ * منطقِ واحد در دیوارِ صفحه‌ی اصلی هم مصرف می‌شود.
  */
-export function dedupeFeedContent(items: RevayatItem[]): RevayatItem[] {
+export function dedupeFeedContent<T extends DedupeableContent>(items: T[]): T[] {
   const seen = new Set<string>();
   const seenLoose = new Set<string>();
-  const out: RevayatItem[] = [];
+  const out: T[] = [];
   for (const item of items) {
     const key = feedContentKey(item);
     if (seen.has(key)) continue;

@@ -188,8 +188,15 @@ describe('dedupeFeedContent — محتوای «عیناً یکسان» فقط ی
     expect(dedupeFeedContent([a, b])).toHaveLength(1);
   });
 
-  it('هر دو تهی و بدون رسانه — به external_id فرو می‌افتد و هیچ‌کدام حذف نمی‌شوند', () => {
-    expect(dedupeFeedContent([{ external_id: 'a' }, { external_id: 'b' }])).toHaveLength(2);
+  it('پوستهٔ تهیِ نویسندهٔ یکسان ادغام می‌شود؛ نویسندهٔ متفاوت هر دو می‌مانند', () => {
+    // بدون نویسنده: هر دو پوستهٔ تهی → کلید void: مشترک → یک نسخه
+    expect(dedupeFeedContent([{ external_id: 'a' }, { external_id: 'b' }])).toHaveLength(1);
+    const c1: RevayatItem = { external_id: 'c1', author_username: 'تهران/کانال (الف)' };
+    const c2: RevayatItem = { external_id: 'c2', author_username: 'تهران/کانال (الف)' };
+    expect(dedupeFeedContent([c1, c2])).toHaveLength(1);
+    const d1: RevayatItem = { external_id: 'd1', author_username: 'تهران/کانال (الف)' };
+    const d2: RevayatItem = { external_id: 'd2', author_username: 'شیراز/کانال (ب)' };
+    expect(dedupeFeedContent([d1, d2])).toHaveLength(2);
   });
 
   it('feedContentKey — نیم‌فاصله و اعراب در کلید بی‌اثرند', () => {
@@ -244,10 +251,34 @@ describe('feedLooseKey / پاسِ فشرده — نسخه‌هایی که فقط
     expect(dedupeFeedContent([a, b])).toHaveLength(2);
   });
 
-  it('پستِ کاملاً تهی کلید نمی‌گیرد و رفتارِ external_id محفوظ می‌ماند', () => {
-    expect(feedLooseKey({ external_id: 'x' })).toBeNull();
-    expect(feedLooseKey(item('y', '  ', '…'))).toBeNull();
-    expect(dedupeFeedContent([{ external_id: 'x' }, { external_id: 'z' }])).toHaveLength(2);
+  it('پوستهٔ تهی (نه متن دیگر، نه فایلِ عنوانی‌دار) کلیدِ void می‌گیرد', () => {
+    expect(feedLooseKey({ external_id: 'x' })).toBe('void:');
+    expect(feedLooseKey(item('y', '  ', '…'))).toBe('void:');
+    const authored: RevayatItem = { external_id: 'n', author_username: 'هرمزگان/ع۱ (بوستان)' };
+    expect(feedLooseKey(authored)).toBe('void:هرمزگانع۱بوستان');
+  });
+
+  it('پیوستِ «سایر» (سند): با عنوانِ فایل محافظت می‌شود، نه URL — تکراریِ بی‌عنوان ادغام می‌شود', () => {
+    const file = (id: string, url: string, title?: string): RevayatItem => ({
+      external_id: id,
+      attachments: [{ url, title, media_type: 'other' }],
+    });
+    // دو متنِ همسان + سندِ بی‌عنوان (URL فرق!) → یکی (متن هویت است، نه ذخیره‌سازی)
+    const a1 = { ...file('a1', 'https://m/1.pdf'), title: 'سند', description: 'متنِ همسان' };
+    const a2 = { ...file('a2', 'https://m/2.pdf'), title: 'سند', description: 'متنِ همسان' };
+    expect(dedupeFeedContent([a1, a2])).toHaveLength(1);
+    // دو متنِ همسان ولی دو سندِ عنوانی‌دارِ متفاوت → هر دو نمایش داده می‌شوند
+    const b1 = { ...file('b1', 'https://m/1.pdf', 'نامهٔ اول'), title: 'سند' };
+    const b2 = { ...file('b2', 'https://m/2.pdf', 'نامهٔ دوم'), title: 'سند' };
+    expect(dedupeFeedContent([b1, b2])).toHaveLength(2);
+    // دو متنِ همسان ولی یکی بدونِ سند و دیگری با سندِ عنوانی‌دار → هر دو (فایل تفاوت است)
+    const c1 = { external_id: 'c1', title: 'سند', description: 'متنِ همسان' };
+    const c2 = {
+      ...file('c2', 'https://m/2.pdf', 'نامهٔ جدید'),
+      title: 'سند',
+      description: 'متنِ همسان',
+    };
+    expect(dedupeFeedContent([c1, c2])).toHaveLength(2);
   });
 
   it('سه نسخه‌ی سندیکاشده با موجِ کوتاه و نویسه‌های ترکیبی → فقط یکی', () => {

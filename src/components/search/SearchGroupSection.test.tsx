@@ -147,6 +147,19 @@ describe('SearchGroupSection — «نمایش بیشتر» در همان صفح�
     expect(searchSourcePageMock).toHaveBeenCalledTimes(2);
   });
 
+  it('هنگامِ واکشیِ دستِکاربر، متنِ «در حال جست‌وجوی نتایج بیشتر…» نمایش داده می‌شود', async () => {
+    searchSourcePageMock.mockImplementation(() => new Promise(() => undefined));
+    render(
+      <SearchGroupSection
+        {...baseProps}
+        initialHits={[hit('1', 'روایت ۱'), hit('2', 'روایت ۲'), hit('3', 'روایت ۳')]}
+        count={9}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /نمایش بیشتر/ }));
+    expect(await screen.findByText('در حال جست‌وجوی نتایج بیشتر…')).toBeTruthy();
+  });
+
   it('وقتی همه‌ی نتایج از اول آمده باشد هیچ دکمه‌ای رندر نمی‌شود', () => {
     render(
       <SearchGroupSection

@@ -94,11 +94,16 @@ function SkeletonCard() {
 export function RevayatFeed({
   initialItems,
   initialCount,
+  uniqueCount,
   initialHasNext,
   initialFilters,
 }: {
   initialItems: RevayatItem[];
   initialCount: number;
+  /** شمارِ یکتایِ کلِ کرپوس (پس از dedupe) — فقط برای دیدگاهِ پیش‌فرض
+      بدونِ فیلتر؛ در دیدگاهِ فیلتردار شمارِ سرورِ همان نتایج نمایش
+      داده می‌شود. */
+  uniqueCount?: number;
   initialHasNext: boolean;
   initialFilters: FeedFilters;
 }) {
@@ -220,6 +225,10 @@ export function RevayatFeed({
     [filters],
   );
 
+  /* عددِ سربرگ: در دیدگاهِ پیش‌فرض، شمارِ «یکتا»ی کلِ کرپوس (هم‌خانواده
+     با دیوار)؛ در دیدگاهِ فیلتردار، شمارِ سرورِ همان نتایجِ فیلترشده. */
+  const displayCount = !isFiltered && uniqueCount !== undefined ? uniqueCount : count;
+
   const clearAll = () => {
     setQInput('');
     setFilters({ q: '', type: '', author: '' });
@@ -307,7 +316,7 @@ export function RevayatFeed({
             ) : null}
             <span className="me-auto" />
             <span className="shrink-0 text-[11px] font-bold tabular-nums text-ink-400">
-              {loading && items.length === 0 ? '…' : `${formatPersianNumber(count)} روایت`}
+              {loading && items.length === 0 ? '…' : `${formatPersianNumber(displayCount)} روایت`}
             </span>
           </div>
         </div>

@@ -20,6 +20,7 @@
 
 import { safeApiFetch } from '@/lib/api';
 import { absoluteMediaUrl } from '@/lib/utils';
+import { dedupeFeedContent } from '@/lib/revayat';
 import type { CampaignCard } from '@/components/home/WarFundSection';
 import type { CriminalCard } from '@/components/home/JusticeSection';
 import type { CourseCard, EduCategory } from '@/components/home/EducationSection';
@@ -473,7 +474,7 @@ async function fetchTabyinBucket(
  * simply don't guarantee we've seen every eligible سایر row. A
  * whole-corpus pull is the only way to be provably complete.
  */
-async function fetchTabyinAllComplete(hardCap = 5000): Promise<ApiTabyin[]> {
+export async function fetchTabyinAllComplete(hardCap = 5000): Promise<ApiTabyin[]> {
   const PAGE_SIZE = 100;
   // Slightly tighter revalidation (was 180 s) so that after a fresh
   // deploy the "سایر" tab picks up new/removed rows within a minute
@@ -591,11 +592,23 @@ export async function loadTabyinItems(): Promise<TabyinItem[]> {
 
   // Sort merged corpus by source_created_at DESC so each downstream
   // filter (همه / تصویر / ویدئو / سایر) slices in chronological order.
-  const list = Array.from(byId.values()).sort((a, b) => {
+  const sorted = Array.from(byId.values()).sort((a, b) => {
     const at = a.source_created_at ? Date.parse(a.source_created_at) : 0;
     const bt = b.source_created_at ? Date.parse(b.source_created_at) : 0;
     return bt - at;
   });
+
+  // ┌────────────────────────────────────────────────────────────────┐
+  // │ قراردادِ یکتایِ محتوا — keep-first، هم‌خانواده با فیدِ روایت‌ها  │
+  // │ اگر سندیکا یک محتوا را دو بار بفرستد (سطرهای دیتابیس جدا ولی     │
+  // │ محتوای عیناً یکسان)، دیوار فقط ONE نسخه را نشان می‌دهد — همان   │
+  // │ منطقِ مشترکِ dedupeFeedContent که فید استفاده می‌کند، تا تجربه‌ی  │
+  // │ دو صفحهٔ اصلی/روایت‌ها بر سرِ تکراری‌ها هرگز ناسازگار نشود.     │
+  // │                                                                │
+  // │ ترتیب: بعد از مرتب‌سازیِ زمانی اعمال می‌شود تا «نخستین نسخه»     │
+  // │ دقیقاً جدیدترین نسخه‌ی مرتب‌شده باشد (نه اتفاقی/باکت‌وار).        │
+  // └────────────────────────────────────────────────────────────────┘
+  const list = dedupeFeedContent(sorted);
 
   return list.map((t) => {
     const attachments = t.attachments ?? [];

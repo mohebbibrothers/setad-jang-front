@@ -2,7 +2,13 @@ import type { Metadata } from 'next';
 import { Newspaper, Sparkles } from 'lucide-react';
 import { safeApiFetch, type Paginated } from '@/lib/api';
 import { formatPersianNumber } from '@/lib/utils';
-import { buildFeedQuery, feedFiltersFromSearchParams, type RevayatItem } from '@/lib/revayat';
+import { fetchTabyinAllComplete } from '@/lib/home-data';
+import {
+  buildFeedQuery,
+  dedupeFeedContent,
+  feedFiltersFromSearchParams,
+  type RevayatItem,
+} from '@/lib/revayat';
 import { RevayatFeed } from '@/components/revayat/RevayatFeed';
 
 /**
@@ -45,7 +51,24 @@ export default async function TabyinIndexPage({
     { revalidate: 120, tags: ['tabyin'] },
   );
   const items = data?.results ?? [];
-  const count = data?.count ?? items.length;
+  const serverCount = data?.count ?? items.length;
+
+  /* ── شمارِ یکتایِ محتوا برای دیدگاهِ پیش‌فرض (بدونِ فیلتر) ──
+     count پاکتِ سرور، سطرهای دیتابیس را می‌شمارد — شاملِ نسخه‌های
+     سندیکاشده‌ی «عیناً یکسان». برای اینکه عددِ سربرگ با آنچه کاربر
+     واقعاً می‌بیند (و با منطقِ دیوارِ صفحه‌ی اصلی) جفت شود، کلِ
+     کرپوس را با همان واکشیِ scatter/gather صفحه‌ی اصلی می‌آوریم و
+     شمارِ پس از dedupe را نمایش می‌دهیم. کوئری‌ها بین مسیرها از
+     طریقِ کشِ fetchِ Next مشترک‌اند، پس این اسکن در عمل گرم است.
+     دیدگاهِ فیلتردار (جست‌وجو/نوع/نویسنده) شمارِ سرورِ همان نتایجِ
+     فیلترشده را نشان می‌دهد — همان‌طور که حالت‌های قبلی هم بود. */
+  const hasActiveFilter = Boolean(filters.q.trim() || filters.type || filters.author.trim());
+  let uniqueCount: number | undefined;
+  if (data && !hasActiveFilter) {
+    const corpus = await fetchTabyinAllComplete(5000);
+    uniqueCount = dedupeFeedContent(corpus).length;
+  }
+  const displayTotal = uniqueCount ?? serverCount;
 
   return (
     <main className="min-h-screen bg-white">
@@ -72,7 +95,7 @@ export default async function TabyinIndexPage({
           <div className="mt-4 flex items-center justify-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-3 py-1.5 text-[11.5px] font-extrabold tabular-nums text-white">
               <Sparkles className="h-3 w-3 text-mint-400" />
-              {formatPersianNumber(count)} روایت
+              {formatPersianNumber(displayTotal)} روایت
             </span>
             <span className="rounded-full bg-white/70 px-3 py-1.5 text-[11.5px] font-bold text-ink-500 ring-1 ring-inset ring-ink-100">
               به‌روز و زنده
@@ -84,7 +107,8 @@ export default async function TabyinIndexPage({
       {/* ── فید (کلاینت): سرچ‌بارِ چسبان + اسکرولِ بی‌پایان ── */}
       <RevayatFeed
         initialItems={items}
-        initialCount={count}
+        initialCount={serverCount}
+        uniqueCount={uniqueCount}
         initialHasNext={Boolean(data?.next)}
         initialFilters={filters}
       />

@@ -197,7 +197,7 @@ export function SearchGroupSection({
                     strokeDashoffset="28"
                   />
                 </svg>
-                در حال آوردن نتایج بیشتر…
+                در حال جست‌وجوی نتایج بیشتر…
               </>
             ) : (
               <>
