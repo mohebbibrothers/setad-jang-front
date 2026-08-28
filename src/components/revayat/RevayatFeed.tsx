@@ -50,6 +50,7 @@ import {
   buildFeedPath,
   buildFeedQuery,
   dedupeFeed,
+  dedupeFeedContent,
   FEED_TYPE_TABS,
   type FeedFilters,
   type FeedTypeFilter,
@@ -103,7 +104,9 @@ export function RevayatFeed({
 }) {
   const router = useRouter();
 
-  const [items, setItems] = useState<RevayatItem[]>(initialItems);
+  /* نسخه‌های «عیناً یکسان» (مخصوصاً نوشته‌های سندیکا‌شده) از همان
+     ابتدا و بعد از هر واکشی حذف می‌شوند — فقط یک نسخه از هر محتوا. */
+  const [items, setItems] = useState<RevayatItem[]>(() => dedupeFeedContent(initialItems));
   const [count, setCount] = useState(initialCount);
   const [page, setPage] = useState(1);
   const [hasNext, setHasNext] = useState(initialHasNext);
@@ -138,7 +141,7 @@ export function RevayatFeed({
         { signal: ctrl.signal, skipAuth: true } as never,
       );
       if (seq !== seqRef.current) return; // پاسخِ «ازرده»
-      setItems((prev) => (append ? dedupeFeed(prev, data.results) : data.results));
+      setItems((prev) => dedupeFeedContent(append ? dedupeFeed(prev, data.results) : data.results));
       setCount(data.count);
       setPage(pageNo);
       setHasNext(Boolean(data.next));
@@ -376,7 +379,7 @@ export function RevayatFeed({
             {loadingMore ? (
               <span className="inline-flex items-center gap-2 text-[12px] font-bold text-ink-400">
                 <Loader2 className="h-4 w-4 animate-spin text-brand-600" />
-                در حال آوردن روایت‌های بیشتر…
+                در حال جست‌وجوی روایت‌های بیشتر…
               </span>
             ) : error === 'more' ? (
               <button

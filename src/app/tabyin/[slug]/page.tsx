@@ -198,7 +198,7 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
             className="inline-flex h-10 items-center gap-2 rounded-full border border-ink-200 bg-white px-4 text-[13px] font-extrabold text-ink-700 transition-all hover:border-brand-500/50 hover:bg-brand-50/60 hover:text-brand-700"
           >
             <ArrowRight className="h-4 w-4" />
-            بازگشت به آرشیو
+            بازگشت به روایت‌ها
           </Link>
           <Link
             href="/#tabyin"

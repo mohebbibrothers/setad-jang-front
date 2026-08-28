@@ -1,6 +1,6 @@
 import { toPersianDigits } from './utils';
 import { resolveContentKind, type ContentKind } from './media-meta';
-import { normalizeTabyinAttachments } from './tabyin-attachments';
+import { asText, normalizeTabyinAttachments } from './tabyin-attachments';
 import type { TabyinStageAttachment } from '@/components/tabyin/TabyinStage';
 
 /**
@@ -181,6 +181,70 @@ export function feedFiltersFromSearchParams(
 export function dedupeFeed(existing: RevayatItem[], incoming: RevayatItem[]): RevayatItem[] {
   const seen = new Set(existing.map((i) => i.external_id));
   return [...existing, ...incoming.filter((i) => !seen.has(i.external_id))];
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/*  حذفِ محتوای تکراریِ «عیناً یکسان» — قرارداد فید                  */
+/* ───────────────────────────────────────────────────────────────── */
+
+/**
+ * نرمال‌سازیِ متن صرفاً برای ساختِ «کلیدِ قیاس» — هرگز برای نمایش
+ * استفاده نمی‌شود. سبک‌نویسی‌های متفاوتِ فارسی/عربی (ی/ك عربی،
+ * کشیده، نویسه‌های صفرپهنا، اعراب) نباید باعث شود دو نسخه‌ی یک
+ * محتوا دوتا دیده شوند.
+ */
+function normalizeForKey(s: string | null | undefined): string {
+  /* eslint-disable no-misleading-character-class, no-irregular-whitespace --
+     عمدی: کلاسِ یونیکدِ نرمال‌سازیِ متنِ فارسی/عربی (ی/ك عربی، کشیده،
+     اعراب و نویسه‌های صفرپهنا) — دقیقاً همان چیزی که باید حذف/نگاشت شود. */
+  return (
+    asText(s)
+      .replace(/[يى]/g, 'ی') // ي ى عربی → ی فارسی
+      .replace(/ك/g, 'ک') // ك عربی → ک فارسی
+      // کشیده + اعراب + نویسه‌های صفرپهنا (برای قیاس، نه نمایش)
+      .replace(/[ـً-ْٰ​‌‍‎‏﻿]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
+  /* eslint-enable no-misleading-character-class, no-irregular-whitespace */
+}
+
+/**
+ * کلیدِ هویتِ محتواییِ یک روایت. دو پست «عیناً یکسان» — یعنی عنوان و
+ * کپشنِ نرمال‌شده‌ی یکسان **و** مجموعه‌ی رسانه‌های یکسان (URL به URL) —
+ * کلیدِ مشترک می‌گیرند و فقط نخستین‌شان در فید می‌ماند.
+ *
+ * حاشیه‌های امن (داده هرگز قربانی نمی‌شود):
+ *   • متنِ یکسان + رسانه‌ی متفاوت (مثلاً دو عکسِ مختلف با کپشنِ همسان)
+ *     کلیدِ متفاوت دارد و هر دو نمایش داده می‌شوند؛
+ *   • پستِ کاملاً تهی (نه عنوان، نه کپشن، نه پیوست) روی external_id
+ *     فرو می‌افتد تا کلیدهای تهی به‌هم نچسبند.
+ */
+export function feedContentKey(item: RevayatItem): string {
+  const title = normalizeForKey(item.title);
+  const desc = normalizeForKey(item.description);
+  const urls = feedAttachments(item)
+    .map((a) => a.url)
+    .join(' ');
+  if (!title && !desc && !urls) return `id:${item.external_id}`;
+  return `${title}|${desc}|${urls}`;
+}
+
+/**
+ * حذفِ نسخه‌های تکراریِ «عیناً یکسان» از لیست — اولین نسخه می‌ماند.
+ * در هر فیلتر (همه/متن/…) و بعد از هر واکشی اعمال می‌شود و مخصوصاً
+ * نوشته‌های سندیکا‌شده را که چندبار سینک شده‌اند تکی می‌کند.
+ */
+export function dedupeFeedContent(items: RevayatItem[]): RevayatItem[] {
+  const seen = new Set<string>();
+  const out: RevayatItem[] = [];
+  for (const item of items) {
+    const key = feedContentKey(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
 }
 
 /** برچسب‌های چیپِ نوع — با واژگانِ قراردادِ تگ (ویدئو/تصویر/صوت/متن). */

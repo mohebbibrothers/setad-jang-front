@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { SmartImage, type SmartImageVariant } from '@/components/ui/SmartImage';
 import {
   searchAll,
+  SEARCH_PAGE_GROUP_LIMIT,
   SEARCH_SOURCES,
   SEARCH_SOURCE_ORDER,
   type SearchSource,
@@ -58,7 +59,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   const data =
     q.length >= 2
-      ? await searchAll(q, { sources })
+      ? await searchAll(q, { sources, perSourceLimit: SEARCH_PAGE_GROUP_LIMIT })
       : { q, groups: [], total: 0, errored: [] as SearchSource[] };
 
   return (
@@ -98,22 +99,28 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
               const meta = SEARCH_SOURCES[g.source];
               return (
                 <div key={g.source}>
-                  <div className="mb-4 flex items-center justify-between">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-[15px] font-extrabold text-ink-900 md:text-[16px]">
                       {meta.label}
-                      <span className="mr-2 font-bold text-ink-400">
-                        ({g.hits.length.toLocaleString('fa-IR')})
+                      <span className="mr-2 font-bold tabular-nums text-ink-400">
+                        ({g.count.toLocaleString('fa-IR')})
                       </span>
+                      {g.count > g.hits.length ? (
+                        <span className="mr-2 text-[11.5px] font-semibold tabular-nums text-ink-400">
+                          — نمایش {g.hits.length.toLocaleString('fa-IR')} از{' '}
+                          {g.count.toLocaleString('fa-IR')}
+                        </span>
+                      ) : null}
                     </h2>
                     <Link
                       href={meta.seeAllHref(q)}
-                      className="text-[12.5px] font-extrabold text-brand-700 hover:text-brand-800"
+                      className="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand-50 px-3.5 text-[12.5px] font-extrabold text-brand-700 ring-1 ring-inset ring-brand-600/10 transition-colors hover:bg-brand-100 hover:text-brand-800"
                     >
                       مشاهده همه در {meta.shortLabel} ←
                     </Link>
                   </div>
 
-                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
+                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
                     {g.hits.map((h) => (
                       <li key={h.id}>
                         <Link

@@ -3,6 +3,8 @@ import {
   buildFeedPath,
   buildFeedQuery,
   dedupeFeed,
+  dedupeFeedContent,
+  feedContentKey,
   feedFiltersFromSearchParams,
   feedItemKind,
   heroOfFeedItem,
@@ -148,5 +150,50 @@ describe('dedupeFeed — اسکرولِ بی‌پایان بدونِ تکرار'
     const b: RevayatItem = { external_id: 'b' };
     const c: RevayatItem = { external_id: 'c' };
     expect(dedupeFeed([a, b], [b, c]).map((i) => i.external_id)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('dedupeFeedContent — محتوای «عیناً یکسان» فقط یک‌بار', () => {
+  const item = (id: string, title?: string, desc?: string, url?: string): RevayatItem => ({
+    external_id: id,
+    title,
+    description: desc,
+    attachments: url ? [{ url, media_type: 'image' }] : [],
+  });
+
+  it('دو نوشته‌ی کاملاً یکسان → فقط نخستین می‌ماند و ترتیب حفظ است', () => {
+    const a = item('a', 'بیانیه', 'متن ثابت');
+    const b = item('b', 'بیانیه', 'متن ثابت');
+    const c = item('c', 'بیانیه‌ی دیگر', 'متن دیگر');
+    expect(dedupeFeedContent([a, b, c]).map((i) => i.external_id)).toEqual(['a', 'c']);
+  });
+
+  it('تفاوتِ سبک‌نویسی (ی/ك عربی، کشیده، اعراب، فاصله‌ی اضافه) یکسان شمرده می‌شود', () => {
+    const a = item('a', 'کتاب', 'سلام بر شما');
+    const b = item('b', 'كتاب', '  سلام  بر\nشما ');
+    const c = item('c', 'کـتاب', 'سَلام بر شما');
+    expect(dedupeFeedContent([a, b, c]).map((i) => i.external_id)).toEqual(['a']);
+  });
+
+  it('متنِ یکسان ولی رسانه‌ی متفاوت — دو محتوای مجزا (داده قربانی نمی‌شود)', () => {
+    const a = item('a', 'گزارش', 'کپشن همسان', 'https://m/1.jpg');
+    const b = item('b', 'گزارش', 'کپشن همسان', 'https://m/2.jpg');
+    expect(dedupeFeedContent([a, b])).toHaveLength(2);
+  });
+
+  it('متنِ یکسان + همان رسانه → یکی می‌ماند', () => {
+    const a = item('a', 'گزارش', 'کپشن همسان', 'https://m/1.jpg');
+    const b = item('b', 'گزارش', 'کپشن همسان', 'https://m/1.jpg');
+    expect(dedupeFeedContent([a, b])).toHaveLength(1);
+  });
+
+  it('هر دو تهی و بدون رسانه — به external_id فرو می‌افتد و هیچ‌کدام حذف نمی‌شوند', () => {
+    expect(dedupeFeedContent([{ external_id: 'a' }, { external_id: 'b' }])).toHaveLength(2);
+  });
+
+  it('feedContentKey — نیم‌فاصله و اعراب در کلید بی‌اثرند', () => {
+    expect(feedContentKey(item('x', 'بعثت‌مردم', 'مهمَترین روایت'))).toBe(
+      feedContentKey(item('y', 'بعثتمردم', 'مهمترین روایت')),
+    );
   });
 });

@@ -671,24 +671,26 @@ export function TabyinSection({
           </button>
         </div>
 
-        {/* CTAs below the pager:
-            - 'مشاهده همه محتوا'  → secondary, brand-ghost (browsing intent)
-            - 'افزودن محتوا'      → primary, mint pill (action intent,
+        {/* CTAs below the pager — هر دو دقیقاً هم‌اندازه:
+            در موبایل تمام‌عرضِ یکسان، از sm پهنای ثابتِ ۲۳۲px با متنِ
+            وسط‌چین تا هیچ‌کدام کوچک‌تر از دیگری دیده نشود.
+            - 'مشاهده همه محتواها' → secondary, brand-ghost (browsing intent)
+            - 'افزودن محتوا'       → primary, mint pill (action intent,
               routes through the auth-required user-submission flow that
               maps to POST /api/v1/tabyin/me/submissions/)                */}
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/tabyin"
-            className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-brand-500 bg-white px-7 text-[14px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border-2 border-brand-500 bg-white px-7 text-[14px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50 sm:w-[232px]"
           >
-            <span>مشاهده همه محتوا</span>
-            <Icon name="arrow-left" className="h-4 w-4" />
+            <span>مشاهده همه محتواها</span>
+            <Icon name="arrow-left" className="h-4 w-4 shrink-0" />
           </Link>
           <Link
             href="/tabyin/new"
-            className="inline-flex h-12 items-center gap-2 rounded-full bg-mint-500 px-7 text-[14px] font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(37,197,186,.5)] transition-all hover:scale-[1.02] hover:bg-mint-600 active:scale-[.98]"
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-mint-500 px-7 text-[14px] font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(37,197,186,.5)] transition-all hover:scale-[1.02] hover:bg-mint-600 active:scale-[.98] sm:w-[232px]"
           >
-            <Icon name="plus" className="h-4 w-4" strokeWidth={2.5} />
+            <Icon name="plus" className="h-4 w-4 shrink-0" strokeWidth={2.5} />
             <span>افزودن محتوا</span>
           </Link>
         </div>

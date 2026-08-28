@@ -183,10 +183,21 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
   tabyin: {
     key: 'tabyin',
     label: 'جهاد تبیین',
-    shortLabel: 'محتواها',
+    shortLabel: 'روایت‌ها',
     glyph: 'megaphone',
     accent: 'violet',
-    seeAllHref: (q, f) => seeAllUrl('/tabyin', q, f),
+    // فیدِ /tabyin پارامترهای خودش را می‌خواند (q / type / author) — نه
+    // نام‌های خامِ API (search / media_type). بدون این نگاشت، لینک
+    // «مشاهده همه در روایت‌ها» کوئری را گم می‌کرد و فیدِ فیلتربرطرف‌شده
+    // باز می‌شد.
+    seeAllHref: (q, f) => {
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (f?.media_type) params.set('type', f.media_type);
+      if (f?.author) params.set('author', f.author);
+      const qs = params.toString();
+      return qs ? `/tabyin?${qs}` : '/tabyin';
+    },
   },
 };
 
@@ -255,18 +266,27 @@ function formatDuration(seconds?: number): string {
 
 type Paginated<T> = { results?: T[]; count?: number } | T[];
 
-function unwrap<T>(p: Paginated<T> | null | undefined): T[] {
-  if (!p) return [];
-  if (Array.isArray(p)) return p;
-  return p.results ?? [];
+/** لیست + شمارِ واقعیِ سرور (count پاکت) — برای نمایش «۴۷ نتیجه». */
+function unwrapCounted<T>(p: Paginated<T> | null | undefined): { items: T[]; count: number } {
+  if (!p) return { items: [], count: 0 };
+  if (Array.isArray(p)) return { items: p, count: p.length };
+  const items = p.results ?? [];
+  return { items, count: p.count ?? items.length };
 }
 
+/** سقفِ دراپ‌داونِ زنده — خلاصه‌ی سریعِ هر منبع. */
 const PER_SOURCE_LIMIT = 5;
+/** سقفِ هر گروه در صفحه‌ی اختصاصی /search — مرورِ عمیق‌تر. */
+export const SEARCH_PAGE_GROUP_LIMIT = 12;
 
-function buildQueryString(q: string, extra?: Record<string, string | boolean | undefined>): string {
+function buildQueryString(
+  q: string,
+  limit: number,
+  extra?: Record<string, string | boolean | undefined>,
+): string {
   const params = new URLSearchParams();
   params.set('search', q);
-  params.set('page_size', String(PER_SOURCE_LIMIT));
+  params.set('page_size', String(limit));
   if (extra) {
     Object.entries(extra).forEach(([k, v]) => {
       // NOTE — we DO want to send `false` (django BooleanFilter reads it
@@ -279,11 +299,15 @@ function buildQueryString(q: string, extra?: Record<string, string | boolean | u
   return params.toString();
 }
 
+/** نتیجه‌ی یک منبع: برشِ نمایشی + شمارِ واقعیِ سمتِ سرور. */
+type SourceResult = { hits: SearchHit[]; count: number };
+
 async function fetchMadadkar(
   q: string,
   facets: SearchFacets['madadkar'] | undefined,
-  signal?: AbortSignal,
-): Promise<SearchHit[]> {
+  signal: AbortSignal | undefined,
+  limit: number,
+): Promise<SourceResult> {
   type C = {
     slug: string;
     title: string;
@@ -296,7 +320,7 @@ async function fetchMadadkar(
     participant_count?: number;
     total_amount?: number;
   };
-  const qs = buildQueryString(q, {
+  const qs = buildQueryString(q, limit, {
     status: facets?.status,
     has_deadline: facets?.has_deadline,
     is_fully_funded: facets?.is_fully_funded,
@@ -308,9 +332,10 @@ async function fetchMadadkar(
     revalidate: 30,
     skipAuth: true,
   } as never);
-  return unwrap(data)
-    .slice(0, PER_SOURCE_LIMIT)
-    .map((c) => {
+  const { items, count } = unwrapCounted(data);
+  return {
+    count,
+    hits: items.slice(0, limit).map((c) => {
       const sponsorName = clean(c.sponsor?.name);
       const progress =
         typeof c.progress_percent === 'number' ? Math.round(c.progress_percent) : null;
@@ -334,14 +359,16 @@ async function fetchMadadkar(
         badge,
         pill: statusPill,
       };
-    });
+    }),
+  };
 }
 
 async function fetchR4J(
   q: string,
   facets: SearchFacets['r4j'] | undefined,
-  signal?: AbortSignal,
-): Promise<SearchHit[]> {
+  signal: AbortSignal | undefined,
+  limit: number,
+): Promise<SourceResult> {
   type P = {
     slug: string;
     first_name?: string;
@@ -353,7 +380,7 @@ async function fetchR4J(
     total_bounty_toman?: number;
     bounties_count?: number;
   };
-  const qs = buildQueryString(q, {
+  const qs = buildQueryString(q, limit, {
     country: facets?.country,
     province: facets?.province,
     city: facets?.city,
@@ -365,9 +392,10 @@ async function fetchR4J(
     revalidate: 60,
     skipAuth: true,
   } as never);
-  return unwrap(data)
-    .slice(0, PER_SOURCE_LIMIT)
-    .map((p) => {
+  const { items, count } = unwrapCounted(data);
+  return {
+    count,
+    hits: items.slice(0, limit).map((p) => {
       const fullName = clean(`${p.first_name ?? ''} ${p.last_name ?? ''}`) || p.slug;
       const loc = [p.city, p.province, p.country].filter(Boolean).join('، ');
       return {
@@ -381,14 +409,16 @@ async function fetchR4J(
         badge: p.total_bounty_toman ? formatToman(p.total_bounty_toman) : undefined,
         pill: p.bounties_count ? `${fa(p.bounties_count)} جایزه` : undefined,
       };
-    });
+    }),
+  };
 }
 
 async function fetchLms(
   q: string,
   facets: SearchFacets['lms'] | undefined,
-  signal?: AbortSignal,
-): Promise<SearchHit[]> {
+  signal: AbortSignal | undefined,
+  limit: number,
+): Promise<SourceResult> {
   type Co = {
     slug: string;
     title: string;
@@ -401,7 +431,7 @@ async function fetchLms(
     estimated_duration_seconds?: number;
     enrollments_count?: number;
   };
-  const qs = buildQueryString(q, {
+  const qs = buildQueryString(q, limit, {
     category: facets?.category,
     level: facets?.level,
     ordering: '-published_at',
@@ -411,9 +441,10 @@ async function fetchLms(
     revalidate: 30,
     skipAuth: true,
   } as never);
-  return unwrap(data)
-    .slice(0, PER_SOURCE_LIMIT)
-    .map((c) => {
+  const { items, count } = unwrapCounted(data);
+  return {
+    count,
+    hits: items.slice(0, limit).map((c) => {
       const instructor = clean(c.instructor_name);
       const dur = formatDuration(c.estimated_duration_seconds);
       const parts: string[] = [];
@@ -431,14 +462,16 @@ async function fetchLms(
         badge: c.enrollments_count ? `${fa(c.enrollments_count)} یادگیرنده` : undefined,
         pill: c.level ? (LEVEL_LABEL[c.level] ?? c.level) : undefined,
       };
-    });
+    }),
+  };
 }
 
 async function fetchKindness(
   q: string,
   facets: SearchFacets['kindness'] | undefined,
-  signal?: AbortSignal,
-): Promise<SearchHit[]> {
+  signal: AbortSignal | undefined,
+  limit: number,
+): Promise<SourceResult> {
   type L = {
     slug: string;
     title: string;
@@ -449,7 +482,7 @@ async function fetchKindness(
     cover_image?: string;
     view_count?: number;
   };
-  const qs = buildQueryString(q, {
+  const qs = buildQueryString(q, limit, {
     listing_type: facets?.listing_type,
     category: facets?.category,
     province: facets?.province,
@@ -461,9 +494,10 @@ async function fetchKindness(
     revalidate: 30,
     skipAuth: true,
   } as never);
-  return unwrap(data)
-    .slice(0, PER_SOURCE_LIMIT)
-    .map((l) => {
+  const { items, count } = unwrapCounted(data);
+  return {
+    count,
+    hits: items.slice(0, limit).map((l) => {
       const loc = [l.city, l.province].filter(Boolean).join('، ');
       const catTitle = clean(l.category?.title);
       return {
@@ -482,14 +516,16 @@ async function fetchKindness(
               ? 'پیشنهاد کمک'
               : undefined,
       };
-    });
+    }),
+  };
 }
 
 async function fetchTabyin(
   q: string,
   facets: SearchFacets['tabyin'] | undefined,
-  signal?: AbortSignal,
-): Promise<SearchHit[]> {
+  signal: AbortSignal | undefined,
+  limit: number,
+): Promise<SourceResult> {
   type T = {
     external_id: string;
     title?: string;
@@ -499,7 +535,7 @@ async function fetchTabyin(
     attachments?: { url?: string; media_type?: string }[];
     origin?: string;
   };
-  const qs = buildQueryString(q, {
+  const qs = buildQueryString(q, limit, {
     media_type: facets?.media_type,
     author: facets?.author,
     ordering: '-source_created_at',
@@ -509,9 +545,10 @@ async function fetchTabyin(
     revalidate: 30,
     skipAuth: true,
   } as never);
-  return unwrap(data)
-    .slice(0, PER_SOURCE_LIMIT)
-    .map((t) => {
+  const { items, count } = unwrapCounted(data);
+  return {
+    count,
+    hits: items.slice(0, limit).map((t) => {
       const image =
         t.attachments?.find((a) => a.media_type === 'image')?.url ?? t.attachments?.[0]?.url;
       const title =
@@ -529,15 +566,17 @@ async function fetchTabyin(
           : undefined,
         badge: t.origin === 'user_submitted' ? 'مردمی' : undefined,
       };
-    });
+    }),
+  };
 }
 
 const FETCHERS: {
   [K in SearchSource]: (
     q: string,
     facets: SearchFacets[K] | undefined,
-    signal?: AbortSignal,
-  ) => Promise<SearchHit[]>;
+    signal: AbortSignal | undefined,
+    limit: number,
+  ) => Promise<SourceResult>;
 } = {
   madadkar: fetchMadadkar,
   r4j: fetchR4J,
@@ -550,9 +589,12 @@ const FETCHERS: {
 /*  Aggregator                                                                */
 /* ───────────────────────────────────────────────────────────────────────── */
 
+export type SearchGroup = { source: SearchSource; hits: SearchHit[]; count: number };
+
 export type SearchAggregate = {
   q: string;
-  groups: { source: SearchSource; hits: SearchHit[] }[];
+  groups: SearchGroup[];
+  /** جمعِ شمارِ واقعیِ سرور در همه‌ی منابع (نه طولِ برشِ نمایشی). */
   total: number;
   errored: SearchSource[];
 };
@@ -563,6 +605,8 @@ export async function searchAll(
     sources?: SearchSource[];
     facets?: SearchFacets;
     signal?: AbortSignal;
+    /** سقفِ آیتم‌های نمایشیِ هر منبع؛ پیش‌فرض: برشِ سبکِ دراپ‌داون (۵). */
+    perSourceLimit?: number;
   },
 ): Promise<SearchAggregate> {
   const cleaned = (q ?? '').trim();
@@ -570,6 +614,7 @@ export async function searchAll(
   if (!cleaned || cleaned.length < 2) return empty;
 
   const wanted = opts?.sources ?? SEARCH_SOURCE_ORDER;
+  const limit = Math.max(1, Math.min(100, opts?.perSourceLimit ?? PER_SOURCE_LIMIT));
   const settled = await Promise.allSettled(
     wanted.map((src) => {
       const fn = FETCHERS[src];
@@ -578,7 +623,7 @@ export async function searchAll(
       // discriminant here — the mapped type on FETCHERS already enforces
       // it at each fetcher's declaration site, so this cast is safe.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (fn as any)(cleaned, facets, opts?.signal);
+      return (fn as any)(cleaned, facets, opts?.signal, limit);
     }),
   );
 
@@ -588,9 +633,9 @@ export async function searchAll(
   settled.forEach((result, idx) => {
     const src = wanted[idx];
     if (result.status === 'fulfilled') {
-      if (result.value.length) {
-        groups.push({ source: src, hits: result.value });
-        total += result.value.length;
+      if (result.value.hits.length) {
+        groups.push({ source: src, hits: result.value.hits, count: result.value.count });
+        total += result.value.count;
       }
     } else {
       const reason = result.reason as { name?: string } | undefined;

@@ -501,7 +501,8 @@ export function GlobalSearch({ initialQuery = '', variant = 'hero', className }:
       tabyin: 0,
     };
     data?.groups.forEach((g) => {
-      out[g.source] = g.hits.length;
+      // شمارِ واقعیِ سرور (نمی‌توان به طولِ برشِ نمایشی تکیه کرد)
+      out[g.source] = g.count;
     });
     return out;
   }, [data]);
@@ -1089,15 +1090,15 @@ function ResultsBody({
                 <span className="text-[11.5px] font-extrabold uppercase tracking-wider text-ink-600">
                   {meta.label}
                 </span>
-                <span className="text-[10.5px] font-bold text-ink-400">
-                  ({g.hits.length.toLocaleString('fa-IR')})
+                <span className="text-[10.5px] font-bold tabular-nums text-ink-400">
+                  ({g.count.toLocaleString('fa-IR')})
                 </span>
               </div>
               <Link
                 href={meta.seeAllHref(data.q, seeAllFacets)}
                 className="text-[11px] font-extrabold text-brand-700 hover:underline"
               >
-                مشاهده همه
+                مشاهده همه در {meta.shortLabel}
               </Link>
             </div>
             <ul className="px-1.5">
