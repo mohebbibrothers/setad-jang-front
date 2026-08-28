@@ -63,10 +63,13 @@ export interface TabyinStageAttachment {
   title?: string;
 }
 
-/** انتخابِ هوشمندِ پیوستِ اولیه: ویدئو > پادکست > تصویر > اولین فایل */
+/** انتخابِ هوشمندِ پیوستِ اولیه (قراردادِ کارفرما): صوت > ویدئو > تصویر.
+ *  محتوایی که فایلِ صوتی دارد «پادکست» است و تجربه‌ی پادکست می‌گیرد،
+ *  حتی اگر کاورِ ویدئویی هم داشته باشد — تگِ صفحه و استیج از یک
+ *  اولویتِ واحد تغذیه می‌شوند تا هیچ‌وقت ناسازگار نشوند. */
 function pickInitial(list: TabyinStageAttachment[]): number {
   const find = (t: string) => list.findIndex((a) => a.media_type === t);
-  const order = [find('video'), find('audio'), find('image')];
+  const order = [find('audio'), find('video'), find('image')];
   const idx = order.find((i) => i >= 0);
   return idx !== undefined && idx >= 0 ? idx : 0;
 }

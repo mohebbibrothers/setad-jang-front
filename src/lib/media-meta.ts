@@ -53,42 +53,61 @@ export function formatDimensionsFa(size: string | null | undefined): string | nu
  * ── نوعِ مؤثرِ محتوا (قراردادِ نمایشِ صفحه‌ی جزئیات) ──────────────
  *
  *  چرا این لایه هست؟ طبقه‌بندیِ بالادست (primary_media_type) گاهی با
- *  واقعیتِ پیوست‌ها ناسازگار است: پادکستی که فقط «صوت + کاورِ تصویری»
- *  داشت با برچسبِ «ویدئو» همگام شده بود و صفحه به‌غلط تگِ ویدئو می‌زد.
+ *  واقعیتِ پیوست‌ها ناسازگار است: پادکستی که «صوت + کاور» داشت با
+ *  برچسبِ «ویدئو» همگام شده بود و صفحه به‌غلط تگِ فیلم می‌زد.
  *
- *  قاعده‌ی تثبیت‌شده با کارفرما:
- *    نوعِ مؤثر = پیوستِ قهرمان (همان چیزی که استیج واقعاً نمایش می‌دهد)
- *    در غیابِ پیوست → primary_media_type؛ در غیابِ هر دو → متن‌محور.
+ *  قاعده‌ی تثبیت‌شده با کارفرما (به‌روزرسانیِ سوم):
+ *    • نوع فقط از روی «سندِ واقعی» (پیوست‌های قابل‌استفاده) تعیین می‌شود؛
+ *    • اولویت: صوت > ویدئو > تصویر — **محتوایی که فایلِ صوتی دارد
+ *      پادکست است، حتی اگر کاورِ ویدئویی/تصویری هم داشته باشد**؛
+ *    • هرچه رسانه‌ی قابل‌استفاده ندارد → متن‌محور.
  *
- *  برچسب‌های کانونیکال (قراردادِ کارفرما، به‌جای display خامِ بالادست):
- *    image → تصویر · video → ویدئو · audio → پادکست · سایر‌اش → نوشته
- *    («هر چیزی که تصویری، ویدئویی و پادکست نباشد، نوشته است»)
+ *  دو برچسبِ مجزا (قراردادِ کارفرما):
+ *    تگِ بیضیِ سربرگ        نوعِ محتوا (برگه‌ی مشخصات)
+ *    ─────────────          ─────────────────────────
+ *    ویدئو            ───►  فیلم
+ *    تصویر            ───►  عکس
+ *    صوت              ───►  پادکست
+ *    متن              ───►  نوشته
  */
 export type ContentKind = 'image' | 'video' | 'audio' | 'other';
 
-function asKind(v: string | null | undefined): ContentKind | undefined {
-  return v === 'image' || v === 'video' || v === 'audio' || v === 'other' ? v : undefined;
+/**
+ * نوعِ مؤثر را از روی فهرستِ media_type پیوست‌های واقعی تشخیص می‌دهد.
+ * صوت همیشه می‌برد؛ بعد ویدئو؛ بعد تصویر؛ وگرنه «other» (متن/نوشته).
+ */
+export function resolveContentKind(types: Array<string | null | undefined>): ContentKind {
+  if (types.includes('audio')) return 'audio';
+  if (types.includes('video')) return 'video';
+  if (types.includes('image')) return 'image';
+  return 'other';
 }
 
-/** نوعِ مؤثر را با اولویتِ «پیوستِ واقعی» از روی دو سرچشمه تشخیص می‌دهد. */
-export function resolveContentKind(
-  heroType: string | null | undefined,
-  primaryType: string | null | undefined,
-): ContentKind {
-  return asKind(heroType) ?? asKind(primaryType) ?? 'other';
-}
-
-/** برچسبِ فارسیِ کانونیکال — همیشه مقدار دارد، هیچ‌وقت انگلیسی نیست. */
+/** «نوع محتوا» در برگه‌ی مشخصات — قرارداد: فیلم/عکس/پادکست/نوشته. */
 export function contentKindFa(kind: ContentKind): string {
+  switch (kind) {
+    case 'image':
+      return 'عکس';
+    case 'video':
+      return 'فیلم';
+    case 'audio':
+      return 'پادکست';
+    default:
+      return 'نوشته';
+  }
+}
+
+/** «تگ» — چیپِ بیضیِ بالای صفحه — قرارداد: ویدئو/تصویر/صوت/متن. */
+export function contentKindTagFa(kind: ContentKind): string {
   switch (kind) {
     case 'image':
       return 'تصویر';
     case 'video':
       return 'ویدئو';
     case 'audio':
-      return 'پادکست';
+      return 'صوت';
     default:
-      return 'نوشته';
+      return 'متن';
   }
 }
 

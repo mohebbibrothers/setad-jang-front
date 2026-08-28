@@ -6,6 +6,7 @@ import {
   formatFileSizeFa,
   resolveContentKind,
   contentKindFa,
+  contentKindTagFa,
 } from './media-meta';
 
 /**
@@ -63,36 +64,45 @@ describe('formatDimensionsFa — ابعاد تصویر', () => {
   });
 });
 
-describe('resolveContentKind — نوعِ مؤثرِ محتوا', () => {
-  it('پیوستِ قهرمان بر طبقه‌بندیِ بالادست غلبه دارد (پادکست ≠ ویدئو)', () => {
-    // سناریوی گزارشِ کارفرما: صوت + کاور، اما primary = video
-    expect(resolveContentKind('audio', 'video')).toBe('audio');
-    expect(resolveContentKind('image', 'video')).toBe('image');
+describe('resolveContentKind — نوعِ مؤثر با اولویتِ «صوت همیشه می‌برد»', () => {
+  it('حضورِ فایلِ صوتی = پادکست، حتی با کاورِ ویدئویی (سناریوی دقیقِ کارفرما)', () => {
+    expect(resolveContentKind(['video', 'audio'])).toBe('audio');
+    expect(resolveContentKind(['audio', 'video', 'image'])).toBe('audio');
+    expect(resolveContentKind(['audio'])).toBe('audio');
   });
 
-  it('در غیابِ پیوست، primary_media_type ملاک است', () => {
-    expect(resolveContentKind(undefined, 'video')).toBe('video');
-    expect(resolveContentKind(null, 'image')).toBe('image');
-    expect(resolveContentKind(undefined, 'audio')).toBe('audio');
+  it('بدونِ صوت: ویدئو > تصویر', () => {
+    expect(resolveContentKind(['video', 'image'])).toBe('video');
+    expect(resolveContentKind(['image', 'video'])).toBe('video');
+    expect(resolveContentKind(['image'])).toBe('image');
   });
 
-  it('هرچه رسانه‌ی تصویر/ویدئو/پادکست ندارد → نوشته', () => {
-    expect(resolveContentKind(undefined, undefined)).toBe('other');
-    expect(resolveContentKind(undefined, 'other')).toBe('other');
-    expect(resolveContentKind('other', undefined)).toBe('other');
-  });
-
-  it('مقادیرِ ناشناخته به سمتِ نوشته فرو می‌غلتند', () => {
-    expect(resolveContentKind('hologram', 'weird')).toBe('other');
-    expect(resolveContentKind('hologram', 'video')).toBe('video');
+  it('هرچه رسانه‌ی قابل‌استفاده ندارد → متن‌محور', () => {
+    expect(resolveContentKind([])).toBe('other');
+    expect(resolveContentKind([undefined, null])).toBe('other');
+    expect(resolveContentKind(['other'])).toBe('other');
+    expect(resolveContentKind(['hologram'])).toBe('other');
   });
 });
 
-describe('contentKindFa — برچسبِ کانونیکالِ فارسی', () => {
-  it('قراردادِ کارفرما: تصویر / ویدئو / پادکست / نوشته', () => {
-    expect(contentKindFa('image')).toBe('تصویر');
-    expect(contentKindFa('video')).toBe('ویدئو');
+describe('برچسب‌ها — جدولِ قراردادِ کارفرما (تگ ↔ نوع محتوا)', () => {
+  it('تگِ ویدئو ← نوعِ فیلم', () => {
+    expect(contentKindTagFa('video')).toBe('ویدئو');
+    expect(contentKindFa('video')).toBe('فیلم');
+  });
+
+  it('تگِ تصویر ← نوعِ عکس', () => {
+    expect(contentKindTagFa('image')).toBe('تصویر');
+    expect(contentKindFa('image')).toBe('عکس');
+  });
+
+  it('تگِ صوت ← نوعِ پادکست', () => {
+    expect(contentKindTagFa('audio')).toBe('صوت');
     expect(contentKindFa('audio')).toBe('پادکست');
+  });
+
+  it('تگِ متن ← نوعِ نوشته', () => {
+    expect(contentKindTagFa('other')).toBe('متن');
     expect(contentKindFa('other')).toBe('نوشته');
   });
 });

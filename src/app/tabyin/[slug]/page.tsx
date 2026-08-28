@@ -3,11 +3,12 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import {
   ArrowRight,
+  AudioLines,
   CalendarDays,
   Captions,
   Image as ImageIcon,
   PenLine,
-  Podcast,
+  Send,
   Sparkles,
   UserRound,
   Video as VideoIcon,
@@ -16,6 +17,7 @@ import { safeApiFetch } from '@/lib/api';
 import { formatJalaliDate } from '@/lib/persian-time';
 import {
   contentKindFa,
+  contentKindTagFa,
   formatClockFa,
   formatFileSizeFa,
   resolveContentKind,
@@ -61,12 +63,14 @@ async function fetchContent(slug: string) {
   });
 }
 
-/* heroMedia/ogImage روی لیستِ «نرمالایزشده» کار می‌کنند — هرگز روی
-   payload خامِ API، تا انحراف داده‌ی بالادست نتواند صفحه را بترکاند. */
+/* قهرمانِ مشترکِ تجربه (قراردادِ کارفرما): صوت > ویدئو > تصویر —
+   همان اولویتی که استیج برای انتخابِ اولیه دارد، تا تگ/مشخصات و
+   استیج هیچ‌وقت ناسازگار نشوند. heroMedia/ogImage روی لیستِ
+   «نرمالایزشده» کار می‌کنند — هرگز روی payload خامِ API. */
 function heroMedia(list: TabyinStageAttachment[]): TabyinStageAttachment | undefined {
   return (
-    list.find((a) => a.media_type === 'video' && a.url) ||
     list.find((a) => a.media_type === 'audio' && a.url) ||
+    list.find((a) => a.media_type === 'video' && a.url) ||
     list.find((a) => a.media_type === 'image' && a.url) ||
     list.find((a) => a.url)
   );
@@ -149,11 +153,12 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
   const authorName = asText(item.author_username).trim();
   const caption = asText(item.description);
   const publishDate = formatJalaliDate(asText(item.source_created_at) || undefined);
-  /* نوعِ مؤثر (قراردادِ کارفرما): پیوستِ واقعی بر طبقه‌بندیِ بالادست
-     غلبه دارد — پادکستی که به‌غلط با نوعِ «ویدئو» همگام شده، اینجا
-     درست به «پادکست» تگ می‌خورد — و هرچه رسانه‌ی تصویر/ویدئو/پادکست
-     ندارد «نوشته» است. */
-  const kind = resolveContentKind(hero?.media_type, item.primary_media_type);
+  /* نوعِ مؤثر (قراردادِ کارفرما): فقط از روی سندِ واقعی، با اولویتِ
+     «صوت همیشه می‌برد» — پادکستی که کاورِ ویدئویی هم دارد، صوت می‌ماند.
+     دو برچسبِ مجزا: تگِ بیضیِ سربرگ (ویدئو/تصویر/صوت/متن) و نوعِ
+     محتوا در برگه‌ی مشخصات (فیلم/عکس/پادکست/نوشته). */
+  const kind = resolveContentKind(attachments.map((a) => a.media_type));
+  const typeTag = contentKindTagFa(kind);
   const typeLabel = contentKindFa(kind);
   const KindGlyph =
     kind === 'image'
@@ -161,7 +166,7 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
       : kind === 'video'
         ? VideoIcon
         : kind === 'audio'
-          ? Podcast
+          ? AudioLines
           : PenLine;
 
   /* برگه‌ی مشخصات — فقط ردیف‌های دارای مقدار رندر می‌شوند.
@@ -209,7 +214,7 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-brand-50 px-3.5 text-[12.5px] font-extrabold text-brand-700 ring-1 ring-inset ring-brand-600/10">
                 <KindGlyph className="h-3.5 w-3.5" />
-                {typeLabel}
+                {typeTag}
               </span>
               {isUser ? (
                 <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-mint-500/15 px-3.5 text-[12.5px] font-extrabold text-mint-700 ring-1 ring-inset ring-mint-500/25">
@@ -342,8 +347,8 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
               href="/tabyin/new"
               className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-mint-500 px-7 text-[14px] font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(37,197,186,.5)] transition-all hover:scale-[1.02] hover:bg-mint-600 active:scale-[.98]"
             >
-              <Sparkles className="h-4 w-4" strokeWidth={2.5} />
-              محتوای شما هم در تبیین
+              <Send className="h-4 w-4" />
+              ارسال محتوا
             </Link>
           </nav>
         </article>

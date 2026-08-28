@@ -4,7 +4,8 @@ import { TabyinStage, type TabyinStageAttachment } from './TabyinStage';
 
 /**
  * TabyinStage — قراردادِ استیجِ رسانه‌ی صفحه‌ی جزئیات:
- *   • انتخابِ اولیه‌ی هوشمند: ویدئو > صوت > تصویر؛
+ *   • انتخابِ اولیه‌ی هوشمند (قراردادِ کارفرما): صوت > ویدئو > تصویر —
+ *     حضورِ فایلِ صوتی استیجِ پادکست می‌آورد، حتی با کاورِ ویدئویی؛
  *   • صوت → پنلِ پادکست با کاورِ پیوستِ تصویری (نکته‌ی کارفرما)؛
  *   • چند پیوست → نوارِ بندانگشتی که استیج را عوض می‌کند؛
  *   • چیپِ ابرداده فقط وقتی مقدار دارد؛
@@ -106,6 +107,15 @@ describe('TabyinStage', () => {
 
   it('پادکست: برچسبِ کانونیکال «پادکست» روی پنل می‌نشیند (نه «صوت»/«ویدئو»)', () => {
     render(<TabyinStage attachments={[AUDIO, IMAGE]} title="قسمت سوم" />);
+    expect(screen.getByText('پادکست')).toBeTruthy();
+  });
+
+  it('اولویتِ قرارداد: با پیوستِ صوتی+ویدئویی، استیجِ پادکست قهرمان است (نه سینما)', () => {
+    const { container } = render(
+      <TabyinStage attachments={[VIDEO, AUDIO]} title="پادکست با کاورِ ویدئویی" />,
+    );
+    expect(container.querySelector('audio')).not.toBeNull();
+    expect(container.querySelector('video')).toBeNull();
     expect(screen.getByText('پادکست')).toBeTruthy();
   });
 
