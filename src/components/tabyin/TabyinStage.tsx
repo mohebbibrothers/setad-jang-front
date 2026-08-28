@@ -92,8 +92,9 @@ const EQ_BARS = [
 /**
  * cache-bust برای «بارگذاری دوباره»: با یک پارامترِ بی‌اثر، فایل واقعاً
  * دوباره از شبکه درخواست می‌شود (نه از کشِ خرابِ مرورگر).
+ * (در فیدِ روایت‌ها هم به‌کار می‌رود — یک زبانِ واحدِ تاب‌ماندگاری.)
  */
-function bustUrl(url: string, tick: number): string {
+export function bustUrl(url: string, tick: number): string {
   if (!tick) return url;
   return url + (url.includes('?') ? '&' : '?') + '_tabyin_retry=' + tick;
 }
@@ -103,7 +104,7 @@ function bustUrl(url: string, tick: number): string {
  * کلید (key) آن در محلِ استفاده به نشانی بسته می‌شود تا با تعویض پیوست
  * یا تلاشِ دوباره، state درونی‌اش تازه شود.
  */
-function FadeImg({
+export function FadeImg({
   src,
   alt,
   className,
@@ -144,7 +145,7 @@ function FadeImg({
  * طراحی شده تا حتی خطا هم لحظه‌ای برندساز باشد، نه شکستی نمایشی.
  * متن و مشخصاتِ صفحه بیرون از این پنل دست‌نخورده باقی می‌مانند.
  */
-function StageUnavailable({
+export function StageUnavailable({
   kind,
   onRetry,
 }: {

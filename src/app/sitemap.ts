@@ -33,6 +33,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/', priority: 1.0, changeFrequency: 'daily' as const },
     { path: '/about-besat', priority: 0.95, changeFrequency: 'monthly' as const },
     { path: '/tabyin', priority: 0.9, changeFrequency: 'daily' as const },
+    { path: '/revayat', priority: 0.9, changeFrequency: 'hourly' as const },
     { path: '/tabyin/new', priority: 0.6, changeFrequency: 'monthly' as const },
     // /search is intentionally omitted — see robots.ts (infinite query
     // space; no ranking value). Listing it here would contradict the

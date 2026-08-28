@@ -796,3 +796,24 @@
     animation: none;
   }
 }
+
+/* نوارِ پیشرفتِ فیدِ روایت‌ها — موجِ لغزان زیر سرچ‌بار هنگام جست‌وجوی زنده */
+@keyframes feedLoaderBar {
+  0% {
+    transform: translateX(320%);
+  }
+  100% {
+    transform: translateX(-420%);
+  }
+}
+
+.feed-loader-bar {
+  animation: feedLoaderBar 1.05s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-loader-bar {
+    animation: none;
+  }
+}
