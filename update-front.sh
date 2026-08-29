@@ -25,7 +25,7 @@ set -Eeuo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
 umask 022
 
-readonly SCRIPT_VERSION="2.1.0"
+readonly SCRIPT_VERSION="2.1.1"
 readonly SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/$(basename -- "${BASH_SOURCE[0]}")"
 readonly SCRIPT_DIR="$(dirname -- "$SCRIPT_PATH")"
 readonly SCRIPT_NAME="$(basename -- "$SCRIPT_PATH")"
@@ -415,8 +415,17 @@ if [[ "$PREV_COMMIT" != "$TARGET_COMMIT" ]]; then
   n_commits="$(git rev-list --count "${PREV_COMMIT}..${TARGET_COMMIT}" 2>/dev/null || echo '?')"
   n_files="$(git diff --name-only "$PREV_COMMIT" "$TARGET_COMMIT" | wc -l | tr -d ' ')"
   log "${n_commits} کامیت جدید · ${n_files} فایل تغییر کرده"
-  ((QUIET)) || git log --oneline --no-decorate "${PREV_COMMIT}..${TARGET_COMMIT}" \
-      | head -8 | sed "s/^/      ${D}•${R} /" | cut -c1-100
+  # محدودسازی تعداد سطرها با خودِ «git log -8» انجام می‌شود — نه «| head».
+  # با pipefail، خروجِ زودهنگامِ head لوله را می‌بندد و git با SIGPIPE (کد ۱۴۱)
+  # کشته می‌شود؛ در دیپلوی‌هایی با بیش از ۸ کامیت جدید (مثل بازنویسی تاریخچه)
+  # این مسیر کل دیپلوی را می‌کشت.
+  if ((!QUIET)); then
+    git log -8 --oneline --no-decorate "${PREV_COMMIT}..${TARGET_COMMIT}" \
+      | sed "s/^/      ${D}•${R} /" | cut -c1-100
+    if [[ "$n_commits" =~ ^[0-9]+$ ]] && ((n_commits > 8)); then
+      printf '      %s… و %s کامیت دیگر%s\n' "$D" "$((n_commits - 8))" "$R"
+    fi
+  fi
 fi
 
 if ((DRY_RUN)); then
