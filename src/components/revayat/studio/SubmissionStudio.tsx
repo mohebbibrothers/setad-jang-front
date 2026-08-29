@@ -44,22 +44,28 @@ import {
   Sparkles,
   UserRound,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch, firstErrorMessage, isApiError } from '@/lib/api';
 import { useAuth } from '@/lib/use-auth';
 import { cn, formatPersianNumber, toPersianDigits } from '@/lib/utils';
 import {
   buildSubmissionPayload,
+  fetchStudioUploadConfig,
   isStudioSubmittable,
+  lockedMediaTypeOf,
+  migrateAttachmentRow,
   newAttachmentRow,
   previewItemFromDraft,
   STUDIO_LIMITS,
+  STUDIO_UPLOAD_FALLBACK,
   submissionStatusMeta,
   validateStudioDraft,
   type AttachmentDraft,
   type MySubmissionDetail,
   type StudioDraft,
   type StudioFieldErrors,
+  type StudioUploadConfig,
 } from '@/lib/studio';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { RevayatCard } from '@/components/revayat/RevayatCard';
@@ -80,19 +86,8 @@ function loadPersistedDraft(): StudioDraft | null {
       description: typeof parsed.description === 'string' ? parsed.description : '',
       attachments: Array.isArray(parsed.attachments)
         ? parsed.attachments
-            .filter(
-              (a): a is AttachmentDraft =>
-                Boolean(a) &&
-                typeof a === 'object' &&
-                typeof (a as AttachmentDraft).url === 'string',
-            )
-            .map((a) => ({
-              id: typeof a.id === 'string' ? a.id : crypto.randomUUID(),
-              url: a.url,
-              mediaType: a.mediaType ?? 'other',
-              typeTouched: Boolean(a.typeTouched),
-              title: typeof a.title === 'string' ? a.title : '',
-            }))
+            .map((a) => migrateAttachmentRow(a))
+            .filter((a): a is AttachmentDraft => Boolean(a))
             .slice(0, STUDIO_LIMITS.ATTACHMENTS_MAX)
         : [],
     };
@@ -291,12 +286,30 @@ export function SubmissionStudio() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [showPreview, setShowPreview] = useState(true);
   const titleRef = useRef<HTMLInputElement>(null);
+  /* تنظیماتِ آپلود از بک‌اند — با پیش‌فرضِ قرارداد شروع و در mount تازه می‌شود */
+  const [uploadConfig, setUploadConfig] = useState<StudioUploadConfig>(STUDIO_UPLOAD_FALLBACK);
 
   /* ── بارگذاریِ پیش‌نویسِ پایدار + ذخیرهٔ پیوسته ── */
   useEffect(() => {
     const persisted = loadPersistedDraft();
     if (persisted) setDraft(persisted);
     setHydrated(true);
+  }, []);
+
+  /* ── واکشیِ تنظیماتِ واقعیِ آپلود (فرمت‌ها/سقف‌های env سرور) ── */
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const cfg = await fetchStudioUploadConfig();
+        if (alive) setUploadConfig(cfg);
+      } catch {
+        /* پیش‌فرض کافی است */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
   useEffect(() => {
     if (!hydrated) return;
@@ -322,12 +335,23 @@ export function SubmissionStudio() {
 
   const patchDraft = (patch: Partial<StudioDraft>) => setDraft((d) => ({ ...d, ...patch }));
 
+  /* قفلِ تک‌نوعیِ روایت — از ردیف‌های فعلی محاسبه می‌شود (آینه‌ی object-level بک‌اند) */
+  const lockedType = useMemo(() => lockedMediaTypeOf(draft.attachments), [draft.attachments]);
+
   const addRow = useCallback(() => {
     setDraft((d) =>
       d.attachments.length >= STUDIO_LIMITS.ATTACHMENTS_MAX
         ? d
-        : { ...d, attachments: [...d.attachments, newAttachmentRow()] },
+        : {
+            ...d,
+            attachments: [...d.attachments, newAttachmentRow(lockedMediaTypeOf(d.attachments))],
+          },
     );
+  }, []);
+
+  /* «تغییر نوعِ روایت» — شروعِ دوباره با پاک‌سازی همه‌ی پیوست‌ها */
+  const resetAttachmentType = useCallback(() => {
+    setDraft((d) => ({ ...d, attachments: [] }));
   }, []);
   const removeRow = useCallback(
     (id: string) =>
@@ -396,9 +420,10 @@ export function SubmissionStudio() {
   /* ── پله‌های پیشرفت ── */
   const step1Done = Boolean(draft.title.trim()) && Boolean(draft.description.trim());
   const step2Done = draft.attachments.every((a) => a.url.trim());
+  /* نامِ نمایشیِ پدیدآور — هم‌راستا با زنجیره‌ی بک‌اند: نام‌کامل ← ایمیل ← موبایل */
   const previewName =
     user?.full_name?.trim() || user?.primary_identifier?.trim() || 'حساب کاربری‌ات';
-  const authorBadge = user?.primary_identifier?.trim() || previewName;
+  const authorBadge = previewName;
   const pendingMeta = submissionStatusMeta('pending_review');
 
   /* ── گیتِ احراز ── */
@@ -460,18 +485,31 @@ export function SubmissionStudio() {
                   />
                 </div>
 
-                {/* نویسنده — قراردادِ صادقِ بک‌اند */}
-                <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-ink-50/70 px-3.5 py-2.5 ring-1 ring-inset ring-ink-100">
-                  <span className="flex items-center gap-2 text-[11.5px] font-bold text-ink-500">
-                    <UserRound className="h-4 w-4 text-ink-400" />
-                    منتشر می‌شود به نامِ:
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11.5px] font-extrabold text-ink-800 ring-1 ring-inset ring-ink-100">
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                    <span className="max-w-40 truncate" dir="ltr">
-                      {authorBadge}
+                {/* نویسنده — قراردادِ صادقِ بک‌اند: نام‌ونام‌خانوادگی ← ایمیل ← موبایل */}
+                <div className="mt-4 rounded-2xl bg-ink-50/70 px-3.5 py-2.5 ring-1 ring-inset ring-ink-100">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-2 text-[11.5px] font-bold text-ink-500">
+                      <UserRound className="h-4 w-4 text-ink-400" />
+                      منتشر می‌شود به نامِ:
                     </span>
-                  </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11.5px] font-extrabold text-ink-800 ring-1 ring-inset ring-ink-100">
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="max-w-40 truncate" dir="ltr">
+                        {authorBadge}
+                      </span>
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-[10.5px] font-semibold leading-5 text-ink-400">
+                    اولویت با نام‌ونام‌خانوادگی است؛ اگر خالی باشد ایمیل و بعد شماره‌ی موبایلت نمایش
+                    داده می‌شود.{' '}
+                    <Link
+                      href="/profile"
+                      className="font-extrabold text-brand-700 underline-offset-2 hover:underline"
+                    >
+                      تکمیل نام در پروفایل
+                    </Link>{' '}
+                    — با ذخیره، نامت در دیوار جهاد تبیین و روایت‌ها به‌روز می‌شود.
+                  </p>
                 </div>
 
                 {/* عنوان */}
@@ -554,16 +592,19 @@ export function SubmissionStudio() {
                 </div>
               </section>
 
-              {/* پیوست‌ها */}
+              {/* پیوست‌ها — نشانی یا بارگذاری، با قفلِ تک‌نوعی */}
               <AttachmentEditor
                 rows={draft.attachments}
                 urlErrors={urlErrors}
                 listError={attempted ? (errors.attachments ?? apiFields.attachments) : undefined}
                 disabled={submitting}
+                lockedType={lockedType}
+                uploadConfig={uploadConfig}
                 onAdd={addRow}
                 onRemove={removeRow}
                 onMove={moveRow}
                 onChange={changeRow}
+                onResetType={resetAttachmentType}
               />
 
               {/* راهنما + قوانین — دو کارتِ فشرده */}
@@ -571,15 +612,12 @@ export function SubmissionStudio() {
                 <div className="rounded-3xl border border-mint-400/30 bg-mint-50/50 p-5">
                   <h3 className="flex items-center gap-1.5 text-[12.5px] font-black text-mint-600">
                     <Lightbulb className="h-4 w-4" />
-                    فایلت روی گوشیت است؟
+                    دو راه برای رسانه ✨
                   </h3>
                   <ol className="mt-2 space-y-1.5 text-[11.5px] font-semibold leading-6 text-ink-600">
-                    <li>
-                      ۱. فایل را در «پیام‌های ذخیره‌شده»ِ ایتا/بله/تلگرام یا هر هاستِ عمومی آپلود
-                      کن.
-                    </li>
-                    <li>۲. روی فایل «کپیِ نشانیِ عمومی» را بزن.</li>
-                    <li>۳. نشانی را اینجا بچسبان؛ نوعِ رسانه خودش تشخیص داده می‌شود ✨</li>
+                    <li>۱. «بارگذاری» را بزن و فایل را مستقیم از گوشی‌ات روی سرورِ بعثت بفرست.</li>
+                    <li>۲. یا نشانیِ عمومیِ فایل را بچسبان؛ ما روی سرورِ خودمان نگهش می‌داریم.</li>
+                    <li>۳. هر روایت تک‌نوع است: همه عکس، همه ویدئو، همه صوت یا همه سند.</li>
                   </ol>
                 </div>
                 <div className="rounded-3xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,.04)]">

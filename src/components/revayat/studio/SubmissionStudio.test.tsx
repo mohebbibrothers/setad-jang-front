@@ -105,8 +105,9 @@ describe('SubmissionStudio', () => {
     answerApi([]);
     render(<SubmissionStudio />);
     await waitFor(() => expect(screen.getByText('روایت‌های من')).toBeTruthy());
-    // نویسنده از حساب می‌آید — نمایش است نه ورودی
-    expect(screen.getByText('کاربر آزمایشی')).toBeTruthy();
+    // نویسنده از حساب می‌آید (نام‌کامل ← ایمیل ← موبایل) — نمایش است نه ورودی؛
+    // هم در نشانِ فرم و هم در پیش‌نمایشِ زنده دیده می‌شود
+    expect(screen.getAllByText('کاربر آزمایشی').length).toBeGreaterThan(0);
     expect(screen.getByPlaceholderText(/یک عنوانِ کوتاه و گیرا/)).toBeTruthy();
     expect(screen.getByPlaceholderText(/همه‌چیز را بنویس/)).toBeTruthy();
     expect(screen.getByText('هنوز روایتی نفرستاده‌ای')).toBeTruthy();

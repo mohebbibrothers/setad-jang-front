@@ -1,13 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import {
+  acceptForType,
   buildSubmissionPayload,
+  effectiveMediaTypeOf,
+  formatBytesFa,
+  hasMixedMediaTypes,
+  HOMOGENEOUS_TYPES_MESSAGE,
+  isAcceptableAttachmentUrl,
   isHttpUrl,
+  isLocalMediaUrl,
   isStudioSubmittable,
+  isTypeDefiningRow,
+  lockedMediaTypeOf,
+  migrateAttachmentRow,
   newAttachmentRow,
+  normalizeStudioUploadConfig,
   previewItemFromDraft,
+  sniffMediaTypeFromFilename,
   sniffMediaTypeFromUrl,
   STUDIO_LIMITS,
+  STUDIO_UPLOAD_FALLBACK,
   submissionStatusMeta,
+  urlConflictsWithLock,
   validateStudioDraft,
   type AttachmentDraft,
   type StudioDraft,
@@ -21,6 +35,7 @@ import {
 
 const row = (over: Partial<AttachmentDraft> = {}): AttachmentDraft => ({
   id: 'r1',
+  source: 'url',
   url: '',
   mediaType: 'other',
   typeTouched: false,
@@ -171,5 +186,211 @@ describe('newAttachmentRow — شناسه‌های یکتا', () => {
     expect(a.id).not.toBe(b.id);
     expect(a.mediaType).toBe('other');
     expect(a.typeTouched).toBe(false);
+    expect(a.source).toBe('url');
+  });
+
+  it('با نوعِ ارثی (قفلِ روایت)، همان نوع اعمال و لمس‌شده علامت می‌خورد', () => {
+    const a = newAttachmentRow('video');
+    expect(a.mediaType).toBe('video');
+    expect(a.typeTouched).toBe(true);
+  });
+});
+
+describe('قفلِ تک‌نوعی — effective/lock/mixed/conflict', () => {
+  it('effectiveMediaTypeOf: فایلِ آپلودی از mime بر همه‌چیز مقدم است', () => {
+    const r = row({
+      mediaType: 'audio',
+      typeTouched: true,
+      url: 'https://h.example/a.mp4',
+      file: { name: 'p.png', sizeBytes: 1000, mime: 'image/png' },
+    });
+    expect(effectiveMediaTypeOf(r)).toBe('image');
+  });
+
+  it('effectiveMediaTypeOf: انتخابِ دستی بر بو از نشانی مقدم است', () => {
+    expect(
+      effectiveMediaTypeOf(
+        row({ mediaType: 'image', typeTouched: true, url: 'https://h.example/a.mp4' }),
+      ),
+    ).toBe('image');
+  });
+
+  it('effectiveMediaTypeOf: بدونِ لمس، بو از نشانی تعیین می‌کند', () => {
+    expect(effectiveMediaTypeOf(row({ url: 'https://h.example/a.mp4' }))).toBe('video');
+  });
+
+  it('isTypeDefiningRow: نشانیِ بی‌بو/خالی قفل نمی‌سازد تا کاربر اسیرِ تایپِ اشتباه نشود', () => {
+    expect(isTypeDefiningRow(row({ url: '' }))).toBe(false);
+    expect(isTypeDefiningRow(row({ url: 'https://h.example/page' }))).toBe(false);
+    expect(isTypeDefiningRow(row({ url: 'https://h.example/a.jpg' }))).toBe(true);
+    expect(isTypeDefiningRow(row({ url: 'https://h.example/unk', typeTouched: true }))).toBe(true);
+  });
+
+  it('lockedMediaTypeOf از اولین سطرِ نوع‌دار می‌آید', () => {
+    const list = [
+      row({ id: 'a', url: '' }),
+      row({ id: 'b', url: 'https://h.example/v.webm' }),
+      row({ id: 'c', url: 'https://h.example/a.jpg' }),
+    ];
+    expect(lockedMediaTypeOf(list)).toBe('video');
+    expect(lockedMediaTypeOf([])).toBeNull();
+  });
+
+  it('hasMixedMediaTypes ترکیب را تشخیص می‌دهد', () => {
+    const mixed = [
+      row({ id: 'a', url: 'https://h.example/a.jpg' }),
+      row({ id: 'b', url: 'https://h.example/song.mp3' }),
+    ];
+    expect(hasMixedMediaTypes(mixed)).toBe(true);
+    const pure = [
+      row({ id: 'a', url: 'https://h.example/a.mp4' }),
+      row({ id: 'b', url: 'https://h.example/b.webm' }),
+    ];
+    expect(hasMixedMediaTypes(pure)).toBe(false);
+  });
+
+  it('urlConflictsWithLock فقط با قفلِ فعال دردسر می‌سازد', () => {
+    expect(urlConflictsWithLock(row({ url: 'https://h.example/a.jpg' }), 'video')).toBe(true);
+    expect(urlConflictsWithLock(row({ url: 'https://h.example/a.jpg' }), 'image')).toBe(false);
+    expect(urlConflictsWithLock(row({ url: 'https://h.example/page' }), 'video')).toBe(false);
+    expect(urlConflictsWithLock(row({ url: 'https://h.example/a.jpg' }), null)).toBe(false);
+    /* انتخابِ دستیِ هم‌نوع با قفل، ناسازگار نیست */
+    expect(
+      urlConflictsWithLock(
+        row({ url: 'https://h.example/a.jpg', mediaType: 'video', typeTouched: true }),
+        'video',
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('اعتبارسنجیِ تک‌نوعی و آپلود', () => {
+  it('ترکیبِ انواع پیامِ object-level بک‌اند را می‌دهد', () => {
+    const e = validateStudioDraft(
+      draft({
+        attachments: [
+          row({ id: 'a', url: 'https://h.example/a.jpg' }),
+          row({ id: 'b', url: 'https://h.example/b.mp4' }),
+        ],
+      }),
+    );
+    expect(e.attachments).toBe(HOMOGENEOUS_TYPES_MESSAGE);
+    expect(e.attachmentUrl.b).toContain('هم‌خوانی ندارد');
+  });
+
+  it('همه‌ی هم‌نوع (ترکیبِ نشانی و آپلود) معتبر است', () => {
+    const e = validateStudioDraft(
+      draft({
+        attachments: [
+          row({ id: 'a', url: 'https://h.example/a.jpg' }),
+          row({
+            id: 'b',
+            source: 'upload',
+            url: '/media/public/tabyin/users/9/b.png',
+            file: { name: 'b.png', sizeBytes: 2048, mime: 'image/png' },
+          }),
+        ],
+      }),
+    );
+    expect(e.attachments).toBeUndefined();
+  });
+
+  it('حالتِ آپلود بدونِ فایلِ کامل، پیامِ آپلود می‌گیرد نه پیامِ نشانی', () => {
+    const e = validateStudioDraft(draft({ attachments: [row({ id: 'u', source: 'upload' })] }));
+    expect(e.attachmentUrl.u).toContain('آپلود');
+  });
+
+  it('نشانیِ بومیِ /media/ در هر دو حالت پذیرفته است', () => {
+    expect(isStudioSubmittable(draft({ attachments: [row({ url: '/media/public/u.jpg' })] }))).toBe(
+      true,
+    );
+  });
+});
+
+describe('نشانیِ بومیِ مدیاسرور', () => {
+  it('isLocalMediaUrl مسیرِ نسبی و هاستِ بعثت را می‌شناسد', () => {
+    expect(isLocalMediaUrl('/media/public/tabyin/users/12/abc.jpg')).toBe(true);
+    expect(isLocalMediaUrl('media/public/x.png')).toBe(true);
+    expect(isLocalMediaUrl('https://besat.me/media/public/tabyin/users/1/a.webp')).toBe(true);
+    expect(isLocalMediaUrl('https://www.besat.me/media/public/x.png')).toBe(true);
+    expect(isLocalMediaUrl('https://cdn.besat.me/media/public/x.png')).toBe(true);
+    expect(isLocalMediaUrl('https://example.com/a.jpg')).toBe(false);
+    expect(isLocalMediaUrl('')).toBe(false);
+  });
+
+  it('isAcceptableAttachmentUrl: https یا مدیاي بومی', () => {
+    expect(isAcceptableAttachmentUrl('https://a.com/f.mp4')).toBe(true);
+    expect(isAcceptableAttachmentUrl('/media/public/u.jpg')).toBe(true);
+    expect(isAcceptableAttachmentUrl('tg://x')).toBe(false);
+    expect(isAcceptableAttachmentUrl('')).toBe(false);
+  });
+});
+
+describe('پیکربندیِ آپلود — آینه‌ی uploads/config/', () => {
+  it('پیکربندیِ ناقص با پیش‌فرض‌های قرارداد پر می‌شود', () => {
+    const cfg = normalizeStudioUploadConfig({ max_mb: { video: 120 } });
+    expect(cfg.maxAttachments).toBe(STUDIO_LIMITS.ATTACHMENTS_MAX);
+    expect(cfg.maxMb.video).toBe(120);
+    expect(cfg.maxMb.image).toBe(10);
+    expect(cfg.extensions.video).toContain('mp4');
+  });
+
+  it('ورودیِ خراب → پیش‌فرضِ کامل', () => {
+    const cfg = normalizeStudioUploadConfig(null);
+    expect(cfg).toEqual(STUDIO_UPLOAD_FALLBACK);
+  });
+
+  it('acceptForType با قفل فقط پسوندهای همان نوع را می‌دهد و svg مجاز نیست', () => {
+    const acc = acceptForType('image', null);
+    expect(acc).toContain('.jpg');
+    expect(acc).toContain('image/*');
+    expect(acc).not.toContain('.mp4');
+    expect(acc).not.toContain('.svg');
+    const all = acceptForType(null, null);
+    expect(all).toContain('.mp3');
+    expect(all).toContain('.zip');
+    expect(all).toContain('.mp4');
+  });
+});
+
+describe('ابزارهای فایل (نام/حجم)', () => {
+  it('sniffMediaTypeFromFilename نوع را از روی نام فایل حدس می‌زند', () => {
+    expect(sniffMediaTypeFromFilename('IMG_2042.JPG')).toBe('image');
+    expect(sniffMediaTypeFromFilename('clip.MP4')).toBe('video');
+    expect(sniffMediaTypeFromFilename('voice note.m4a')).toBe('audio');
+    expect(sniffMediaTypeFromFilename('دفتر.xlsx')).toBe('other');
+    expect(sniffMediaTypeFromFilename('no-extension')).toBe('other');
+  });
+
+  it('formatBytesFa اعدادِ خوانای فارسی می‌دهد', () => {
+    expect(formatBytesFa(512)).toBe('۵۱۲ بایت');
+    expect(formatBytesFa(2048)).toBe('۲ کیلوبایت');
+    expect(formatBytesFa(3 * 1024 * 1024)).toBe('۳ مگابایت');
+    expect(formatBytesFa(Number.NaN)).toBe('');
+  });
+});
+
+describe('migrateAttachmentRow — پیش‌نویس‌های قدیمیِ localStorage', () => {
+  it('سطرِ قدیمی (بدونِ source) به مدلِ تازه مهاجرت می‌کند', () => {
+    const m = migrateAttachmentRow({
+      id: 'old-1',
+      url: 'https://x.example/a.mp4',
+      mediaType: 'video',
+    });
+    expect(m).not.toBeNull();
+    expect(m?.source).toBe('url');
+    expect(m?.id).toBe('old-1');
+    expect(m?.mediaType).toBe('video');
+  });
+
+  it('نشانیِ بومیِ ذخیره‌شده، حالتِ آپلود برمی‌دارد', () => {
+    const m = migrateAttachmentRow({ id: 'old-2', url: '/media/public/tabyin/users/9/a.jpg' });
+    expect(m?.source).toBe('upload');
+  });
+
+  it('ورودیِ خراب امن رد می‌شود', () => {
+    expect(migrateAttachmentRow(null)).toBeNull();
+    expect(migrateAttachmentRow(42)).toBeNull();
+    expect(migrateAttachmentRow({})).toBeNull();
   });
 });
