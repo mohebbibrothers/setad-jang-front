@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { Newspaper, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { Newspaper, PenLine, Sparkles } from 'lucide-react';
 import { safeApiFetch, type Paginated } from '@/lib/api';
 import { formatPersianNumber } from '@/lib/utils';
 import { countVisibleFeedTotal } from '@/lib/home-data';
@@ -108,6 +109,13 @@ export default async function TabyinIndexPage({
             <span className="rounded-full bg-white/70 px-3 py-1.5 text-[11.5px] font-bold text-ink-500 ring-1 ring-inset ring-ink-100">
               به‌روز و زنده
             </span>
+            <Link
+              href="/tabyin/new"
+              className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-l from-brand-500 to-brand-700 px-3.5 py-1.5 text-[11.5px] font-extrabold text-white shadow-[0_8px_18px_-8px_rgba(13,128,116,.6)] transition-transform hover:scale-[1.03] active:scale-[.98]"
+            >
+              <PenLine className="h-3 w-3" />
+              روایت خودت را بنویس
+            </Link>
           </div>
         </div>
       </section>
