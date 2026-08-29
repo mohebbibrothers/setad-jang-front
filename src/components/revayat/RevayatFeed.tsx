@@ -56,6 +56,7 @@ import {
   type FeedTypeFilter,
   type RevayatItem,
 } from '@/lib/revayat';
+import { visibleContents } from '@/lib/tabyin-visibility';
 import { RevayatCard } from './RevayatCard';
 
 const TYPE_ICONS: Record<FeedTypeFilter, typeof LayoutGrid> = {
@@ -109,9 +110,13 @@ export function RevayatFeed({
 }) {
   const router = useRouter();
 
-  /* نسخه‌های «عیناً یکسان» (مخصوصاً نوشته‌های سندیکا‌شده) از همان
-     ابتدا و بعد از هر واکشی حذف می‌شوند — فقط یک نسخه از هر محتوا. */
-  const [items, setItems] = useState<RevayatItem[]>(() => dedupeFeedContent(initialItems));
+  /* جهانِ قابل‌نمایش + نسخه‌های «عیناً یکسان» (مخصوصاً نوشته‌های
+     سندیکا‌شده) از همان ابتدا و بعد از هر واکشی پالایش می‌شوند —
+     همان شروطِ نمایشِ دیوارِ صفحه‌ی اصلی (کاور/ویدئو/متنِ خواندنی)
+     و فقط یک نسخه از هر محتوا. */
+  const [items, setItems] = useState<RevayatItem[]>(() =>
+    dedupeFeedContent(visibleContents(initialItems)),
+  );
   const [count, setCount] = useState(initialCount);
   const [page, setPage] = useState(1);
   const [hasNext, setHasNext] = useState(initialHasNext);
@@ -146,7 +151,9 @@ export function RevayatFeed({
         { signal: ctrl.signal, skipAuth: true } as never,
       );
       if (seq !== seqRef.current) return; // پاسخِ «ازرده»
-      setItems((prev) => dedupeFeedContent(append ? dedupeFeed(prev, data.results) : data.results));
+      setItems((prev) =>
+        dedupeFeedContent(visibleContents(append ? dedupeFeed(prev, data.results) : data.results)),
+      );
       setCount(data.count);
       setPage(pageNo);
       setHasNext(Boolean(data.next));

@@ -262,15 +262,13 @@ export function feedLooseKey(item: DedupeableContent): string | null {
   const attachments = feedAttachments(item);
   if (attachments.some((a) => a.media_type && RENDERABLE_MEDIA.has(a.media_type))) return null;
 
-  /* eslint-disable no-misleading-character-class, no-irregular-whitespace --
-     عمدی: فقط «حروف و ارقامِ یونیکدِ معنادار» می‌مانند؛ نویسه‌های فرمتینگ،
-     سجاوند، فاصله‌ها و نشانه‌های نامرئی (ALM/RLM/bidi و…) همگی در
-     کلیدِ قیاس بی‌اثرند چون الگوی نگاتیوِ L/N همه‌ی آنان را حذف می‌کند. */
+  /* فقط «حروف و ارقامِ یونیکدِ معنادار» می‌مانند؛ نویسه‌های فرمتینگ،
+     سجاوند، فاصله‌ها و نشانه‌های نامرئی (ALM/RLM/bidi و…) همگی با
+     الگوی نگاتیوِ L/N حذف می‌شوند و در کلیدِ قیاس بی‌اثر می‌شوند. */
   const toLoose = (s: string | null | undefined): string =>
     normalizeForKey(s)
       .normalize('NFKC')
       .replace(/[^\p{L}\p{N}]+/gu, '');
-  /* eslint-enable no-misleading-character-class, no-irregular-whitespace */
 
   const title = toLoose(item.title);
   const desc = toLoose(item.description);

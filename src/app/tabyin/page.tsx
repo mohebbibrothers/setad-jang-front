@@ -9,6 +9,7 @@ import {
   feedFiltersFromSearchParams,
   type RevayatItem,
 } from '@/lib/revayat';
+import { visibleContents } from '@/lib/tabyin-visibility';
 import { RevayatFeed } from '@/components/revayat/RevayatFeed';
 
 /**
@@ -53,20 +54,22 @@ export default async function TabyinIndexPage({
   const items = data?.results ?? [];
   const serverCount = data?.count ?? items.length;
 
-  /* ── شمارِ یکتایِ محتوا برای دیدگاهِ پیش‌فرض (بدونِ فیلتر) ──
-     count پاکتِ سرور، سطرهای دیتابیس را می‌شمارد — شاملِ نسخه‌های
-     سندیکاشده‌ی «عیناً یکسان». برای اینکه عددِ سربرگ با آنچه کاربر
-     واقعاً می‌بیند (و با منطقِ دیوارِ صفحه‌ی اصلی) جفت شود، کلِ
-     کرپوس را با همان واکشیِ scatter/gather صفحه‌ی اصلی می‌آوریم و
-     شمارِ پس از dedupe را نمایش می‌دهیم. کوئری‌ها بین مسیرها از
-     طریقِ کشِ fetchِ Next مشترک‌اند، پس این اسکن در عمل گرم است.
-     دیدگاهِ فیلتردار (جست‌وجو/نوع/نویسنده) شمارِ سرورِ همان نتایجِ
-     فیلترشده را نشان می‌دهد — همان‌طور که حالت‌های قبلی هم بود. */
+  /* ── شمارِ «جهانِ قابل‌نمایش» برای دیدگاهِ پیش‌فرض (بدونِ فیلتر) ──
+     قرارداد: عددی که اینجا نشان داده می‌شود باید دقیقاً با شمارنده‌ی
+     «همه» در جهاد تبیینِ صفحه‌ی اصلی برابر باشد. آن شمارنده فقط
+     محتوایی را می‌شمارد که «چیزی برای نمایش» دارد (کاور/ویدئو/متنِ
+     خواندنی — tabyin-visibility)، نه سطرهای پوچ و نه نسخه‌های
+     تکراری. پس همان دو گِیت را به همان کرپوسِ کامل اعمال می‌کنیم:
+     ابتدا جهانِ قابل‌نمایش (visibleContents)، سپس keep-first
+     (dedupeFeedContent) — دقیقاً همان ترتیبی که فیدِ کلاینت هم روی
+     هر صفحه اعمال می‌کند تا مجموعه‌ی نهایی یکی باشد. دیدگاهِ فیلتردار
+     (جست‌وجو/نوع/نویسنده) شمارِ سرورِ همان نتایجِ فیلترشده را نشان
+     می‌دهد — همان‌طور که قبلاً هم بود. */
   const hasActiveFilter = Boolean(filters.q.trim() || filters.type || filters.author.trim());
   let uniqueCount: number | undefined;
   if (data && !hasActiveFilter) {
     const corpus = await fetchTabyinAllComplete(5000);
-    uniqueCount = dedupeFeedContent(corpus).length;
+    uniqueCount = dedupeFeedContent(visibleContents(corpus)).length;
   }
   const displayTotal = uniqueCount ?? serverCount;
 

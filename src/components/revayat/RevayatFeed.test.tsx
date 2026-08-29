@@ -137,6 +137,28 @@ describe('RevayatFeed', () => {
     expect(screen.getAllByText('متن').length).toBeGreaterThanOrEqual(2);
   });
 
+  it('پوسته‌های تهی (شروطِ نمایشِ دیوار) در فید هم حذف می‌شوند — نه در نمایش، نه در شمار', () => {
+    const HOLLOW: RevayatItem = {
+      external_id: 'hollow-1',
+      author_username: 'تهران/کانال (نام ساختگی)',
+      source_created_at: '2026-08-24T10:00:00Z',
+      attachments: [],
+    };
+    render(
+      <RevayatFeed
+        initialItems={[FILM, HOLLOW, NOTE]}
+        initialCount={3}
+        initialHasNext={false}
+        initialFilters={EMPTY_FILTERS}
+      />,
+    );
+    // نویسنده‌ی پوستهٔ تهی هرگز رندر نمی‌شود — کارتِ تهی وجود ندارد
+    expect(screen.queryByText('نام ساختگی')).toBeNull();
+    // ولی دو روایتِ واقعی سرِ جای‌شان‌اند
+    expect(screen.getAllByText('بوستان پیرا').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('تحلیلگر تبیین').length).toBeGreaterThanOrEqual(1);
+  });
+
   it('جست‌وجوی زنده با debounce به API می‌رود و replace سینک می‌شود', async () => {
     apiFetchMock.mockResolvedValue(page([FILM2]));
     render(
