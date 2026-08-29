@@ -20,7 +20,8 @@
 
 import { safeApiFetch } from '@/lib/api';
 import { absoluteMediaUrl } from '@/lib/utils';
-import { dedupeFeedContent } from '@/lib/revayat';
+import { buildFeedQuery, dedupeFeedContent, type FeedFilters } from '@/lib/revayat';
+import { visibleContents } from '@/lib/tabyin-visibility';
 import type { CampaignCard } from '@/components/home/WarFundSection';
 import type { CriminalCard } from '@/components/home/JusticeSection';
 import type { CourseCard, EduCategory } from '@/components/home/EducationSection';
@@ -474,22 +475,27 @@ async function fetchTabyinBucket(
  * simply don't guarantee we've seen every eligible سایر row. A
  * whole-corpus pull is the only way to be provably complete.
  */
-export async function fetchTabyinAllComplete(hardCap = 5000): Promise<ApiTabyin[]> {
+/**
+ * قلبِ مشترکِ «اسکنِ کاملِ کرپوس»: صفحه‌ی اول (که count را هم لو
+ * می‌دهد) و سپس صفحات ۲..N به‌صورت موازی با page_size=100 تا سقفِ
+ * hardCap. سه مصرف‌کننده روی این موتور سوارند: دیوارِ صفحه‌ی اصلی،
+ * شمارِ کرپوسِ کاملِ فید، و سرویسِ شمارِ فیلتردار.
+ *
+ * خروجی null یعنی واکشیِ صفحه‌ی اول شکست خورده (بک‌اند در دسترس نیست)
+ * — از «کرپوسِ واقعاً خالی» متمایزش می‌کند تا شمارنده به‌جای صفرِ
+ * گمراه‌کننده به شمارِ خامِ پاکت فرو افتد. شکستِ صفحاتِ میانی مثل قبل
+ * امانت‌دارانه «تحمل» می‌شود و هرچه رسیده برمی‌گردد.
+ */
+async function fetchPagedTabyinComplete(
+  pageUrl: (page: number) => string,
+  opts: { revalidate: number; tags: string[] },
+  hardCap: number,
+): Promise<ApiTabyin[] | null> {
   const PAGE_SIZE = 100;
-  // Slightly tighter revalidation (was 180 s) so that after a fresh
-  // deploy the "سایر" tab picks up new/removed rows within a minute
-  // rather than waiting three. The tab is the most-scrutinised part
-  // of the Tabyin section right now and this makes the corpus feel
-  // "live" while still being cheap (Next.js dedupes concurrent
-  // fetches to the same URL).
-  const REVAL = 60;
 
   // Step 1 — page 1 alone; also tells us the total `count`.
-  const firstPage = await safeApiFetch<Paginated<ApiTabyin>>(
-    `/tabyin/contents/?page_size=${PAGE_SIZE}&page=1&ordering=-source_created_at`,
-    { revalidate: REVAL, tags: ['tabyin', 'homepage'] },
-  );
-  if (!firstPage) return [];
+  const firstPage = await safeApiFetch<Paginated<ApiTabyin>>(pageUrl(1), opts);
+  if (!firstPage) return null;
   const firstBatch = unwrap(firstPage);
   const total = Array.isArray(firstPage)
     ? firstBatch.length
@@ -502,12 +508,7 @@ export async function fetchTabyinAllComplete(hardCap = 5000): Promise<ApiTabyin[
   // Step 2 — pages 2..N in parallel.
   const pagePromises: Promise<Paginated<ApiTabyin> | ApiTabyin[] | null>[] = [];
   for (let p = 2; p <= totalPages; p++) {
-    pagePromises.push(
-      safeApiFetch<Paginated<ApiTabyin>>(
-        `/tabyin/contents/?page_size=${PAGE_SIZE}&page=${p}&ordering=-source_created_at`,
-        { revalidate: REVAL, tags: ['tabyin', 'homepage'] },
-      ),
-    );
+    pagePromises.push(safeApiFetch<Paginated<ApiTabyin>>(pageUrl(p), opts));
   }
   const restResults = await Promise.all(pagePromises);
   const collected = [...firstBatch];
@@ -516,6 +517,73 @@ export async function fetchTabyinAllComplete(hardCap = 5000): Promise<ApiTabyin[
     collected.push(...unwrap(r));
   }
   return collected.slice(0, effectiveTotal);
+}
+
+export async function fetchTabyinAllComplete(hardCap = 5000): Promise<ApiTabyin[]> {
+  // Slightly tighter revalidation (was 180 s) so that after a fresh
+  // deploy the "سایر" tab picks up new/removed rows within a minute
+  // rather than waiting three. The tab is the most-scrutinised part
+  // of the Tabyin section right now and this makes the corpus feel
+  // "live" while still being cheap (Next.js dedupes concurrent
+  // fetches to the same URL).
+  const rows = await fetchPagedTabyinComplete(
+    (p) => `/tabyin/contents/?page_size=100&page=${p}&ordering=-source_created_at`,
+    { revalidate: 60, tags: ['tabyin', 'homepage'] },
+    hardCap,
+  );
+  return rows ?? [];
+}
+
+/**
+ * کرپوسِ «فیلترشده‌ی سرور»، کامل تا سقفِ hardCap — دقیقاً همان
+ * پارامترهایی که فید به API می‌زند (media_type/author/search از
+ * buildFeedQuery؛ منبعِ واحدِ کوئری‌سازی تا SSR و کلاینت هیچ‌وقت
+ * ناسازگار نشوند)، ولی به‌جای یک صفحه‌ی ۱۲تایی، کلِ نتایج. کش:
+ * revalidate=120 با تگِ tabyin — هم‌خانواده با صفحه‌ی /tabyin (نه
+ * کشِ ۶۰ثانیه‌ی دیوار) تا کرپوسِ دیوار را آلوده نکند.
+ */
+export async function fetchTabyinFilteredComplete(
+  filters: FeedFilters,
+  hardCap = 5000,
+): Promise<ApiTabyin[]> {
+  const rows = await fetchPagedTabyinComplete(
+    (p) => `/tabyin/contents/?${buildFeedQuery(filters, p, 100)}&ordering=-source_created_at`,
+    { revalidate: 120, tags: ['tabyin'] },
+    hardCap,
+  );
+  return rows ?? [];
+}
+
+/**
+ * شمارِ «واقعیِ قابل‌نمایش» — برای هر دیدگاهِ فید، چه پیش‌فرض چه
+ * فیلتردار. قراردادِ کاربر: «شمارنده باید همون تعداد محتوایی رو نشون
+ * بده که کاربر می‌بینه»؛ یعنی نه سطرهای پوچ (tabyin-visibility: بدون
+ * کاور/ویدئو/متنِ خواندنی) و نه نسخه‌های همسانِ سندیکا
+ * (dedupeFeedContentِ keep-first). پس کرپوسِ کاملِ همان فیلتر سمتِ
+ * سرور اسکن می‌شود و دو گِیتِ مشترک با فید به‌همان ترتیب اعمال
+ * می‌شوند: ابتدا جهانِ قابل‌نمایش، سپس یکتاسازی. نتیجه برای فیلترِ
+ * «متن» به‌جای ۳۹ سطرِ خام دقیقاً ۳۲ برمی‌گردد — همان ۳۲ کارتی که
+ * روی صفحه دیده می‌شود. undefined یعنی بک‌اند در دسترس نبوده تا UI
+ * امانت‌دارانه به شمارِ خامِ پاکت فرو افتد (نه صفرِ گمراه‌کننده).
+ */
+export async function countVisibleFeedTotal(
+  filters: FeedFilters,
+  hardCap = 5000,
+): Promise<number | undefined> {
+  const hasFilter = Boolean(filters.q.trim() || filters.type || filters.author.trim());
+  const rows = hasFilter
+    ? await fetchPagedTabyinComplete(
+        (p) => `/tabyin/contents/?${buildFeedQuery(filters, p, 100)}&ordering=-source_created_at`,
+        { revalidate: 120, tags: ['tabyin'] },
+        hardCap,
+      )
+    : await fetchPagedTabyinComplete(
+        (p) => `/tabyin/contents/?page_size=100&page=${p}&ordering=-source_created_at`,
+        { revalidate: 60, tags: ['tabyin', 'homepage'] },
+        hardCap,
+      );
+  if (!rows) return undefined;
+  return dedupeFeedContent(visibleContents(rows)).length;
 }
 
 export async function loadTabyinItems(): Promise<TabyinItem[]> {

@@ -817,3 +817,29 @@
     animation: none;
   }
 }
+
+/* پاپِ نرمِ شمارنده‌ی روایت‌ها — وقتی عددِ واقعی (اسکنِ کاملِ کرپوس)
+   تازه می‌شود، ارقام با یک بال‌آمدنِ کوتاه جان می‌گیرند تا چشمِ کاربر
+   تغییر را حس کند؛ ترکیبِ صرفاً transform/opacity تا روی گوشی‌های
+   میان‌رده هم روان بماند. */
+@keyframes countPop {
+  0% {
+    opacity: 0.2;
+    transform: translateY(45%) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.count-pop {
+  animation: countPop 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .count-pop {
+    animation: none;
+  }
+}

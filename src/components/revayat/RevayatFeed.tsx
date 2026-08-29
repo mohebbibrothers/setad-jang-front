@@ -26,7 +26,13 @@
  *   • رقابت‌گریز: هر واکشی آخرینِ خودش را اِعمال می‌کند (seq token) و
  *     درخواستِ قبلی abort می‌شود — تندتایپ‌کردن هرگز فید را نمی‌شکند؛
  *   • نخستین بارگذاری از SSR نفوذ می‌کند و هیچ واکشیِ دوبلای رخ نمی‌دهد؛
- *   • چسباندنِ صفحات با dedupe روی external_id.
+ *   • چسباندنِ صفحات با dedupe روی external_id؛
+ *   • شمارنده‌ی «واقعیِ قابل‌نمایش»: SSR برای دیدگاهِ اولیه و سرویسِ
+ *     سبکِ /api/tabyin-count برای تعویضِ فیلتر، عدد را از اسکنِ کاملِ
+ *     کرپوس (سمتِ سرور) می‌آورند — دقیقاً «تعدادِ کارت‌هایی که کاربر
+ *     می‌بیند» (نه سطرهای پوچ، نه نسخه‌های تکراری). عدد فقط با جفت‌شدنِ
+ *     scope نمایش داده می‌شود؛ تا آن لحظه اسکلتِ نرمِ «در حال محاسبه»
+ *     و در شکست، شمارِ خامِ پاکت — هرگز عددِ اشتباهِ مطمئن.
  * ═══════════════════════════════════════════════════════════════════
  */
 
@@ -47,11 +53,13 @@ import {
 import { apiFetch, type Paginated } from '@/lib/api';
 import { cn, formatPersianNumber } from '@/lib/utils';
 import {
+  buildFeedCountQuery,
   buildFeedPath,
   buildFeedQuery,
   dedupeFeed,
   dedupeFeedContent,
   FEED_TYPE_TABS,
+  feedScopeKey,
   type FeedFilters,
   type FeedTypeFilter,
   type RevayatItem,
@@ -96,15 +104,20 @@ export function RevayatFeed({
   initialItems,
   initialCount,
   uniqueCount,
+  countScope,
   initialHasNext,
   initialFilters,
 }: {
   initialItems: RevayatItem[];
   initialCount: number;
-  /** شمارِ یکتایِ کلِ کرپوس (پس از dedupe) — فقط برای دیدگاهِ پیش‌فرض
-      بدونِ فیلتر؛ در دیدگاهِ فیلتردار شمارِ سرورِ همان نتایج نمایش
-      داده می‌شود. */
+  /** شمارِ «واقعیِ قابل‌نمایش» (پس از حذفِ پوسته‌ها و نسخه‌های تکراری)
+      برای دیدگاه‌ای که countScope توصیف‌اش می‌کند — چه پیش‌فرض چه
+      فیلتردار. فقط وقتی به‌جای شمارِ خامِ پاکت نمایش داده می‌شود که
+      دامنه‌اش با فیلترهای فعلی دقیقاً برابر باشد؛ وگرنه عددی که با
+      کارت‌های روی صفحه نمی‌خواند، بدتر از نبودِ عدد است. */
   uniqueCount?: number;
+  /** feedScopeKeyِ فیلترهایی که uniqueCount برایشان محاسبه شده است. */
+  countScope?: string;
   initialHasNext: boolean;
   initialFilters: FeedFilters;
 }) {
@@ -124,6 +137,20 @@ export function RevayatFeed({
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<'load' | 'more' | null>(null);
 
+  /* ── شمارنده‌ی «واقعیِ قابل‌نمایش» ── مقدارِ اولیه از SSR می‌آید
+     (اسکنِ کاملِ سرور)، و بعد از هر تعویضِ فیلتر، سرویسِ سبکِ
+     /api/tabyin-count همین عدد را برای دیدگاهِ تازه اسکن می‌کند.
+     عدد فقط وقتی نمایش داده می‌شود که scopeاش دقیقاً برابرِ فیلترهای
+     فعلی باشد — در غیر این صورت، به‌جای عددیِ مطمئنِ غلط، اسکلتِ نرمِ
+     «در حال محاسبه» دیده می‌شود و اگر اسکن شکست بخورد، شمارِ خامِ
+     پاکت آخرین پناه است. */
+  const [scanned, setScanned] = useState<{ scope: string; count: number } | null>(() =>
+    typeof uniqueCount === 'number'
+      ? { scope: countScope ?? feedScopeKey(initialFilters), count: uniqueCount }
+      : null,
+  );
+  const [scanPending, setScanPending] = useState(false);
+
   const [qInput, setQInput] = useState(initialFilters.q);
   const [filters, setFilters] = useState<FeedFilters>(initialFilters);
 
@@ -131,6 +158,10 @@ export function RevayatFeed({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const seqRef = useRef(0);
+  /* کانالِ مستقلِ اسکنِ شمار — از کانالِ واکشیِ صفحات جدا تا ابطالِ
+     یکی، دیگری را نخورد (رقابت‌گریز با seq token و AbortController). */
+  const scanAbortRef = useRef<AbortController | null>(null);
+  const scanSeqRef = useRef(0);
   /* فیلترِ «اعمال‌شده‌ی قبلی» — برای تشخیصِ تغییرِ واقعی (نه mount). */
   const prevFiltersRef = useRef<FeedFilters>(initialFilters);
 
@@ -169,6 +200,37 @@ export function RevayatFeed({
     }
   }, []);
 
+  /* ── اسکنِ شمارِ واقعی برای یک دیدگاه — سرویسِ سبکِ /api/tabyin-count.
+     کلِ بارِ خواندنِ کرپوس سمتِ سرور می‌ماند و فقط یک عدد به گوشی
+     می‌رسد؛ پاسخِ «ازرده» (seq قدیمی‌تر) دور ریخته می‌شود و AbortError
+     بی‌صدا — همان نظمِ رقابت‌گریزیِ fetchPage. */
+  const fetchScan = useCallback(async (f: FeedFilters) => {
+    scanAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    scanAbortRef.current = ctrl;
+    const seq = ++scanSeqRef.current;
+    const scope = feedScopeKey(f);
+
+    setScanPending(true);
+    try {
+      const res = await fetch(`/api/tabyin-count?${buildFeedCountQuery(f)}`, {
+        signal: ctrl.signal,
+        headers: { accept: 'application/json' },
+      });
+      if (!res.ok) throw new Error(`tabyin-count ${res.status}`);
+      const payload = (await res.json()) as { success?: boolean; count?: unknown };
+      if (seq !== scanSeqRef.current) return;
+      if (payload.success && typeof payload.count === 'number') {
+        setScanned({ scope, count: payload.count });
+      }
+    } catch {
+      /* سکوتِ آگاهانه: با شکستِ اسکن، شمارِ خامِ پاکت می‌ماند و
+         اسکلتِ «در حال محاسبه» جمع می‌شود — عددِ اشتباهِ مطمئن هرگز. */
+    } finally {
+      if (seq === scanSeqRef.current) setScanPending(false);
+    }
+  }, []);
+
   const loadMore = useCallback(() => {
     if (loading || loadingMore || !hasNext || error === 'load') return;
     void fetchPage(filters, page + 1, true);
@@ -186,7 +248,7 @@ export function RevayatFeed({
     return () => clearTimeout(t);
   }, [qInput]);
 
-  /* ── فیلتر عوض شد → صفحه‌ی یک + سینکِ URL ──
+  /* ── فیلتر عوض شد → صفحه‌ی یک + اسکنِ شمار + سینکِ URL ──
      فقط وقتی مجموعه‌ی اعمال‌شده واقعاً عوض شود (mount=SSR هرگز واکشیِ
      دوباره نمی‌کند؛ برگشتن به وضعیتِ اولیه هم «تغییر» حساب می‌شود). */
   useEffect(() => {
@@ -196,6 +258,7 @@ export function RevayatFeed({
     }
     prevFiltersRef.current = filters;
     void fetchPage(filters, 1, false);
+    void fetchScan(filters);
     router.replace(buildFeedPath(filters), { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
@@ -232,9 +295,15 @@ export function RevayatFeed({
     [filters],
   );
 
-  /* عددِ سربرگ: در دیدگاهِ پیش‌فرض، شمارِ «یکتا»ی کلِ کرپوس (هم‌خانواده
-     با دیوار)؛ در دیدگاهِ فیلتردار، شمارِ سرورِ همان نتایجِ فیلترشده. */
-  const displayCount = !isFiltered && uniqueCount !== undefined ? uniqueCount : count;
+  /* عددِ سربرگ — قراردادِ «دقیقاً همان چیزی که کاربر می‌بیند»:
+     شمارِ اسکن‌شده فقط وقتی که دامنه‌اش با فیلترهای فعلی جفت باشد
+     (نه عددِ مانده از دیدگاهِ قبلی، نه شمارِ خامِ سرور). تا لحظه‌ی
+     جفت‌شدن، اسکلتِ نرمِ «در حال محاسبه» نشان داده می‌شود؛ شکستِ
+     اسکن → شمارِ خامِ پاکت به‌عنوان آخرین پناه. */
+  const currentScope = feedScopeKey(filters);
+  const scopeMatched = scanned !== null && scanned.scope === currentScope;
+  const displayCount = scopeMatched ? scanned.count : count;
+  const countIsPending = !scopeMatched && scanPending;
 
   const clearAll = () => {
     setQInput('');
@@ -322,8 +391,23 @@ export function RevayatFeed({
               </button>
             ) : null}
             <span className="me-auto" />
-            <span className="shrink-0 text-[11px] font-bold tabular-nums text-ink-400">
-              {loading && items.length === 0 ? '…' : `${formatPersianNumber(displayCount)} روایت`}
+            <span
+              className="flex shrink-0 items-center text-[11px] font-bold tabular-nums text-ink-400"
+              aria-live="polite"
+            >
+              {loading && items.length === 0 ? (
+                '…'
+              ) : countIsPending ? (
+                <span
+                  role="status"
+                  aria-label="در حال محاسبه‌ی تعداد روایت‌ها"
+                  className="inline-block h-3 w-14 animate-pulse rounded-full bg-ink-100"
+                />
+              ) : (
+                <span key={displayCount} className="count-pop inline-block">
+                  {formatPersianNumber(displayCount)} روایت
+                </span>
+              )}
             </span>
           </div>
         </div>

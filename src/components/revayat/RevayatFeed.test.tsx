@@ -32,7 +32,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import { RevayatFeed } from './RevayatFeed';
-import type { FeedFilters, RevayatItem } from '@/lib/revayat';
+import { feedScopeKey, type FeedFilters, type RevayatItem } from '@/lib/revayat';
 
 /* ── داده‌ی نمونه: از هر نوع یک روایت ── */
 const FILM: RevayatItem = {
@@ -108,9 +108,26 @@ beforeAll(() => {
 beforeEach(() => {
   apiFetchMock.mockReset();
   replaceMock.mockReset();
+  // پیش‌فرضِ بی‌آزار برای سرویسِ شمار: تست‌هایی که رفتارِ اسکن را بررسی
+  // نمی‌کنند، پاسخِ شکستِ ۵۰۳ می‌گیرند تا قطعِ شبکه نویز نسازد و فید
+  // امانت‌دارانه به شمارِ خام فرو افتد. تست‌های اسکن، دوباره stub
+  // می‌کنند (stubGlobal جایگزین می‌شود) و afterEach پاک‌سازی دارد.
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () =>
+        new Response(JSON.stringify({ success: false }), {
+          status: 503,
+          headers: { 'content-type': 'application/json' },
+        }),
+    ),
+  );
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe('RevayatFeed', () => {
   it('چهار نوع با تگ‌های قراردادی — و «صوت همیشه می‌برد» حتی با کاورِ ویدئویی', () => {
@@ -269,5 +286,65 @@ describe('RevayatFeed', () => {
     await waitFor(() => expect(screen.getByText('روایتِ صفحه‌ی دوم')).toBeTruthy(), {
       timeout: 2000,
     });
+  });
+
+  it('شمارِ «واقعیِ فیلتردار» (۳۲) به‌جای عددِ خامِ پاکت (۳۹) نمایش داده می‌شود — وقتی scope جفت است', () => {
+    const FILTERED: FeedFilters = { q: '', type: 'other', author: '' };
+    render(
+      <RevayatFeed
+        initialItems={[NOTE]}
+        initialCount={39}
+        uniqueCount={32}
+        countScope={feedScopeKey(FILTERED)}
+        initialHasNext={false}
+        initialFilters={FILTERED}
+      />,
+    );
+    // همان تعدادِ کارت‌هایی که کاربر می‌بیند — نه شمارِ خامِ سرور
+    expect(screen.getByText('۳۲ روایت')).toBeTruthy();
+    expect(screen.queryByText('۳۹ روایت')).toBeNull();
+  });
+
+  it('scopeِ ناجفت (عددِ مانده از دیدگاهِ قبلی) هرگز نمایش داده نمی‌شود — شمارِ خام جایگزین می‌شود', () => {
+    const FILTERED: FeedFilters = { q: '', type: 'other', author: '' };
+    render(
+      <RevayatFeed
+        initialItems={[NOTE]}
+        initialCount={39}
+        uniqueCount={3337}
+        countScope={feedScopeKey(EMPTY_FILTERS)}
+        initialHasNext={false}
+        initialFilters={FILTERED}
+      />,
+    );
+    // شمارِ اسکن‌شده متعلق به «همه» است نه فیلترِ «متن» → نمایشِ خام ۳۹
+    expect(screen.getByText('۳۹ روایت')).toBeTruthy();
+    expect(screen.queryByText(/۳۳۳۷ روایت/)).toBeNull();
+  });
+
+  it('تعویضِ فیلتر → اسکنِ /api/tabyin-count و جان‌گرفتنِ شمارنده با عددِ واقعی', async () => {
+    apiFetchMock.mockResolvedValue(page([NOTE]));
+    const scanFetchMock = vi.fn(
+      async (_input: RequestInfo | URL) =>
+        new Response(JSON.stringify({ success: true, status_code: 200, count: 32 }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+    vi.stubGlobal('fetch', scanFetchMock);
+    render(
+      <RevayatFeed
+        initialItems={[FILM]}
+        initialCount={1}
+        uniqueCount={1}
+        countScope={feedScopeKey(EMPTY_FILTERS)}
+        initialHasNext={false}
+        initialFilters={EMPTY_FILTERS}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'متن' }));
+    await waitFor(() => expect(scanFetchMock).toHaveBeenCalled(), { timeout: 2000 });
+    expect(String(scanFetchMock.mock.calls[0]?.[0])).toContain('/api/tabyin-count?type=other');
+    await waitFor(() => expect(screen.getByText('۳۲ روایت')).toBeTruthy(), { timeout: 2000 });
   });
 });

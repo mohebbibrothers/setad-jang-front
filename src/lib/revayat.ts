@@ -156,6 +156,26 @@ export function buildFeedPath(filters: FeedFilters): string {
   return s ? `/tabyin?${s}` : '/tabyin';
 }
 
+/**
+ * کلیدِ دامنه‌ی فیلتر — قراردادِ جفت‌کردنِ «شمارِ اسکن‌شده» با دیدگاهِ
+ * فعلی: عدد فقط وقتی معتبر است که scopeاش با scopeِ فیلترهای فعلی
+ * برابر باشد، وگرنه عددیِ بی‌ربط مطمئن به نظر می‌رسد (دقیقاً همان باگی
+ * که شمارنده‌ی فیلتردار قبلاً داشت). از جداکننده‌ی یونیکدِ واحد
+ * (U+001F) استفاده می‌شود تا با متنِ کاربر برخورد نکند.
+ */
+export function feedScopeKey(filters: FeedFilters): string {
+  return [filters.q.trim(), filters.type, filters.author.trim()].join('\u001f');
+}
+
+/** کوئریِ سرویسِ شمارِ واقعی (/api/tabyin-count) — واژگانِ عمومیِ صفحه. */
+export function buildFeedCountQuery(filters: FeedFilters): string {
+  const p = new URLSearchParams();
+  if (filters.q.trim()) p.set('q', filters.q.trim());
+  if (filters.type) p.set('type', filters.type);
+  if (filters.author.trim()) p.set('author', filters.author.trim());
+  return p.toString();
+}
+
 /** خواندنِ فیلترها از searchParamsِ سرور (امن در برابر آرایه/نویز). */
 export function feedFiltersFromSearchParams(
   sp: Record<string, string | string[] | undefined>,

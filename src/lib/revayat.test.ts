@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildFeedCountQuery,
   buildFeedPath,
   buildFeedQuery,
   dedupeFeed,
@@ -8,6 +9,7 @@ import {
   feedLooseKey,
   feedFiltersFromSearchParams,
   feedItemKind,
+  feedScopeKey,
   heroOfFeedItem,
   initialOf,
   parseAuthor,
@@ -286,5 +288,47 @@ describe('feedLooseKey / پاسِ فشرده — نسخه‌هایی که فقط
     const b = item('b', 'وصیت‌نامه', 'شهید راهِ آزادی را گشود‏');
     const c = item('c', 'وصیت‌نامه', 'شهید راهِ آزادی را گشود؟');
     expect(dedupeFeedContent([a, b, c]).map((i) => i.external_id)).toEqual(['a']);
+  });
+});
+
+describe('feedScopeKey — کلیدِ دامنه‌ی فیلتر برای اعتبارِ شمارِ اسکن‌شده', () => {
+  it('پایدار است: فیلترهای معادل همیشه کلیدِ یکسان می‌سازند', () => {
+    const a = feedScopeKey({ q: 'ایران', type: 'other', author: 'هرمزگان' });
+    const b = feedScopeKey({ q: ' ایران ', type: 'other', author: ' هرمزگان' });
+    expect(a).toBe(b);
+  });
+
+  it('تمایزگذار است: کوچک‌ترین تغییرِ فیلتر → کلیدِ دیگر (عددِ دیدگاهِ قبلی هرگز با دیدگاهِ تازه جفت نمی‌شود)', () => {
+    const base = feedScopeKey({ q: '', type: '', author: '' });
+    expect(feedScopeKey({ q: '', type: 'other', author: '' })).not.toBe(base);
+    expect(feedScopeKey({ q: 'ایران', type: '', author: '' })).not.toBe(base);
+    expect(feedScopeKey({ q: '', type: '', author: 'هرمزگان' })).not.toBe(base);
+    expect(feedScopeKey({ q: '', type: 'video', author: '' })).not.toBe(
+      feedScopeKey({ q: '', type: 'audio', author: '' }),
+    );
+  });
+
+  it('با متنِ حاوی فاصله/جداکننده‌ی معمولی برخورد نمی‌کند', () => {
+    expect(feedScopeKey({ q: 'الف', type: '', author: '' })).not.toBe(
+      feedScopeKey({ q: '', type: '', author: 'الف' }),
+    );
+  });
+});
+
+describe('buildFeedCountQuery — کوئریِ سرویسِ شمارِ واقعی', () => {
+  it('واژگانِ عمومیِ صفحه را نقشه می‌کند (q/type/author) و فیلدهای خالی را حذف', () => {
+    const params = new URLSearchParams(
+      buildFeedCountQuery({ q: 'وعده صادق', type: 'other', author: ' بوشهر ' }),
+    );
+    expect(params.get('q')).toBe('وعده صادق');
+    expect(params.get('type')).toBe('other');
+    expect(params.get('author')).toBe('بوشهر');
+    expect(params.has('page')).toBe(false);
+    expect(params.has('page_size')).toBe(false);
+    expect(params.has('media_type')).toBe(false);
+  });
+
+  it('دیدگاهِ پیش‌فرض → کوئریِ خالی (همان کرپوسِ کامل)', () => {
+    expect(buildFeedCountQuery({ q: '', type: '', author: '' })).toBe('');
   });
 });
