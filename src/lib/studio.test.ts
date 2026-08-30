@@ -394,3 +394,252 @@ describe('migrateAttachmentRow — پیش‌نویس‌های قدیمیِ local
     expect(migrateAttachmentRow({})).toBeNull();
   });
 });
+
+/* ───────────────────────────────────────────────────────────────── */
+/*  آینه‌ی قانونِ سختِ سرور: ناسازگاریِ انتخابِ دستی با پسوندِ نشانی  */
+/* ───────────────────────────────────────────────────────────────── */
+
+describe('validateStudioDraft — ردِ ناسازگاریِ نوعِ اعلامی با پسوند (هم‌راستا با سرور)', () => {
+  it('انتخابِ دستیِ ناسازگار با پسوندِ قابل‌تشخیص، خطای سطر می‌سازد', () => {
+    const d = draft({
+      attachments: [
+        row({
+          id: 'a1',
+          url: 'https://cdn.example.net/photo.jpg',
+          mediaType: 'audio',
+          typeTouched: true,
+        }),
+      ],
+    });
+    const e = validateStudioDraft(d);
+    expect(e.attachmentUrl.a1).toBeTruthy();
+    expect(e.attachmentUrl.a1).toContain('پسوند');
+    expect(isStudioSubmittable(d)).toBe(false);
+  });
+
+  it('انتخابِ دستیِ هماهنگ با پسوند، آزاد است', () => {
+    const d = draft({
+      attachments: [
+        row({
+          id: 'a1',
+          url: 'https://cdn.example.net/clip.mp4',
+          mediaType: 'video',
+          typeTouched: true,
+        }),
+      ],
+    });
+    expect(validateStudioDraft(d).attachmentUrl.a1).toBeUndefined();
+  });
+
+  it('نشانیِ بدونِ پسوندِ شناخته‌شده به انتخابِ کاربر اعتماد می‌کند', () => {
+    const d = draft({
+      attachments: [
+        row({
+          id: 'a1',
+          url: 'https://cdn.example.net/watch?v=coffee',
+          mediaType: 'video',
+          typeTouched: true,
+        }),
+      ],
+    });
+    expect(validateStudioDraft(d).attachmentUrl.a1).toBeUndefined();
+  });
+
+  it('سطرِ upload از این قانون معاف است (سرور خودش نامِ فایل را ساخته)', () => {
+    const d = draft({
+      attachments: [
+        row({
+          id: 'a1',
+          source: 'upload',
+          url: '/media/public/tabyin/uploads/1/x.mp4',
+          mediaType: 'image', // قدیمی/تغییرنکرده — نباید خطا شود
+          typeTouched: true,
+          file: { name: 'x.mp4', sizeBytes: 100, mime: 'video/mp4' },
+        }),
+      ],
+    });
+    expect(validateStudioDraft(d).attachmentUrl.a1).toBeUndefined();
+  });
+});
+
+/* ───────────────────────────────────────────────────────────────── */
+/*  «روایت‌های من» — مدیریت (واکشی/ویرایش/حذف + هیدراته‌ی ویرایش)     */
+/* ───────────────────────────────────────────────────────────────── */
+
+import { afterEach, beforeEach, vi } from 'vitest';
+import { resolveBrowserApiBaseUrl } from './api';
+import {
+  attachmentRowFromDetail,
+  buildUpdatePayload,
+  deleteMySubmission,
+  fetchAllMySubmissions,
+  fetchMySubmissionsPage,
+  mirrorStatusMeta,
+  updateMySubmission,
+} from './studio';
+
+const envelope = (data: unknown) => ({
+  success: true,
+  status_code: 200,
+  message: 'ok',
+  data,
+});
+
+const jsonResponse = (body: unknown, status = 200): Response =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  });
+
+describe('API مدیریتِ روایت‌های من', () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('fetchMySubmissionsPage صفحه را با شمارش و اشاره‌گرِ بعد می‌دهد', async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse(
+        envelope({ count: 2, next: 'x?page=2', previous: null, results: [{ id: 1 }, { id: 2 }] }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const page = await fetchMySubmissionsPage(1, 50);
+    expect(page.count).toBe(2);
+    expect(page.results).toHaveLength(2);
+    expect(page.next).toBe('x?page=2');
+    const url = String((fetchMock.mock.calls[0] as unknown[])[0]);
+    expect(url).toContain('/tabyin/me/submissions/?page=1&page_size=50');
+  });
+
+  it('fetchAllMySubmissions تا تهِ صفحه‌ها جمع می‌کند', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('page=1'))
+        return jsonResponse(
+          envelope({ count: 3, next: 'p2', previous: null, results: [{ id: 1 }, { id: 2 }] }),
+        );
+      return jsonResponse(envelope({ count: 3, next: null, previous: 'p1', results: [{ id: 3 }] }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const all = await fetchAllMySubmissions();
+    expect(all.total).toBe(3);
+    expect(all.items.map((i) => i.id)).toEqual([1, 2, 3]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('fetchAllMySubmissions حلقه‌ی بی‌نهایت را با سقفِ صفحه می‌بندد', async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse(envelope({ count: 999, next: 'forever', previous: null, results: [] })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await fetchAllMySubmissions();
+    // سقفِ صفحه (۲۰) + صفحه‌ی خالیِ نخست که حلقه را می‌شکند: حداکثر ۲۰ فراخوانی
+    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(20);
+  });
+
+  it('updateMySubmission پَچ می‌زند و بدنه‌ی JSON می‌فرستد', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse(envelope({ id: 9, title: 'تازه' })));
+    vi.stubGlobal('fetch', fetchMock);
+    const out = await updateMySubmission(9, { title: 'تازه' });
+    expect(out.id).toBe(9);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toContain('/tabyin/me/submissions/9/');
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(String(init.body))).toEqual({ title: 'تازه' });
+  });
+
+  it('deleteMySubmission با متد DELETE می‌رود', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse(envelope(null)));
+    vi.stubGlobal('fetch', fetchMock);
+    await deleteMySubmission(4);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toContain('/tabyin/me/submissions/4/');
+    expect(init.method).toBe('DELETE');
+  });
+});
+
+describe('هیدراته‌ی ویرایش از جزئیاتِ بک‌اند', () => {
+  it('پیوستِ بومی به حالتِ آپلود با متا می‌رود', () => {
+    const r = attachmentRowFromDetail({
+      id: 5,
+      url: '/media/public/tabyin/uploads/3/clip.mp4',
+      media_type: 'video',
+      title: 'کلیپِ من',
+      file_size: 2048,
+      mime_type: 'video/mp4',
+      duration: 42,
+      order: 0,
+    });
+    expect(r.source).toBe('upload');
+    expect(r.typeTouched).toBe(true);
+    expect(r.mediaType).toBe('video');
+    expect(r.title).toBe('کلیپِ من');
+    expect(r.file?.mime).toBe('video/mp4');
+    expect(r.file?.sizeBytes).toBe(2048);
+    expect(r.file?.duration).toBe(42);
+  });
+
+  it('پیوستِ خارجی به حالتِ نشانی بدونِ متا می‌رود', () => {
+    const r = attachmentRowFromDetail({
+      id: 6,
+      url: 'https://cdn.example.net/a.png',
+      media_type: 'image',
+      mirror_status: 'pending',
+    });
+    expect(r.source).toBe('url');
+    expect(r.file).toBeUndefined();
+    expect(r.mediaType).toBe('image');
+  });
+
+  it('buildUpdatePayload عنوان/شرح را trim و پیوست‌ها را با ترتیب می‌سازد', () => {
+    const payload = buildUpdatePayload(
+      draft({
+        title: '  عنوان  ',
+        description: '  شرح  ',
+        attachments: [
+          row({ id: 'x', url: 'https://cdn.example.net/a.png' }),
+          row({ id: 'y', url: 'https://cdn.example.net/b.png', title: '  کپشن  ' }),
+        ],
+      }),
+    );
+    expect(payload.title).toBe('عنوان');
+    expect(payload.description).toBe('شرح');
+    expect(payload.attachments).toEqual([
+      { url: 'https://cdn.example.net/a.png', media_type: 'image', order: 0 },
+      { url: 'https://cdn.example.net/b.png', media_type: 'image', order: 1, title: 'کپشن' },
+    ]);
+  });
+
+  it('mirrorStatusMeta برچسب‌های وضعیتِ نگه‌داشت را می‌دهد', () => {
+    expect(mirrorStatusMeta('mirrored').tone).toBe('ok');
+    expect(mirrorStatusMeta('pending').tone).toBe('wait');
+    expect(mirrorStatusMeta('failed').tone).toBe('bad');
+    expect(mirrorStatusMeta(undefined).label).toBe('');
+  });
+});
+
+/* ───────────────────────────────────────────────────────────────── */
+/*  ریشه‌ی باگِ آپلودِ ۴۰۴: مسیرِ پایه از resolverِ مرکزی می‌آید       */
+/* ───────────────────────────────────────────────────────────────── */
+
+describe('resolveBrowserApiBaseUrl — قراردادِ واحدِ مسیرِ API', () => {
+  beforeEach(() => {
+    /* happy-dom: برگرداندن نشانیِ صفحه به پیش‌فرضِ میزبانِ محلی */
+    (window as unknown as { happyDOM?: { setURL(u: string): void } }).happyDOM?.setURL(
+      'http://localhost:3000/',
+    );
+  });
+
+  it('روی میزبانِ متفاوت از پراکسیِ Next («/api/proxy») عبور می‌کند', () => {
+    // میزبانِ API (besat.me) ≠ میزبانِ صفحه (localhost) → پراکسیِ same-origin
+    expect(resolveBrowserApiBaseUrl()).toBe('/api/proxy');
+  });
+
+  it('روی besat.me (هم‌میزبان با API) مستقیم به «/api/v1» می‌رود — بدونِ ۴۰۴', () => {
+    (window as unknown as { happyDOM?: { setURL(u: string): void } }).happyDOM?.setURL(
+      'https://besat.me/',
+    );
+    expect(resolveBrowserApiBaseUrl()).toBe('/api/v1');
+  });
+});

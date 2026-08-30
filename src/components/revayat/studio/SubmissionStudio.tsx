@@ -448,10 +448,17 @@ export function SubmissionStudio() {
 
   return (
     <div className="pb-24 lg:pb-0">
-      {/* ═══ آکاردِ دو ستونه: فرم | پیش‌نمایش ═══ */}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(330px,410px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
+      {/* ═══ آکاردِ دو ستونه: فرم | پیش‌نمایش ═══
+          ترتیبِ DOM عمداً «فرم → پیش‌نمایش → روایت‌های من» است تا در موبایل
+          (گریدِ تک‌ستونه که به ترتیبِ DOM می‌چیند) کاربر بلافاصله بعد از
+          فرم، پیش‌نمایشِ زنده را ببیند؛ در دسکتاپ، جایگاهِ صریحِ ستون/ردیف
+          روی lg همان چیدمانِ دوستونه‌ی استیکیِ تأییدشده را حفظ می‌کند:
+          ستونِ ۱ = فرم (ردیف ۱) + روایت‌های من (ردیف ۲) و پیش‌نمایش در
+          ستونِ ۲ روی هر دو ردیف span و sticky است. (ریشه‌ی باگ: پیش‌نمایش
+          قبلاً آخرین آیتمِ DOM بود و در گوشی تهِ تهِ صفحه می‌نشست.) */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(330px,410px)] lg:gap-y-5 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
         {/* ──────────────── ستونِ فرم ──────────────── */}
-        <div className="space-y-5">
+        <div className="space-y-5 lg:col-start-1 lg:row-start-1">
           {successId ? (
             <SuccessPanel externalId={successId} onReset={resetForNew} />
           ) : (
@@ -686,13 +693,13 @@ export function SubmissionStudio() {
               </p>
             </form>
           )}
-
-          {/* روایت‌های من — زیرِ فرم در هر دو وضعیت */}
-          <MySubmissions refreshKey={refreshKey} />
         </div>
 
         {/* ──────────────── ستونِ پیش‌نمایش — استیکی در دسکتاپ ──────────────── */}
-        <aside className="lg:sticky lg:top-24" aria-label="پیش‌نمایش روایت در فید">
+        <aside
+          className="lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1"
+          aria-label="پیش‌نمایش روایت در فید"
+        >
           <div className="overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-[0_2px_10px_-2px_rgba(16,24,40,.07)]">
             <button
               type="button"
@@ -727,6 +734,12 @@ export function SubmissionStudio() {
             ) : null}
           </div>
         </aside>
+
+        {/* روایت‌های من — موبایل: بعد از پیش‌نمایش (ترتیبِ DOM)؛ دسکتاپ:
+            ردیفِ دومِ ستونِ فرم، زیرِ فرم — همان چیدمانِ تأییدشده */}
+        <div className="lg:col-start-1 lg:row-start-2">
+          <MySubmissions refreshKey={refreshKey} />
+        </div>
       </div>
 
       {/* ═══ نوارِ اقدامِ چسبان — فقط موبایل ═══ */}

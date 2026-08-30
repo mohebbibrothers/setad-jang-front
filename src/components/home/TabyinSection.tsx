@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SectionTitle } from './SectionTitle';
 import { Icon } from '@/components/icons/Icon';
 import { EmptyState } from './EmptyState';
+import { TabyinManageMenu } from './TabyinManageMenu';
 
 /**
  * ───────────────────────────────────────────────────────────────────────────
@@ -675,9 +676,9 @@ export function TabyinSection({
             در موبایل تمام‌عرضِ یکسان، از sm پهنای ثابتِ ۲۳۲px با متنِ
             وسط‌چین تا هیچ‌کدام کوچک‌تر از دیگری دیده نشود.
             - 'مشاهده همه محتواها' → secondary, brand-ghost (browsing intent)
-            - 'افزودن محتوا'       → primary, mint pill (action intent,
-              routes through the auth-required user-submission flow that
-              maps to POST /api/v1/tabyin/me/submissions/)                */}
+            - 'مدیریت محتوا'       → primary, mint pill با منوی hover/tap:
+              «روایت‌های من» (داشبورد مشاهده/ویرایش/حذف) و «افزودن محتوا»
+              (استودیو) — جایگزینِ لینکِ مستقیمِ قبلی با همان ابعاد و سایه */}
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/tabyin"
@@ -686,13 +687,7 @@ export function TabyinSection({
             <span>مشاهده همه محتواها</span>
             <Icon name="arrow-left" className="h-4 w-4 shrink-0" />
           </Link>
-          <Link
-            href="/tabyin/new"
-            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-mint-500 px-7 text-[14px] font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(37,197,186,.5)] transition-all hover:scale-[1.02] hover:bg-mint-600 active:scale-[.98] sm:w-[232px]"
-          >
-            <Icon name="plus" className="h-4 w-4 shrink-0" strokeWidth={2.5} />
-            <span>افزودن محتوا</span>
-          </Link>
+          <TabyinManageMenu />
         </div>
       </div>
     </section>

@@ -1,5 +1,5 @@
 import type { RevayatItem } from './revayat';
-import { apiFetch } from './api';
+import { apiFetch, resolveBrowserApiBaseUrl, type Paginated } from './api';
 
 /**
  * ═══════════════════════════════════════════════════════════════════
@@ -19,7 +19,15 @@ import { apiFetch } from './api';
  *   POST /api/v1/tabyin/me/uploads/            (UserTabyinMediaUploadView)
  *     • آپلودِ مستقیم روی مدیاسرورِ بعثت (/media/public/tabyin/users/…)
  *     • خروجی: url · name · size_bytes · mime · media_type · dims · duration
+ *     • مسیرِ پایه از resolveBrowserApiBaseUrl (lib/api) — هرگز هاردکدِ
+ *       /api/proxy نیست (ریشهٔ باگِ ۴۰۴ پروداکشن: Nginx روی besat.me هر
+ *       /api/* را مستقیم به Django می‌فرستد و پراکسیِ Next را baypass
+ *       می‌کند).
  *   GET  /api/v1/tabyin/uploads/config/        (TabyinUploadConfigView)
+ *   GET/PATCH/DELETE /api/v1/tabyin/me/submissions/<id>/
+ *     • مدیریتِ کاملِ «روایت‌های من»: جزئیات، ویرایش (با قانونِ بازگشت
+ *       به صفِ بررسی پس از هر ویرایشِ روی روایتِ بررسی‌شده) و حذفِ کامل
+ *       که بلافاصله کش‌های عمومی و ISR فرانت را باطل می‌کند.
  *   نتیجه‌ی ثبت: با submission_status=pending_review و is_active=false
  *   ثبت می‌شود و پس از تأیید مدیر منتشر می‌شود (services.submit_user_content).
  *   نشانی‌های پیوستِ بیرونی بعداً توسط بک‌اند روی سرورِ خودمان mirror
@@ -318,6 +326,17 @@ export function validateStudioDraft(draft: StudioDraft): StudioFieldErrors {
         continue;
       }
     }
+    // قانونِ تازه‌ی سخت‌گیرانه‌ی سرور: اگر پسوندِ نشانی قابل‌تشخیص است،
+    // انتخابِ دستیِ ناسازگار با آن پذیرفته نیست (ردِ ۴۰۰ بک‌اند). نشانیِ
+    // بدونِ پسوندِ شناخته‌شده همچنان به انتخابِ کاربر اعتماد می‌کند.
+    if (a.source !== 'upload' && a.typeTouched) {
+      const sniffed = sniffMediaTypeFromUrl(a.url);
+      if (sniffed != null && sniffed !== a.mediaType) {
+        errors.attachmentUrl[a.id] =
+          `پسوندِ این نشانی «${MEDIA_TYPE_LABELS[sniffed]}» است ولی نوع را «${MEDIA_TYPE_LABELS[a.mediaType]}» انتخاب کرده‌ای — نوع را همان چیزی بگذار که فایل واقعاً هست.`;
+        continue;
+      }
+    }
     if (urlConflictsWithLock(a, locked)) {
       errors.attachmentUrl[a.id] =
         `این پیوست با نوعِ روایت (${MEDIA_TYPE_LABELS[locked ?? 'other']}) هم‌خوانی ندارد؛ همه باید هم‌نوع باشند.`;
@@ -438,14 +457,27 @@ export interface MySubmissionItem {
   reviewed_at?: string | null;
 }
 
+/** پیوستِ برگشتی از جزئیاتِ روایت — آینه‌ی UserTabyinSubmissionAttachmentSerializer */
+export interface MySubmissionAttachment {
+  id: number;
+  url: string;
+  media_type?: StudioMediaType;
+  media_type_display?: string;
+  size?: string;
+  duration?: number;
+  file_size?: number;
+  title?: string;
+  order?: number;
+  origin_url?: string;
+  mirror_status?: 'none' | 'pending' | 'mirrored' | 'failed' | string;
+  mirror_status_display?: string;
+  mime_type?: string;
+}
+
 export interface MySubmissionDetail extends MySubmissionItem {
   description?: string;
-  attachments?: Array<{
-    id: number;
-    url: string;
-    media_type?: StudioMediaType;
-    title?: string;
-  }>;
+  updated_at?: string;
+  attachments?: MySubmissionAttachment[];
 }
 
 /** ردیفِ پیوستِ تازه با شناسه‌ی محلیِ یکتا؛ نوعِ ارثی برای قفلِ تک‌نوعی. */
@@ -670,10 +702,13 @@ export function uploadStudioFile(opts: {
 }): Promise<StudioUploadResult> {
   const { file, onProgress, registerAbort } = opts;
 
-  const resolveBase = (): string => {
-    // همان قراردادِ proxy سایت: /api/proxy → /api/v1 بک‌اند (نسبی — بدونِ localhost)
-    return '/api/proxy';
-  };
+  // مسیرِ پایه از resolveBaseUrlِ قراردادِ مرکزی (lib/api) می‌آید — همان
+  // منطقی که apiFetch برای هر call دیگر اعمال می‌کند: روی besat.me که
+  // Nginx هر /api/* را مستقیم به Django می‌فرستد، «/api/v1» بازمی‌گردد و
+  // فقط وقتی میزبانِ API با میزبانِ صفحه فرق کند از پراکسیِ Next
+  // («/api/proxy») عبور می‌کنیم. هاردکدِ «/api/proxy» در اینجا ریشهٔ
+  // باگِ ۴۰۴ آپلود روی پروداکشن بود.
+  const resolveBase = (): string => resolveBrowserApiBaseUrl();
 
   return new Promise((resolve, reject) => {
     const controller = new AbortController();
@@ -830,5 +865,131 @@ export async function fetchStudioUploadConfig(): Promise<StudioUploadConfig> {
   } catch {
     // آفلاین/خطا — تجربه با پیش‌فرض‌های قرارداد ادامه می‌یابد
     return STUDIO_UPLOAD_FALLBACK;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/*  «روایت‌های من» — مدیریتِ کامل (مشاهده/ویرایش/حذف)                  */
+/* ───────────────────────────────────────────────────────────────── */
+
+/** یک صفحه از فهرستِ روایت‌های کاربر — GET /tabyin/me/submissions/ */
+export async function fetchMySubmissionsPage(
+  page: number,
+  pageSize = 50,
+): Promise<Paginated<MySubmissionItem>> {
+  const data = await apiFetch<Paginated<MySubmissionItem>>(
+    `/tabyin/me/submissions/?page=${page}&page_size=${pageSize}`,
+  );
+  return {
+    results: Array.isArray(data?.results) ? data.results : [],
+    count: Number(data?.count) || 0,
+    next: data?.next ?? null,
+    previous: data?.previous ?? null,
+  };
+}
+
+/**
+ * همه‌ی روایت‌های کاربر (صفحه‌به‌صفحه تا ته) — برای آمار و نمایشِ کاملِ
+ * داشبورد «روایت‌های من». سقفِ صفحه امانتِ سمتِ کاربر عادی بیش از حدِ
+ * کافی است و حلقه، جلوی هر خطای بین‌راهی می‌ایستد.
+ */
+export const MY_SUBMISSIONS_MAX_PAGES = 20;
+export async function fetchAllMySubmissions(
+  pageSize = 50,
+): Promise<{ items: MySubmissionItem[]; total: number }> {
+  const items: MySubmissionItem[] = [];
+  let total = 0;
+  for (let page = 1; page <= MY_SUBMISSIONS_MAX_PAGES; page += 1) {
+    const data = await fetchMySubmissionsPage(page, pageSize);
+    if (page === 1) total = data.count;
+    items.push(...data.results);
+    if (!data.next || data.results.length === 0) break;
+  }
+  return { items, total };
+}
+
+/** جزئیاتِ کاملِ یک روایت — GET /tabyin/me/submissions/<id>/ */
+export function fetchMySubmissionDetail(id: number): Promise<MySubmissionDetail> {
+  return apiFetch<MySubmissionDetail>(`/tabyin/me/submissions/${id}/`);
+}
+
+export interface UpdateMySubmissionPayload {
+  title?: string;
+  description?: string;
+  /** اگر بفرستی، فهرستِ کاملِ جدیدِ پیوست‌هاست (replace-all) */
+  attachments?: SubmissionAttachmentPayload[];
+}
+
+/** ویرایشِ روایت — PATCH /tabyin/me/submissions/<id>/ */
+export function updateMySubmission(
+  id: number,
+  payload: UpdateMySubmissionPayload,
+): Promise<MySubmissionDetail> {
+  return apiFetch<MySubmissionDetail>(`/tabyin/me/submissions/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** حذفِ کاملِ روایت — DELETE /tabyin/me/submissions/<id>/ */
+export function deleteMySubmission(id: number): Promise<unknown> {
+  return apiFetch<unknown>(`/tabyin/me/submissions/${id}/`, { method: 'DELETE' });
+}
+
+/** هیدراته‌کردنِ پیوست‌های موجودِ یک روایت به ردیف‌های قابل‌ویرایشِ استودیو */
+export function attachmentRowFromDetail(att: MySubmissionAttachment): AttachmentDraft {
+  const local = isLocalMediaUrl(att.url || '');
+  const mediaType: StudioMediaType =
+    att.media_type === 'image' || att.media_type === 'video' || att.media_type === 'audio'
+      ? att.media_type
+      : 'other';
+  return {
+    id:
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `row-${Date.now()}-${att.id}`,
+    source: local ? 'upload' : 'url',
+    url: typeof att.url === 'string' ? att.url : '',
+    mediaType,
+    // نوعِ سرور معتبر است: با typeTouched=true بوش‌گرِ خودکار دست نمی‌زند
+    typeTouched: true,
+    title: typeof att.title === 'string' ? att.title : '',
+    file: local
+      ? {
+          name: att.url.split('/').filter(Boolean).pop() ?? '',
+          sizeBytes: Number(att.file_size) || 0,
+          mime: att.mime_type || '',
+          duration: typeof att.duration === 'number' ? att.duration : null,
+        }
+      : undefined,
+  };
+}
+
+/** ساختِ payloadِ ویرایش از پیش‌نویسِ استودیو — همان قراردادِ ثبت */
+export function buildUpdatePayload(draft: StudioDraft): UpdateMySubmissionPayload {
+  const full = buildSubmissionPayload(draft);
+  return {
+    title: full.title,
+    description: full.description,
+    attachments: full.attachments,
+  };
+}
+
+/** بهترین برچسبِ ملکِ آینه برای چیپِ وضعیت در «روایت‌های من» */
+export function mirrorStatusMeta(status?: string): {
+  label: string;
+  tone: 'ok' | 'wait' | 'bad' | 'ink';
+} {
+  switch (status) {
+    case 'mirrored':
+      return { label: 'روی سرور بعثت', tone: 'ok' };
+    case 'pending':
+      return { label: 'در صف نگه‌داشت روی سرور', tone: 'wait' };
+    case 'failed':
+      return { label: 'نگه‌داشت ناموفق — نشانی اصلی فعال است', tone: 'bad' };
+    case 'none':
+      return { label: 'بدون نیاز به نگه‌داشت', tone: 'ink' };
+    default:
+      return { label: '', tone: 'ink' };
   }
 }

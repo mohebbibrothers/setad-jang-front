@@ -146,6 +146,19 @@ function resolveBaseUrl(absolute: boolean): string {
   return '/api/proxy';
 }
 
+/**
+ * Public, browser-safe view of resolveBaseUrl for modules that cannot go
+ * through apiFetch (e.g. XHR-based uploads with real progress events).
+ *
+ * HARD RULE: never hard-code `/api/proxy` or `/api/v1` outside api.ts —
+ * on besat.me Nginx routes `/api/*` STRAIGHT to Django, so a hand-written
+ * `/api/proxy/...` never reaches the Next.js rewrite and dies as a 404
+ * inside Django URLconf (this was the production upload-404 bug).
+ */
+export function resolveBrowserApiBaseUrl(): string {
+  return resolveBaseUrl(false);
+}
+
 /* ───────────────────────────────────────────────────────────────────────── */
 /*  Header helpers                                                            */
 /* ───────────────────────────────────────────────────────────────────────── */

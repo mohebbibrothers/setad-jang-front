@@ -1,25 +1,14 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-  BadgeCheck,
-  ChevronDown,
-  Clock3,
-  FileText,
-  MessageSquareText,
-  Paperclip,
-  RefreshCw,
-  XCircle,
-} from 'lucide-react';
+import { ChevronDown, FileText, MessageSquareText, Paperclip, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch, type Paginated } from '@/lib/api';
 import { formatRelativeFa } from '@/lib/persian-time';
-import { cn, toPersianDigits, truncate } from '@/lib/utils';
-import {
-  submissionStatusMeta,
-  type MySubmissionItem,
-  type SubmissionStatusValue,
-} from '@/lib/studio';
+import { toPersianDigits, truncate } from '@/lib/utils';
+import { type MySubmissionItem } from '@/lib/studio';
+import { StatusChip } from './StatusChip';
 
 /**
  * ═══════════════════════════════════════════════════════════════════
@@ -34,34 +23,7 @@ import {
  * ═══════════════════════════════════════════════════════════════════
  */
 
-const TONE_CLASSES: Record<string, string> = {
-  amber: 'bg-amber-50 text-amber-700 ring-amber-200',
-  emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  rose: 'bg-rose-50 text-rose-700 ring-rose-200',
-  ink: 'bg-ink-50 text-ink-500 ring-ink-100',
-};
-
-const STATUS_ICONS: Record<string, typeof Clock3> = {
-  pending_review: Clock3,
-  approved: BadgeCheck,
-  rejected: XCircle,
-};
-
-function StatusChip({ status }: { status: SubmissionStatusValue }) {
-  const meta = submissionStatusMeta(status);
-  const Icon = STATUS_ICONS[status] ?? Clock3;
-  return (
-    <span
-      className={cn(
-        'inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[10.5px] font-extrabold ring-1 ring-inset',
-        TONE_CLASSES[meta.tone],
-      )}
-    >
-      <Icon className="h-3 w-3" />
-      {meta.label}
-    </span>
-  );
-}
+/* چیپِ وضعیت از منبعِ واحدِ StatusChip — یک‌دست با داشبورد /tabyin/mine */
 
 function RowSkeleton() {
   return (
@@ -132,8 +94,11 @@ export function MySubmissions({ refreshKey }: { refreshKey: number }) {
     void load();
   }, [load, refreshKey]);
 
+  // فاصله‌ی بالایی را گریدِ والد (gap) می‌دهد — خودمان mt نمی‌گذاریم تا در
+  // چیدمانِ موبایلِ استودیو (فرم → پیش‌نمایش → روایت‌های من) و چیدمانِ
+  // دسکتاپ (ردیفِ دومِ ستونِ فرم) یک‌ریتمِ ۲۰px حفظ شود.
   return (
-    <section aria-label="روایت‌های ارسالی من" className="mb-12 mt-8">
+    <section aria-label="روایت‌های ارسالی من" className="mb-12">
       <div className="mb-3.5 flex items-center justify-between gap-2">
         <button
           type="button"
@@ -163,10 +128,18 @@ export function MySubmissions({ refreshKey }: { refreshKey: number }) {
           </motion.span>
         </button>
         {total > 0 ? (
-          <span className="text-[11px] font-bold tabular-nums text-ink-400" aria-live="polite">
-            {items && total > items.length
-              ? `${toPersianDigits(items.length)} از ${toPersianDigits(total)} روایت`
-              : `${toPersianDigits(total)} روایت`}
+          <span className="flex items-center gap-2">
+            <span className="text-[11px] font-bold tabular-nums text-ink-400" aria-live="polite">
+              {items && total > items.length
+                ? `${toPersianDigits(items.length)} از ${toPersianDigits(total)} روایت`
+                : `${toPersianDigits(total)} روایت`}
+            </span>
+            <Link
+              href="/tabyin/mine"
+              className="rounded-full bg-white px-2.5 py-1 text-[10.5px] font-extrabold text-brand-700 ring-1 ring-inset ring-brand-600/20 transition-colors hover:bg-brand-50"
+            >
+              مدیریت کامل ←
+            </Link>
           </span>
         ) : null}
       </div>
