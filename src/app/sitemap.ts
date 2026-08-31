@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { siteConfig } from '@/lib/site';
+import { fetchCriminalsPage } from '@/lib/r4j';
 
 /**
  * Dynamic sitemap — homepage-milestone edition.
@@ -17,6 +18,10 @@ import { siteConfig } from '@/lib/site';
  * tabyin content, campaigns, etc.) can then be appended with server-
  * side data fetching in this same handler.
  *
+ * /r4j criminal casefiles ship in this handler too — fetched from the
+ * public list endpoint with the same ISR cache the pages themselves
+ * use (so this costs no extra backend load beyond the page fetches).
+ *
  * WHY priorities are set the way they are
  * ────────────────────────────────────────
  * Google effectively ignores absolute priorities but DOES compare them
@@ -25,7 +30,7 @@ import { siteConfig } from '@/lib/site';
  * home page. Utility routes get 0.5–0.6. `changeFrequency` is also
  * advisory but helps set expectations for crawl scheduling.
  */
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteConfig.url.replace(/\/+$/, '');
   const now = new Date();
 
@@ -34,15 +39,31 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/about-besat', priority: 0.95, changeFrequency: 'monthly' as const },
     { path: '/tabyin', priority: 0.9, changeFrequency: 'hourly' as const },
     { path: '/tabyin/new', priority: 0.6, changeFrequency: 'monthly' as const },
+    { path: '/r4j', priority: 0.9, changeFrequency: 'daily' as const },
     // /search is intentionally omitted — see robots.ts (infinite query
     // space; no ranking value). Listing it here would contradict the
     // Disallow rule and waste crawl budget.
+    // /r4j/[slug]/bounty و /report هم عمداً نیستند — صفحه‌های اقدام‌اند،
+    // نه محتوا (robots: noindex روی خودِ صفحه هم دارند).
   ];
 
-  return staticRoutes.map((r) => ({
+  const entries: MetadataRoute.Sitemap = staticRoutes.map((r) => ({
     url: `${base}${r.path}`,
     lastModified: now,
     changeFrequency: r.changeFrequency,
     priority: r.priority,
   }));
+
+  // پرونده‌های عمومیِ «جایزه‌ای برای عدالت» — ۱۰۰ پرونده‌ی تازه/برتر
+  const criminals = await fetchCriminalsPage({ pageSize: 100, ordering: '-published_at' });
+  for (const c of criminals?.results ?? []) {
+    entries.push({
+      url: `${base}/r4j/${encodeURIComponent(c.slug)}`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    });
+  }
+
+  return entries;
 }

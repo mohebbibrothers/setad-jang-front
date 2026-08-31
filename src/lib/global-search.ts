@@ -169,7 +169,9 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
     shortLabel: 'پرونده‌ها',
     glyph: 'gavel',
     accent: 'rose',
-    seeAllHref: (q, f) => seeAllUrl('/#justice', q, f),
+    // هابِ r4j از همان نامِ پارامترهای API (search / city / gender / …)
+    // می‌خواند، پس seeAllUrl مستقیم و بدون نگاشتِ نام اعمال می‌شود.
+    seeAllHref: (q, f) => seeAllUrl('/r4j', q, f),
   },
   lms: {
     key: 'lms',
@@ -449,8 +451,8 @@ async function fetchR4J(
         title: fullName,
         subtitle: loc || undefined,
         thumb: absoluteMediaUrl(firstR4JPhotoUrl(p)),
-        // See note above — R4J detail route TBD, fall back to anchor.
-        href: `/#justice`,
+        // پرونده‌ی عمومی — مسیرِ واقعیِ casefile از وقتی /r4j/[slug] عرضه شد.
+        href: `/r4j/${encodeURIComponent(p.slug)}`,
         badge: p.total_bounty_toman ? formatToman(p.total_bounty_toman) : undefined,
         pill: p.bounties_count ? `${fa(p.bounties_count)} جایزه` : undefined,
       };
