@@ -235,8 +235,14 @@ function UploadStatusCard({
         ) : (
           <span className="inline-flex min-w-0 items-center gap-1.5 text-ink-700">
             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-brand-600" />
-            <span className="truncate">
-              در حال ارسال{state.fileRef?.name ? ` «${state.fileRef.name}»` : ''}…
+            {/* نامِ فایل داخل bdiِ LTR-isolate است: اعداد و underlineهای اسم
+                فایل (مثل IMG_0001_۲۰۲۶) در متن RTL به‌هم نمی‌ریزند؛ title نیز
+                نامِ کامل را برای دسترس‌پذیری/هاور نگه می‌دارد و truncate
+                سقفِ عرض را enforce می‌کند. */}
+            <span className="truncate" title={state.fileRef?.name ?? undefined}>
+              {'در حال ارسال'}
+              {state.fileRef?.name ? <bdi dir="ltr"> «{state.fileRef.name}»</bdi> : null}
+              {'…'}
             </span>
           </span>
         )}

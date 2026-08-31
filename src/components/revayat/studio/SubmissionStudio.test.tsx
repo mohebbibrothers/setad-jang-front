@@ -13,6 +13,7 @@ import type { ReactNode } from 'react';
 
 const mocks = vi.hoisted(() => ({
   apiFetch: vi.fn(),
+  uploadStudioFile: vi.fn(),
   authState: {
     isAuthenticated: true,
     loading: false,
@@ -46,6 +47,17 @@ vi.mock('next/link', () => ({
     </a>
   ),
 }));
+
+/* ماژولِ studio واقعی را نگه می‌داریم (sniff/limitها قراردادِ واقعی‌اند) و
+   فقط کالِ شبکه‌ی آپلود را کنترل می‌کنیم تا حالت‌های uploading/error در
+   jsdom بازتولید شوند. */
+vi.mock('@/lib/studio', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/studio')>();
+  return {
+    ...actual,
+    uploadStudioFile: (...args: unknown[]) => mocks.uploadStudioFile(...args),
+  };
+});
 
 import { SubmissionStudio } from './SubmissionStudio';
 
@@ -236,5 +248,64 @@ describe('SubmissionStudio', () => {
     expect(screen.getByText('بررسی شد — منتشر نشد')).toBeTruthy();
     expect(screen.getByText(/نشانیِ فیلم باز نمی‌شود/)).toBeTruthy();
     expect(screen.getByText('۲ پیوست')).toBeTruthy(); // attachments_count به‌دستورِ بک‌اند
+  });
+
+  /* ── رگرسیونِ بیرون‌زدگیِ افقی: اسمِ طولانیِ فایل نباید صفحه را از
+        viewport بیرون ببرد (ریشه: ترکِ گریدِ موبایلِ auto که تا
+        max-content رشد می‌کرد — حالا تمپلیتِ پایه هم minmax(0,1fr) است) ── */
+
+  it('انضباطِ عرضِ گرید: ترکِ پایه‌ی موبایل هم صفرکف است و هر سه ستون min-w-0 دارند', async () => {
+    answerApi([]);
+    const { container } = render(<SubmissionStudio />);
+    await screen.findByText('روایت‌های من');
+
+    const form = screen.getByLabelText('فرم ارسال روایت');
+    const formColumn = form.parentElement as HTMLElement;
+    const gridRoot = formColumn.parentElement as HTMLElement;
+
+    // تمپلیتِ پایه: موبایل هم minmax(0,1fr) — گرید هرگز از viewport پهن‌تر نمی‌شود
+    expect(gridRoot.className).toContain('grid-cols-[minmax(0,1fr)]');
+    // belt-and-braces: هر آیتمِ مستقیمِ گرید هم صفرکف است
+    expect(formColumn.className).toContain('min-w-0');
+    const aside = container.querySelector(
+      'aside[aria-label="پیش‌نمایش روایت در فید"]',
+    ) as HTMLElement;
+    expect(aside.className).toContain('min-w-0');
+    const mineColumn = gridRoot.children[2] as HTMLElement;
+    expect(mineColumn.className).toContain('min-w-0');
+  });
+
+  it('کارتِ آپلود با اسمِ طولانی: bdiِ LTR روی نامِ فایل + truncate روشن + title با نامِ کامل', async () => {
+    // آپلود عمداً pending می‌ماند تا حالت uploading بازتولید شود
+    mocks.uploadStudioFile.mockReturnValue(new Promise(() => {}));
+    answerApi([]);
+    const { container } = render(<SubmissionStudio />);
+    await screen.findByText('روایت‌های من');
+
+    fireEvent.click(screen.getByRole('button', { name: /افزودن پیوست/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'بارگذاری' }));
+
+    const LONG_NAME =
+      'IMG_20260314_093412_very_long_camera_export_filename_final_cut_00073.jpg';
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, {
+      target: { files: [new File(['x'], LONG_NAME, { type: 'image/jpeg' })] },
+    });
+
+    await waitFor(() => expect(container.querySelector('bdi[dir="ltr"]')).toBeTruthy());
+    const bdi = container.querySelector('bdi[dir="ltr"]') as HTMLElement;
+
+    // نامِ فایل در context راست‌به‌چپ به‌هم نمی‌ریزد (اعداد/underline طبیعی می‌مانند)
+    expect(bdi.textContent).toContain(LONG_NAME);
+
+    // سطرِ پیشرفت: truncate فعال + نامِ کامل در title برای دسترس‌پذیری
+    const line = bdi.closest('span') as HTMLElement;
+    expect(line.className).toContain('truncate');
+    expect(line.getAttribute('title')).toBe(LONG_NAME);
+    expect(line.textContent).toContain('در حال ارسال');
+
+    // زنجیره‌ی انقباضِ flex هم کف‌صفر بماند
+    const wrapper = line.parentElement as HTMLElement;
+    expect(wrapper.className).toContain('min-w-0');
   });
 });

@@ -455,10 +455,16 @@ export function SubmissionStudio() {
           روی lg همان چیدمانِ دوستونه‌ی استیکیِ تأییدشده را حفظ می‌کند:
           ستونِ ۱ = فرم (ردیف ۱) + روایت‌های من (ردیف ۲) و پیش‌نمایش در
           ستونِ ۲ روی هر دو ردیف span و sticky است. (ریشه‌ی باگ: پیش‌نمایش
-          قبلاً آخرین آیتمِ DOM بود و در گوشی تهِ تهِ صفحه می‌نشست.) */}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(330px,410px)] lg:gap-y-5 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
+          قبلاً آخرین آیتمِ DOM بود و در گوشی تهِ تهِ صفحه می‌نشست.)
+          انضباطِ عرض — ریشه‌ی باگِ بیرون‌زدگیِ افقی: تمپلیتِ پایه (موبایل)
+          هم باید explicit و minmax(0,…) باشد. گریدِ بدونِ تمپلیت، ترکِ
+          auto می‌سازد که با یک توکنِ نشکستنی (مثلاً اسمِ طولانیِ فایلِ
+          آپلودی) تا max-content رشد می‌کند و کلِ صفحه را از viewport
+          بیرون می‌برد؛ با صفرشدنِ کفِ ترک، زنجیره‌ی min-w-0/truncateهای
+          داخلی فعال می‌شود و محتوا همیشه در کادر می‌نشیند. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(330px,410px)] lg:gap-y-5 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
         {/* ──────────────── ستونِ فرم ──────────────── */}
-        <div className="space-y-5 lg:col-start-1 lg:row-start-1">
+        <div className="min-w-0 space-y-5 lg:col-start-1 lg:row-start-1">
           {successId ? (
             <SuccessPanel externalId={successId} onReset={resetForNew} />
           ) : (
@@ -614,8 +620,9 @@ export function SubmissionStudio() {
                 onResetType={resetAttachmentType}
               />
 
-              {/* راهنما + قوانین — دو کارتِ فشرده */}
-              <section className="grid gap-3 sm:grid-cols-2">
+              {/* راهنما + قوانین — دو کارتِ فشرده (ترکِ پایه explicit صفرکف تا
+                  هیچ محتوایی نتواند صفحه را از viewport بیرون ببرد) */}
+              <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-3xl border border-mint-400/30 bg-mint-50/50 p-5">
                   <h3 className="flex items-center gap-1.5 text-[12.5px] font-black text-mint-600">
                     <Lightbulb className="h-4 w-4" />
@@ -697,7 +704,7 @@ export function SubmissionStudio() {
 
         {/* ──────────────── ستونِ پیش‌نمایش — استیکی در دسکتاپ ──────────────── */}
         <aside
-          className="lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1"
+          className="min-w-0 lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1"
           aria-label="پیش‌نمایش روایت در فید"
         >
           <div className="overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-[0_2px_10px_-2px_rgba(16,24,40,.07)]">
@@ -737,7 +744,7 @@ export function SubmissionStudio() {
 
         {/* روایت‌های من — موبایل: بعد از پیش‌نمایش (ترتیبِ DOM)؛ دسکتاپ:
             ردیفِ دومِ ستونِ فرم، زیرِ فرم — همان چیدمانِ تأییدشده */}
-        <div className="lg:col-start-1 lg:row-start-2">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-2">
           <MySubmissions refreshKey={refreshKey} />
         </div>
       </div>
