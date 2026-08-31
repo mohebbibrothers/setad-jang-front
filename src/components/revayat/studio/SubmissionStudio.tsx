@@ -71,6 +71,7 @@ import { AuthModal } from '@/components/auth/AuthModal';
 import { RevayatCard } from '@/components/revayat/RevayatCard';
 import { AttachmentEditor } from './AttachmentEditor';
 import { MySubmissions } from './MySubmissions';
+import { WidthProbe } from './WidthProbe';
 
 /* ── پیش‌نویسِ پایدار (فرم، نه توکن!) ── */
 const DRAFT_KEY = 'besat.tabyin.studio.v1';
@@ -790,6 +791,9 @@ export function SubmissionStudio() {
         </div>
       ) : null}
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
+      {/* پروبِ تشخیصِ بیرون‌زدگیِ افقی — فقط با ?debugwidth=1 فعال می‌شود
+          (ابزارِ میدانی برای بازتولیدِ باگ روی دستگاهِ کاربر) */}
+      <WidthProbe />
     </div>
   );
 }

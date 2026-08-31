@@ -223,7 +223,7 @@ function UploadStatusCard({
       role={isError ? 'alert' : 'status'}
       aria-live="polite"
       className={cn(
-        'rounded-2xl border px-3.5 py-3',
+        'overflow-hidden rounded-2xl border px-3.5 py-3',
         isError
           ? 'border-rose-200 bg-rose-50'
           : 'border-teal-500/25 bg-gradient-to-l from-teal-500/[0.03] to-rose-500/[0.03]',
@@ -231,7 +231,9 @@ function UploadStatusCard({
     >
       <div className="flex items-center justify-between gap-2 text-[12px] font-bold">
         {isError ? (
-          <span className="text-rose-700">{state.error ?? 'آپلود ناموفق بود.'}</span>
+          <span className="min-w-0 break-words text-rose-700">
+            {state.error ?? 'آپلود ناموفق بود.'}
+          </span>
         ) : (
           <span className="inline-flex min-w-0 items-center gap-1.5 text-ink-700">
             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-brand-600" />
@@ -307,13 +309,15 @@ function UploadedFileCard({ row }: { row: AttachmentDraft }) {
   if (clock) chips.push(clock);
   return (
     <div
-      className="flex items-start gap-2.5 rounded-2xl border border-mint-400/40 bg-mint-50/60 px-3 py-2.5"
+      className="flex items-start gap-2.5 overflow-hidden rounded-2xl border border-mint-400/40 bg-mint-50/60 px-3 py-2.5"
       data-testid="upload-success-card"
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mint-500/15 text-mint-600">
         <FileCheck className="h-4.5 w-4.5" />
       </span>
       <div className="min-w-0 flex-1">
+        {/* نامِ آشنای خودِ کاربر را نشان می‌دهیم (نه مسیرِ هشِ استوریج —
+            قانونِ «محتوانگار» در UI: نشانیِ داخلی هرگز رندر نمی‌شود) */}
         <p dir="ltr" className="truncate text-left text-[11.5px] font-bold text-ink-800">
           {f.name}
         </p>
@@ -453,7 +457,8 @@ export function AttachmentEditor({
           mediaType: result.mediaType || sniffed,
           typeTouched: false,
           file: {
-            name: result.name || file.name,
+            // اسمِ نمایشی: نامِ آشنای فایلِ خودِ کاربر — نه مسیرِ هشِ سرور
+            name: file.name || result.name,
             sizeBytes: result.sizeBytes || file.size,
             mime: result.mime || file.type || '',
             dims: result.dims ?? null,
