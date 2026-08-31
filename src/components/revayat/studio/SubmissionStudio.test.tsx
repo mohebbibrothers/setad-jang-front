@@ -285,8 +285,7 @@ describe('SubmissionStudio', () => {
     fireEvent.click(screen.getByRole('button', { name: /افزودن پیوست/ }));
     fireEvent.click(screen.getByRole('button', { name: 'بارگذاری' }));
 
-    const LONG_NAME =
-      'IMG_20260314_093412_very_long_camera_export_filename_final_cut_00073.jpg';
+    const LONG_NAME = 'IMG_20260314_093412_very_long_camera_export_filename_final_cut_00073.jpg';
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(fileInput, {
       target: { files: [new File(['x'], LONG_NAME, { type: 'image/jpeg' })] },
