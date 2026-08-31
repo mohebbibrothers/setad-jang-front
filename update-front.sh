@@ -25,7 +25,7 @@ set -Eeuo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
 umask 022
 
-readonly SCRIPT_VERSION="2.2.0"
+readonly SCRIPT_VERSION="2.2.1"
 readonly SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/$(basename -- "${BASH_SOURCE[0]}")"
 readonly SCRIPT_DIR="$(dirname -- "$SCRIPT_PATH")"
 readonly SCRIPT_NAME="$(basename -- "$SCRIPT_PATH")"
@@ -423,7 +423,12 @@ if [[ "$PREV_COMMIT" == "$TARGET_COMMIT" ]] \
 fi
 if [[ "$PREV_COMMIT" == "$TARGET_COMMIT" ]] && ((!FORCE)); then
   if [[ "$LAST_BUILT_COMMIT" != "$TARGET_COMMIT" ]]; then
-    warn "هشِ سورس به‌روز است ولی آخرین بیلدِ موفق برای «${LAST_BUILT_COMMIT:0:8:-ناشناخته}» بوده — بیلدِ مجدد انجام می‌شود"
+    # نکته: ${var:0:8:-پیش‌فرض} ساختارِ نامعتبری در bash است (آن را عبارتِ
+    # حسابی می‌خواند و syntax error می‌دهد). نمایشِ ۸ کاراکترِ اول + فالبک
+    # باید در دو گامِ جدا انجام شود.
+    lb_short="${LAST_BUILT_COMMIT:0:8}"
+    [[ -z "$lb_short" ]] && lb_short="ناشناخته"
+    warn "هشِ سورس به‌روز است ولی آخرین بیلدِ موفق برای «${lb_short}» بوده — بیلدِ مجدد انجام می‌شود"
   elif [[ ! -f .next/BUILD_ID ]]; then
     warn "خروجیِ بیلد (.next) موجود نیست — بیلدِ مجدد انجام می‌شود"
   fi
