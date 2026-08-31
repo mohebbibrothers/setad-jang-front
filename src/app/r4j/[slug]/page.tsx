@@ -301,8 +301,8 @@ export default async function CriminalCasefilePage({
                 )}
                 <span className="flex items-center gap-1.5">
                   <Fingerprint className="h-4 w-4" aria-hidden="true" />
-                  شناسهٔ پرونده:{' '}
-                  <bdi dir="ltr" className="font-mono text-white/50">
+                  شناسهٔ پرونده: {/* dir=auto تا اسلاگ‌های فارسی هم راست‌به‌چپ خوانا بمانند */}
+                  <bdi dir="auto" className="font-mono text-white/50">
                     {d.slug}
                   </bdi>
                 </span>
