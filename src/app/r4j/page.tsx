@@ -145,7 +145,7 @@ function CriminalCard({ c, eager }: { c: CriminalListItem; eager: boolean }) {
         </div>
         {/* نوارِ هویت */}
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-          <h3 dir="auto" className="truncate text-[16px] font-extrabold leading-snug">
+          <h3 dir="auto" className="truncate text-[16px] font-extrabold leading-snug text-white">
             {name}
           </h3>
           <div className="mt-1 flex items-center justify-between gap-3 text-[12px] text-white/85">
@@ -231,7 +231,7 @@ export default async function R4JHubPage({
               <Gavel className="h-4 w-4 text-accent-300" aria-hidden="true" />
               صندوقِ عدالتِ مردمی
             </p>
-            <h1 className="mt-5 text-3xl font-black leading-tight md:text-5xl">
+            <h1 className="mt-5 text-3xl font-black leading-tight text-white md:text-5xl">
               جایزه‌ای برای عدالت
             </h1>
             <p className="mt-4 max-w-2xl text-[14px] leading-8 text-white/75 md:text-[15px]">

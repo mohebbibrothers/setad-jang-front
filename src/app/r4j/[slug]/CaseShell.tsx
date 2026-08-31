@@ -67,7 +67,7 @@ export function CaseShell({
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-black tracking-[0.18em] text-accent-300">{eyebrow}</p>
-              <h1 dir="auto" className="mt-1 truncate text-xl font-black md:text-2xl">
+              <h1 dir="auto" className="mt-1 truncate text-xl font-black text-white md:text-2xl">
                 {title}
               </h1>
               <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] font-bold text-white/60">

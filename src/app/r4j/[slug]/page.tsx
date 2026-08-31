@@ -175,7 +175,7 @@ function RelatedCard({ c }: { c: CriminalListItem }) {
           className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-ink-900/85 to-transparent"
         />
         <div className="absolute inset-x-0 bottom-0 p-3 text-white">
-          <h3 dir="auto" className="truncate text-[13px] font-extrabold">
+          <h3 dir="auto" className="truncate text-[13px] font-extrabold text-white">
             {name}
           </h3>
           <p className="mt-0.5 text-[11px] font-bold text-accent-300">
@@ -268,7 +268,7 @@ export default async function CriminalCasefilePage({
               </span>
               <h1
                 dir="auto"
-                className="mt-4 break-words text-3xl font-black leading-tight md:text-5xl"
+                className="mt-4 break-words text-3xl font-black leading-tight text-white md:text-5xl"
               >
                 {name}
               </h1>
