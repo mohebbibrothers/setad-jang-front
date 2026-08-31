@@ -25,7 +25,7 @@ set -Eeuo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
 umask 022
 
-readonly SCRIPT_VERSION="2.1.1"
+readonly SCRIPT_VERSION="2.2.0"
 readonly SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/$(basename -- "${BASH_SOURCE[0]}")"
 readonly SCRIPT_DIR="$(dirname -- "$SCRIPT_PATH")"
 readonly SCRIPT_NAME="$(basename -- "$SCRIPT_PATH")"
@@ -405,10 +405,28 @@ TARGET_COMMIT="$(git rev-parse "${REMOTE}/${BRANCH}")"
 log "فعلی : ${PREV_COMMIT:0:8}   $(git log -1 --format=%s "$PREV_COMMIT" | cut -c1-48)"
 log "هدف  : ${TARGET_COMMIT:0:8}   $(git log -1 --format=%s "$TARGET_COMMIT" | cut -c1-48)"
 
-if [[ "$PREV_COMMIT" == "$TARGET_COMMIT" ]] && ((!FORCE)); then
+# اثرانگشتِ بیلد: «آخرین بیلدِ موفق» با «HEADِ فعلیِ گیت» دو چیزِ متفاوت‌اند!
+# اگر کسی (مثل دستورالعملِ دیپلویِ ما) اول «git reset --hard» بزند و بعد این
+# اسکریپت را اجرا کند، HEAD از قبل روی هدف است و هرگز نباید صرفِ یکی‌بودنِ
+# هش، از بیلد صرف‌نظر شود — وگرنه .next و pm2 روی بیلدِ قدیمی می‌مانند و
+# سایت نسخه‌ی stale سرو می‌کند (دقیقاً ریشه‌ی باگِ «دیپلوی شد ولی درست نشد»).
+# پس ردِ بیلد فقط وقتی امن است که هر سه شرط برقرار باشد:
+#   HEAD == هدف  +  آخرین بیلدِ موفق == هدف  +  خروجیِ بیلد واقعاً موجود است.
+LAST_BUILT_COMMIT="$(cat "$LAST_GOOD_FILE" 2>/dev/null || true)"
+if [[ "$PREV_COMMIT" == "$TARGET_COMMIT" ]] \
+  && [[ "$LAST_BUILT_COMMIT" == "$TARGET_COMMIT" ]] \
+  && [[ -f .next/BUILD_ID ]] \
+  && ((!FORCE)); then
   ok "همین حالا آخرین نسخه روی سرور است — کاری لازم نیست"
   printf '  %s(برای بیلد مجدد: ./%s --force)%s\n\n' "$D" "$SCRIPT_NAME" "$R"
   exit 0
+fi
+if [[ "$PREV_COMMIT" == "$TARGET_COMMIT" ]] && ((!FORCE)); then
+  if [[ "$LAST_BUILT_COMMIT" != "$TARGET_COMMIT" ]]; then
+    warn "هشِ سورس به‌روز است ولی آخرین بیلدِ موفق برای «${LAST_BUILT_COMMIT:0:8:-ناشناخته}» بوده — بیلدِ مجدد انجام می‌شود"
+  elif [[ ! -f .next/BUILD_ID ]]; then
+    warn "خروجیِ بیلد (.next) موجود نیست — بیلدِ مجدد انجام می‌شود"
+  fi
 fi
 
 if [[ "$PREV_COMMIT" != "$TARGET_COMMIT" ]]; then
