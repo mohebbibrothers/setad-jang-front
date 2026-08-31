@@ -162,9 +162,30 @@ export function fetchCriminalsPage(
   });
 }
 
+/**
+ * نرمال‌سازیِ lookup برای استفاده در API path — سندِ باگِ پروداکشن:
+ *   paramsِ Next ممکن است (با اسلاگ‌های یونیکد/فارسی مثل «رضا-پهلوی») هنوز
+ *   percent-encoded تحویل شود؛ encodeURIComponent روی یک رشته‌ای که از قبل
+ *   انکد شده «double-encoding» می‌سازد و لایه‌های میانی (Nginx، ASGI،
+ *   Django) فقط یک لایه decode می‌کنند → بک‌اند رشته‌ی هنوز-انکدشده را با
+ *   اسلاگِ دیتابیس تطبیق نمی‌دهد و ۴۰۴ می‌گیریم.
+ *   این تابع همیشه «دقیقاً یک لایه encode» تضمین می‌کند (idempotent).
+ */
+export function canonicalApiLookup(lookup: string): string {
+  let decoded = lookup;
+  if (lookup.includes('%')) {
+    try {
+      decoded = decodeURIComponent(lookup);
+    } catch {
+      decoded = lookup; // دنباله‌ی % ناقص — خام رد می‌کنیم و یک لایه encode
+    }
+  }
+  return encodeURIComponent(decoded);
+}
+
 /** جزئیات یک مجرم — lookup می‌تواند slug یا id باشد (قراردادِ هیبریدیِ بک‌اند) */
 export function fetchCriminalDetail(lookup: string) {
-  return safeApiFetch<CriminalDetail>(`/r4j/criminals/${encodeURIComponent(lookup)}/`, {
+  return safeApiFetch<CriminalDetail>(`/r4j/criminals/${canonicalApiLookup(lookup)}/`, {
     revalidate: 180,
     tags: ['r4j'],
   });

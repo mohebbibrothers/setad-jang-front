@@ -6,6 +6,7 @@ import {
   SOCIAL_PLATFORM_META,
   bountyFa,
   buildReportFormData,
+  canonicalApiLookup,
   criminalFullName,
   isFullyRedacted,
   isReportSubmittable,
@@ -275,6 +276,29 @@ describe('report draft contract', () => {
     const form = buildReportFormData(empty);
     expect(String(form.get('field_changes'))).toBe('[]');
     expect(form.get('notes')).toBeNull();
+  });
+});
+
+/* ────────────────────────────────────────────────────────────
+ * canonicalApiLookup — گاردِ باگِ double-encoding در پروداکشن
+ * ──────────────────────────────────────────────────────────── */
+describe('canonicalApiLookup', () => {
+  it('اسلاگِ فارسیِ خام دقیقاً یک لایه encode می‌گیرد', () => {
+    expect(canonicalApiLookup('رضا-پهلوی')).toBe(encodeURIComponent('رضا-پهلوی'));
+  });
+
+  it('idempotent روی ورودیِ از‌پیش‌انکدشده (باگِ اسلاگ‌های یونیکد در پروداکشن)', () => {
+    const once = canonicalApiLookup('رضا-پهلوی');
+    expect(canonicalApiLookup(once)).toBe(once);
+  });
+
+  it('اسلاگِ ASCII بدون تغییر می‌ماند', () => {
+    expect(canonicalApiLookup('ahmad-vahidi')).toBe('ahmad-vahidi');
+    expect(canonicalApiLookup('criminal-7')).toBe('criminal-7');
+  });
+
+  it('دنباله‌ی % ناقص استثنا نمی‌اندازد', () => {
+    expect(() => canonicalApiLookup('%ZZ')).not.toThrow();
   });
 });
 
