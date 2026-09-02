@@ -15,6 +15,7 @@ import {
   criminalFullName,
   fetchCriminalsPage,
   locationLine,
+  mediaSrc,
   type CriminalListItem,
 } from '@/lib/r4j';
 import { EmptyState } from '@/components/home/EmptyState';
@@ -115,7 +116,7 @@ function qsWith(f: Filters, override: Partial<Filters>): string {
 function CriminalCard({ c, eager }: { c: CriminalListItem; eager: boolean }) {
   const name = criminalFullName(c) || c.slug;
   const loc = locationLine(c);
-  const photo = c.primary_photo?.image ?? null;
+  const photo = mediaSrc(c.primary_photo?.image) ?? null;
   return (
     <Link
       href={`/r4j/${encodeURIComponent(c.slug)}`}

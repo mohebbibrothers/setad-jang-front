@@ -28,6 +28,7 @@ import {
   isFullyRedacted,
   jalaliDateFa,
   locationLine,
+  mediaSrc,
   normalizeGallery,
   socialMeta,
   socialUrl,
@@ -163,7 +164,7 @@ function RelatedCard({ c }: { c: CriminalListItem }) {
     >
       <div className="relative aspect-[4/5] w-full overflow-hidden bg-ink-100">
         <SmartImage
-          src={c.primary_photo?.image ?? null}
+          src={mediaSrc(c.primary_photo?.image) ?? null}
           alt={name}
           variant="criminal"
           fill
@@ -351,7 +352,7 @@ export default async function CriminalCasefilePage({
         {/* گالری */}
         <div className="lg:col-span-5">
           <div className="lg:sticky lg:top-24">
-            <CasefileGallery items={gallery} name={name} />
+            <CasefileGallery items={gallery} name={name} location={loc} />
           </div>
         </div>
 

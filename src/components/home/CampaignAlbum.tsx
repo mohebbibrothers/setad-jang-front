@@ -1214,7 +1214,7 @@ export function CampaignAlbum({
               </svg>
             </span>
             <div className="min-w-0 flex-1">
-              <h3 className="truncate text-[13px] font-extrabold leading-[1.4] sm:text-[14.5px] md:text-[15.5px]">
+              <h3 className="truncate text-[13px] font-extrabold leading-[1.4] text-white sm:text-[14.5px] md:text-[15.5px]">
                 {title}
               </h3>
               {resolvedSubtitle?.value && (

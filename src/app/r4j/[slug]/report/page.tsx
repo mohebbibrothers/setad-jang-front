@@ -37,6 +37,7 @@ export default async function ReportPage({ params }: { params: Promise<{ slug: s
   return (
     <CaseShell
       d={d}
+      activeTab="report"
       eyebrow="مشارکتِ مردمی در پرونده"
       title="گزارش اطلاعات و سرنخ"
       lead={`اگر درباره‌ی «${name}» اطلاعات موثقی دارید — نام مستعار، شماره تماس، حساب اجتماعی، اصلاحِ مشخصات یا سند — همین‌جا ارسال کنید. گزارشِ شما محرمانه می‌ماند و تنها پس از بررسی، روی پرونده اعمال می‌شود.`}

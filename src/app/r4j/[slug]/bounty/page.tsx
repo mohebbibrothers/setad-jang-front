@@ -37,6 +37,7 @@ export default async function BountyPage({ params }: { params: Promise<{ slug: s
   return (
     <CaseShell
       d={d}
+      activeTab="bounty"
       eyebrow="صندوقِ عدالتِ مردمی"
       title="ثبت یا افزایش جایزه"
       lead={`با ثبت یک تعهدِ اعلامی، جایزه‌ی اجرای عدالت برای پرونده‌ی «${name}» را افزایش می‌دهید. این تعهد هر زمان قابل ویرایش است و لغوِ آن پس از درخواست شما و تأیید مدیریت انجام می‌شود.`}
