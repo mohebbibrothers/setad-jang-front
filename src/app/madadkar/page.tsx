@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   HandHeart,
   HeartHandshake,
-  Landmark,
   ReceiptText,
   ShieldCheck,
   Sparkles,
@@ -12,6 +11,7 @@ import {
 } from 'lucide-react';
 import { fetchCampaignsList, fetchSponsors } from '@/lib/madadkar';
 import { HubGrid } from '@/components/madadkar/HubGrid';
+import { SponsorLogo } from '@/components/madadkar/SponsorLogo';
 import { EmptyState } from '@/components/home/EmptyState';
 import { absoluteMediaUrl, formatPersianNumber } from '@/lib/utils';
 
@@ -202,22 +202,7 @@ export default async function MadadkarHubPage() {
                     key={sp.id}
                     className="inline-flex items-center gap-2 rounded-full border border-ink-100 bg-white py-1.5 pl-4 pr-1.5 shadow-[0_2px_8px_-4px_rgba(15,20,32,.08)]"
                   >
-                    <span className="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-ink-50 ring-1 ring-ink-100">
-                      {logo ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={logo}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <Landmark className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-                      )}
-                    </span>
+                    <SponsorLogo src={logo} />
                     <span className="text-[12.5px] font-extrabold text-ink-800">{sp.name}</span>
                   </span>
                 );
