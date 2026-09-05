@@ -677,7 +677,7 @@ export function WarFundSection({ campaigns }: { campaigns: CampaignCard[] }) {
 
         <div className="mt-6 flex justify-center">
           <Link
-            href="/#warfund"
+            href="/madadkar"
             className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-brand-500 bg-white px-7 text-[14px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
           >
             <span>مشاهده همه کمپین‌ها</span>

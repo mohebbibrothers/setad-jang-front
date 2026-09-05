@@ -40,6 +40,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/tabyin', priority: 0.9, changeFrequency: 'hourly' as const },
     { path: '/tabyin/new', priority: 0.6, changeFrequency: 'monthly' as const },
     { path: '/r4j', priority: 0.9, changeFrequency: 'daily' as const },
+    { path: '/madadkar', priority: 0.9, changeFrequency: 'daily' as const },
     // /search is intentionally omitted — see robots.ts (infinite query
     // space; no ranking value). Listing it here would contradict the
     // Disallow rule and waste crawl budget.
