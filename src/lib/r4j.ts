@@ -548,6 +548,71 @@ export interface MyReportSummary {
   updated_at: string;
 }
 
+/** وضعیتِ داوری تک‌آیتمی — ReportFieldChangeStatus بک‌اند */
+export type ReportItemStatusKey = 'pending' | 'approved' | 'rejected' | string;
+
+export interface ReportFieldChangeItem {
+  id: number;
+  field_name: string;
+  suggested_value: string;
+  current_value_snapshot: string;
+  status: ReportItemStatusKey;
+  admin_note: string;
+}
+
+export interface ReportAliasItem {
+  id: number;
+  alias: string;
+  status: ReportItemStatusKey;
+  admin_note: string;
+  applied_alias: number | null;
+}
+
+export interface ReportPhoneItem {
+  id: number;
+  label: string;
+  number: string;
+  is_public: boolean;
+  notes: string;
+  status: ReportItemStatusKey;
+  admin_note: string;
+  applied_phone: number | null;
+}
+
+export interface ReportSocialItem {
+  id: number;
+  platform: string;
+  handle_or_url: string;
+  is_public: boolean;
+  status: ReportItemStatusKey;
+  admin_note: string;
+  applied_social: number | null;
+}
+
+export interface ReportAttachmentItem {
+  id: number;
+  file: string;
+  title: string;
+  kind: string;
+  status: ReportItemStatusKey;
+  admin_note: string;
+  /** اگر سردبیر سند را روی پرونده منتشر کرده باشد، id سندِ پرونده */
+  promoted_criminal_attachment: number | null;
+}
+
+/** جزئیات کامل گزارش — آینه‌ی R4JUserReportDetailSerializer (me/reports/<id>/) */
+export interface MyReportDetail extends MyReportSummary {
+  /** پاسخِ سردبیر به کاربر — هسته‌ی بازخوردِ داوری */
+  admin_note: string;
+  field_changes: ReportFieldChangeItem[];
+  alias_suggestions: ReportAliasItem[];
+  phone_suggestions: ReportPhoneItem[];
+  social_suggestions: ReportSocialItem[];
+  attachments: ReportAttachmentItem[];
+  cancel_requested_at: string | null;
+  canceled_at: string | null;
+}
+
 /** تعهدِ جایزه‌ی کاربر برای یک پرونده (اگر داشته باشد) — R4JBountyUserFilter پشتیبانی از criminal_id دارد */
 export function fetchMyBountyFor(criminalId: number) {
   return apiFetch<Paginated<MyBounty>>(`/r4j/me/bounties/?criminal_id=${criminalId}&page_size=10`);
@@ -563,9 +628,14 @@ export function fetchMyReports() {
   return apiFetch<Paginated<MyReportSummary>>('/r4j/me/reports/?page_size=50');
 }
 
-/** درخواست لغوی گزارش (فقط pending) */
+/** صورت‌جلسه‌ی کامل یک گزارش — سرنخ‌ها + رأیِ تک‌تک آیتم‌ها + پاسخ سردبیر */
+export function fetchMyReportDetail(reportId: number) {
+  return apiFetch<MyReportDetail>(`/r4j/me/reports/${reportId}/`);
+}
+
+/** درخواست لغوی گزارش (فقط pending) — پاسخ: همان گزارش با serializerِ کاملِ detail */
 export function cancelMyReport(reportId: number) {
-  return apiFetch<MyReportSummary>(`/r4j/me/reports/${reportId}/cancel/`, { method: 'POST' });
+  return apiFetch<MyReportDetail>(`/r4j/me/reports/${reportId}/cancel/`, { method: 'POST' });
 }
 
 /** جزئیاتِ عمومیِ تازه‌ی پرونده — برای بازخوانیِ شمارنده‌ها پس از ثبت جایزه (بدون کشِ ISR) */
@@ -600,6 +670,94 @@ export const REPORT_STATUS_META: Record<string, { label: string; badge: string }
 
 export function reportStatusMeta(status: string) {
   return REPORT_STATUS_META[status] ?? { label: status, badge: 'bg-slate-500/15 text-slate-600' };
+}
+
+// ============================================================
+// دفترِ پیگیریِ گزارش‌ها — رأیِ تک‌آیتمی + چرخه‌ی داوری
+// ============================================================
+
+export const REPORT_ITEM_STATUS_META: Record<
+  string,
+  { label: string; badge: string; dot: string }
+> = {
+  pending: {
+    label: 'در انتظار داوری',
+    badge: 'bg-amber-500/15 text-amber-700',
+    dot: 'bg-amber-500',
+  },
+  approved: {
+    label: 'تأیید شد',
+    badge: 'bg-emerald-500/15 text-emerald-700',
+    dot: 'bg-emerald-500',
+  },
+  rejected: {
+    label: 'رد شد',
+    badge: 'bg-rose-500/15 text-rose-700',
+    dot: 'bg-rose-500',
+  },
+};
+
+export function itemStatusMeta(status: string) {
+  return (
+    REPORT_ITEM_STATUS_META[status] ?? {
+      label: status,
+      badge: 'bg-slate-500/15 text-slate-600',
+      dot: 'bg-slate-400',
+    }
+  );
+}
+
+/** آمارِ رأیِ آیتم‌های یک گروه — برای سربرگِ هر گروه در صورت‌جلسه */
+export function summarizeVerdicts(statuses: readonly string[]) {
+  return {
+    total: statuses.length,
+    approved: statuses.filter((s) => s === 'approved').length,
+    rejected: statuses.filter((s) => s === 'rejected').length,
+    pending: statuses.filter((s) => s === 'pending').length,
+  };
+}
+
+export type JourneyTone = 'emerald' | 'amber' | 'sky' | 'rose' | 'slate';
+
+export interface ReportJourneyStep {
+  key: 'submitted' | 'review' | 'verdict';
+  label: string;
+  state: 'done' | 'active' | 'idle';
+  tone: JourneyTone;
+}
+
+/**
+ * چرخه‌ی سه‌ایستگاهیِ داوری گزارش — آینه‌ی state machineِ ReportStatus:
+ *   ثبت شد ← بررسی سردبیر ← نتیجه‌ی داوری.
+ * برای cancel_requested کیمیا مثل pending است (بررسیِ درخواستِ لغو در جریان)؛
+ * برای وضعیتِ ناشناخته محافظه‌کارانه «در بررسی» می‌دهیم تا UI هرگز نخوابد.
+ */
+export function reportJourney(status: string): ReportJourneyStep[] {
+  const verdictTone: Record<string, { label: string; tone: JourneyTone }> = {
+    approved: { label: 'تأیید شد', tone: 'emerald' },
+    partially_approved: { label: 'تأیید جزئی', tone: 'sky' },
+    rejected: { label: 'رد شد', tone: 'rose' },
+    canceled: { label: 'لغو شد', tone: 'slate' },
+  };
+  const verdict = verdictTone[status];
+  if (verdict) {
+    const reviewTone: JourneyTone = verdict.tone;
+    return [
+      { key: 'submitted', label: 'ثبت شد', state: 'done', tone: 'emerald' },
+      { key: 'review', label: 'بررسی سردبیر', state: 'done', tone: reviewTone },
+      { key: 'verdict', label: verdict.label, state: 'done', tone: verdict.tone },
+    ];
+  }
+  return [
+    { key: 'submitted', label: 'ثبت شد', state: 'done', tone: 'emerald' },
+    {
+      key: 'review',
+      label: status === 'cancel_requested' ? 'بررسیِ درخواست لغو' : 'بررسی سردبیر',
+      state: 'active',
+      tone: 'amber',
+    },
+    { key: 'verdict', label: 'نتیجه‌ی داوری', state: 'idle', tone: 'slate' },
+  ];
 }
 
 // ============================================================

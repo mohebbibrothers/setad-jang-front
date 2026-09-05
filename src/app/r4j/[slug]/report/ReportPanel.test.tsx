@@ -58,14 +58,46 @@ function myReport(over: Record<string, unknown> = {}) {
   };
 }
 
-function answerApi(opts: { reports?: unknown[]; postError?: unknown } = {}) {
+function myReportDetail(over: Record<string, unknown> = {}) {
+  return {
+    ...myReport(),
+    admin_note: '',
+    field_changes: [],
+    alias_suggestions: [],
+    phone_suggestions: [],
+    social_suggestions: [],
+    attachments: [],
+    cancel_requested_at: null,
+    canceled_at: null,
+    ...over,
+  };
+}
+
+function answerApi(
+  opts: {
+    reports?: unknown[];
+    detail?: unknown;
+    detailError?: unknown;
+    cancelResponse?: unknown;
+    postError?: unknown;
+    listError?: unknown;
+  } = {},
+) {
   mocks.apiFetch.mockImplementation((url: string, init?: { method?: string; body?: unknown }) => {
     const u = String(url);
     if (u.includes('/r4j/me/reports/')) {
       if (init?.method === 'POST') {
-        // مسیرِ لغو: /r4j/me/reports/<id>/cancel/
-        return Promise.resolve(myReport({ status: 'cancel_requested' }));
+        // مسیرِ لغو: /r4j/me/reports/<id>/cancel/ — پاسخ: detailِ کامل
+        return Promise.resolve(
+          opts.cancelResponse ?? myReportDetail({ status: 'cancel_requested' }),
+        );
       }
+      // صورت‌جلسه: GET /r4j/me/reports/<id>/
+      if (/\/r4j\/me\/reports\/\d+\/$/.test(u)) {
+        if (opts.detailError) return Promise.reject(opts.detailError);
+        return Promise.resolve(opts.detail ?? myReportDetail());
+      }
+      if (opts.listError) return Promise.reject(opts.listError);
       return Promise.resolve({
         count: (opts.reports ?? []).length,
         next: null,
@@ -180,22 +212,60 @@ describe('ReportPanel — ارسال موفق', () => {
   });
 });
 
-describe('ReportPanel — گزارش‌های پیشینِ من', () => {
-  it('فقط گزارش‌های همین پرونده می‌آیند و pending لغو دارد', async () => {
+describe('ReportPanel — دفترِ پیگیریِ گزارش‌ها', () => {
+  it('فقط گزارش‌های همین پرونده می‌آیند + نوار آمار + مُهر وضعیت', async () => {
     answerApi({
       reports: [
         myReport({ id: 9, criminal_id: 5 }),
+        myReport({ id: 10, criminal_id: 5, status: 'approved' }),
         myReport({ id: 11, criminal_id: 99, criminal_name: 'پرونده‌ی دیگر' }),
       ],
     });
     await renderAuthed();
 
-    const mine = await screen.findByText('گزارش‌های پیشینِ شما برای این پرونده');
-    expect(mine).toBeDefined();
+    expect(await screen.findByText('دفترِ پیگیریِ گزارش‌ها')).toBeDefined();
+    expect(screen.getByText(/گزارش‌های پیشینِ شما برای این پرونده/)).toBeDefined();
     expect(screen.getByText('گزارشِ شمارهٔ ۹')).toBeDefined();
+    expect(screen.getByText('گزارشِ شمارهٔ ۱۰')).toBeDefined();
     expect(screen.queryByText('گزارشِ شمارهٔ ۱۱')).toBeNull();
+    // نوارِ آمار
+    expect(screen.getByText('همه‌ی گزارش‌ها')).toBeDefined();
+    expect(screen.getByText('در جریان')).toBeDefined();
+    // مُهرِ داوری + چرخه‌ی سه‌ایستگاهی
+    expect(screen.getByText('تأیید شده')).toBeDefined();
+    expect(screen.getAllByText('بررسی سردبیر').length).toBeGreaterThan(1);
+  });
 
+  it('حالتِ خالی → دعوت به اولین گزارش', async () => {
+    answerApi({ reports: [] });
+    await renderAuthed();
+    expect(await screen.findByText('هنوز گزارشی برای این پرونده ثبت نکرده‌اید')).toBeDefined();
+  });
+
+  it('خطای فهرست → کارت خطا با «تلاش دوباره»', async () => {
+    answerApi({ listError: new Error('offline') });
+    await renderAuthed();
+    expect(await screen.findByText(/فهرستِ گزارش‌ها دریافت نشد/)).toBeDefined();
+    expect(screen.getByRole('button', { name: /تلاش دوباره/ })).toBeDefined();
+  });
+
+  it('لغوی pending دو مرحله‌ای است: تأیید → POST → مُهر «درخواست لغو در انتظار تأیید»', async () => {
+    answerApi({ reports: [myReport({ id: 9, criminal_id: 5 })] });
+    await renderAuthed();
+    await screen.findByText('گزارشِ شمارهٔ ۹');
+
+    // مرحله‌ی اول — بازشدنِ نوار تأیید (هنوز POST نمی‌شود)
     fireEvent.click(screen.getByRole('button', { name: 'درخواست لغو' }));
+    expect(await screen.findByText(/درخواستِ لغو برای سردبیر ارسال شود؟/)).toBeDefined();
+    expect(mocks.apiFetch.mock.calls.some((c) => String(c[0]).includes('/cancel/'))).toBe(false);
+
+    // انصرافِ مسیر اشتباه، POST نمی‌کند
+    fireEvent.click(screen.getByRole('button', { name: 'انصراف' }));
+    expect(screen.queryByText(/درخواستِ لغو برای سردبیر ارسال شود؟/)).toBeNull();
+
+    // مرحله‌ی دوم — ارسال واقعی
+    fireEvent.click(screen.getByRole('button', { name: 'درخواست لغو' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'ارسال درخواست لغو' }));
     await waitFor(() => expect(screen.getByText('درخواست لغو در انتظار تأیید')).toBeDefined());
     const cancelCall = mocks.apiFetch.mock.calls.find(
       (c) =>
@@ -203,5 +273,71 @@ describe('ReportPanel — گزارش‌های پیشینِ من', () => {
         (c[1] as { method?: string })?.method === 'POST',
     );
     expect(cancelCall).toBeDefined();
+  });
+
+  it('صورت‌جلسه — فچِ lazy رأیِ تک‌آیتمی + پاسخ سردبیر + نشان اعمال', async () => {
+    answerApi({
+      reports: [myReport({ id: 9, criminal_id: 5, status: 'approved', notes: 'سرنخ اولیه' })],
+      detail: myReportDetail({
+        status: 'approved',
+        notes: 'سرنخ اولیه',
+        admin_note: 'با منبعِ موثق تطبیق داده شد.',
+        field_changes: [
+          {
+            id: 1,
+            field_name: 'city',
+            suggested_value: 'مشهد',
+            current_value_snapshot: 'تهران',
+            status: 'approved',
+            admin_note: '',
+          },
+        ],
+        alias_suggestions: [
+          {
+            id: 2,
+            alias: 'ابوعلی',
+            status: 'rejected',
+            admin_note: 'مستند کافی نبود',
+            applied_alias: 3,
+          },
+        ],
+      }),
+    });
+    await renderAuthed();
+    await screen.findByText('گزارشِ شمارهٔ ۹');
+
+    // پیش از باز کردن، جزئیات فچ نشده
+    expect(
+      mocks.apiFetch.mock.calls.some((c) => /\/r4j\/me\/reports\/9\/$/.test(String(c[0]))),
+    ).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: /صورت‌جلسه و سرنخ‌ها/ }));
+
+    expect(await screen.findByText('پاسخ سردبیر')).toBeDefined();
+    expect(screen.getByText('با منبعِ موثق تطبیق داده شد.')).toBeDefined();
+    // رأیِ تک‌آیتمی + مقایسه‌ی مقدار ثبت‌شده ↔ پیشنهاد
+    expect(screen.getByText('مشهد')).toBeDefined();
+    expect(screen.getByText('تهران')).toBeDefined();
+    // «تأیید شد» هم در چرخه‌ی داوری است هم روی چیپِ رأیِ آیتم
+    expect(screen.getAllByText('تأیید شد').length).toBeGreaterThan(1);
+    expect(screen.getByText('رد شد')).toBeDefined();
+    expect(screen.getByText(/مستند کافی نبود/)).toBeDefined();
+    expect(screen.getByText('روی پرونده اعمال شد')).toBeDefined();
+    // GET detail واقعا زده شده
+    expect(
+      mocks.apiFetch.mock.calls.some((c) => /\/r4j\/me\/reports\/9\/$/.test(String(c[0]))),
+    ).toBe(true);
+  });
+
+  it('خطای صورت‌جلسه → پیام + «دوباره تلاش کنید» داخل همان بازشو', async () => {
+    answerApi({
+      reports: [myReport({ id: 9, criminal_id: 5 })],
+      detailError: new Error('boom'),
+    });
+    await renderAuthed();
+    await screen.findByText('گزارشِ شمارهٔ ۹');
+    fireEvent.click(screen.getByRole('button', { name: /صورت‌جلسه و سرنخ‌ها/ }));
+    expect(await screen.findByText('صورت‌جلسه دریافت نشد.')).toBeDefined();
+    expect(screen.getByRole('button', { name: /دوباره تلاش کنید/ })).toBeDefined();
   });
 });

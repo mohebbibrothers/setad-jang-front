@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   BadgeCheck,
@@ -21,7 +21,6 @@ import {
   ShieldCheck,
   StickyNote,
   Trash2,
-  Undo2,
   UploadCloud,
   UserRound,
 } from 'lucide-react';
@@ -35,17 +34,13 @@ import {
   REPORT_ATTACHMENT_MAX_COUNT,
   SOCIAL_PLATFORM_META,
   buildReportFormData,
-  cancelMyReport,
-  fetchMyReports,
   isReportSubmittable,
-  jalaliDateFa,
   pruneReportDraft,
-  reportStatusMeta,
   submitCriminalReport,
-  type MyReportSummary,
   type ReportDraftInput,
 } from '@/lib/r4j';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { MyReportsDossier } from './MyReportsDossier';
 import { cn, toPersianDigits } from '@/lib/utils';
 
 /**
@@ -179,30 +174,12 @@ export function ReportPanel({
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [succeeded, setSucceeded] = useState(false);
-
-  const [myReports, setMyReports] = useState<MyReportSummary[] | null>(null);
-  const [cancelingId, setCancelingId] = useState<number | null>(null);
+  /** هر ثبتِ موفق → +۱؛ دفترِ پیگیری بدون اسکلت تازه می‌شود */
+  const [dossierRefresh, setDossierRefresh] = useState(0);
 
   const idRef = useRef(1);
   const nextId = () => idRef.current++;
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // گزارش‌های پیشینِ کاربر برای این پرونده
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    let alive = true;
-    fetchMyReports()
-      .then((res) => {
-        if (!alive) return;
-        setMyReports(res.results.filter((r) => r.criminal_id === criminalId));
-      })
-      .catch(() => {
-        if (alive) setMyReports([]);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [isAuthenticated, criminalId, succeeded]);
 
   const draft: ReportDraftInput = {
     notes,
@@ -259,6 +236,7 @@ export function ReportPanel({
     try {
       await submitCriminalReport(criminalId, buildReportFormData(draft));
       setSucceeded(true);
+      setDossierRefresh((k) => k + 1);
       // پاک‌سازی فرم پس از موفقیت
       setNotes('');
       setFields([]);
@@ -274,22 +252,6 @@ export function ReportPanel({
       );
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  async function handleCancelReport(reportId: number) {
-    if (cancelingId) return;
-    setCancelingId(reportId);
-    try {
-      const updated = await cancelMyReport(reportId);
-      setMyReports(
-        (prev) =>
-          prev?.map((r) => (r.id === reportId ? { ...r, status: updated.status } : r)) ?? null,
-      );
-    } catch {
-      // وضعیت با فچ بعدی هم‌راستا می‌شود
-    } finally {
-      setCancelingId(null);
     }
   }
 
@@ -374,7 +336,7 @@ export function ReportPanel({
               <h2 className="text-[15px] font-black text-emerald-800">گزارش شما ثبت شد</h2>
               <p className="mt-1 text-[12.5px] leading-7 text-emerald-700">
                 گزارش در صفِ بررسی سردبیر قرار گرفت و تا تأیید، هیچ تغییری روی پرونده اعمال نمی‌شود.
-                وضعیتِ آن را در فهرستِ «گزارش‌های پیشینِ شما» در همین صفحه می‌بینید.
+                چرخه‌ی داوری و رأیِ هر سرنخ را در «دفترِ پیگیریِ» همین صفحه دنبال کنید.
               </p>
             </div>
           </div>
@@ -760,58 +722,8 @@ export function ReportPanel({
           </section>
         </form>
 
-        {/* گزارش‌های پیشینِ من */}
-        {myReports && myReports.length > 0 && (
-          <section className="rounded-[26px] border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(15,20,32,.04)] md:p-6">
-            <h2 className="flex items-center gap-2.5 text-[14.5px] font-black text-ink-900">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink-100 text-ink-500">
-                <FileText className="h-[18px] w-[18px]" aria-hidden="true" />
-              </span>
-              گزارش‌های پیشینِ شما برای این پرونده
-            </h2>
-            <ul className="mt-4 flex flex-col gap-2.5">
-              {myReports.map((r) => {
-                const meta = reportStatusMeta(r.status);
-                return (
-                  <li
-                    key={r.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink-100 bg-ink-50/50 px-4 py-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[12px] font-extrabold text-ink-700">
-                        گزارشِ شمارهٔ {toPersianDigits(r.id)}
-                      </p>
-                      <p className="mt-0.5 text-[11px] font-bold text-ink-400">
-                        {jalaliDateFa(r.created_at) ?? ''}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          'rounded-full px-3 py-1 text-[11px] font-extrabold',
-                          meta.badge,
-                        )}
-                      >
-                        {meta.label}
-                      </span>
-                      {r.status === 'pending' && (
-                        <button
-                          type="button"
-                          onClick={() => handleCancelReport(r.id)}
-                          disabled={cancelingId === r.id}
-                          className="flex items-center gap-1 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[11px] font-extrabold text-ink-500 transition-colors hover:border-rose-300 hover:text-rose-600 disabled:opacity-50"
-                        >
-                          <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
-                          {cancelingId === r.id ? '…' : 'درخواست لغو'}
-                        </button>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        )}
+        {/* دفترِ پیگیریِ گزارش‌های پیشین — چرخه‌ی داوری + صورت‌جلسه + لغو */}
+        <MyReportsDossier criminalId={criminalId} refreshKey={dossierRefresh} />
 
         <div className="text-center">
           <Link

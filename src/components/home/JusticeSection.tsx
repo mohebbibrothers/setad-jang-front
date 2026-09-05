@@ -1196,10 +1196,10 @@ export function JusticeSection({ criminals }: { criminals: CriminalCard[] }) {
 
         {/* See-all CTA — matches the WarFund pattern for cross-section
             consistency. Pulls the user out of the home preview and into
-            the full R4J case browser. */}
+            the full R4J case browser (/r4j hub). */}
         <div className="mt-6 flex justify-center">
           <Link
-            href="/#justice"
+            href="/r4j"
             className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-brand-500 bg-white px-7 text-[14px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
           >
             <span>مشاهده همه پرونده‌ها</span>

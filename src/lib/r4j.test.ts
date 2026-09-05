@@ -10,7 +10,10 @@ import {
   criminalFullName,
   isFullyRedacted,
   isReportSubmittable,
+  itemStatusMeta,
   jalaliDateFa,
+  reportJourney,
+  summarizeVerdicts,
   locationLine,
   normalizeGallery,
   parseTomanInput,
@@ -326,5 +329,58 @@ describe('parseTomanInput', () => {
     // خودِ پارسر فقط عدد می‌دهد؛ قانونِ حداقل در پنل چک می‌شود —
     // اینجا فقط ثابت می‌کنیم مقدارِ حداقل با ثابتِ اشتراکی یکی است.
     expect(parseTomanInput('۵۰٬۰۰۰')).toBe(BOUNTY_MIN_TOMAN);
+  });
+});
+
+/* ────────────────────────────────────────────────────────────
+ * دفترِ پیگیری — چرخه‌ی داوری + رأیِ تک‌آیتمی (state machine بک‌اند)
+ * ──────────────────────────────────────────────────────────── */
+describe('reportJourney — چرخه‌ی سه‌ایستگاهی آینه‌ی ReportStatus', () => {
+  it('pending: ثبت‌شده + بررسیِ فعال + نتیجه‌ی مبهم', () => {
+    const s = reportJourney('pending');
+    expect(s.map((x) => x.state)).toEqual(['done', 'active', 'idle']);
+    expect(s[1].tone).toBe('amber');
+  });
+
+  it('cancel_requested مثل pending است ولی برچسبِ بررسی صادقانه می‌شود', () => {
+    const s = reportJourney('cancel_requested');
+    expect(s.map((x) => x.state)).toEqual(['done', 'active', 'idle']);
+    expect(s[1].label).toBe('بررسیِ درخواست لغو');
+  });
+
+  it.each([
+    ['approved', 'تأیید شد', 'emerald'],
+    ['partially_approved', 'تأیید جزئی', 'sky'],
+    ['rejected', 'رد شد', 'rose'],
+    ['canceled', 'لغو شد', 'slate'],
+  ])('پایانیِ %s: هر سه ایستگاه done با تُن %s', (status, label, tone) => {
+    const s = reportJourney(status);
+    expect(s.every((x) => x.state === 'done')).toBe(true);
+    expect(s[2].label).toBe(label);
+    expect(s[2].tone).toBe(tone);
+  });
+
+  it('وضعیتِ ناشناخته UI را نمی‌خواباند — محافظه‌کارانه «در بررسی»', () => {
+    const s = reportJourney('some_future_status');
+    expect(s.map((x) => x.state)).toEqual(['done', 'active', 'idle']);
+  });
+});
+
+describe('itemStatusMeta + summarizeVerdicts', () => {
+  it('سه وضعیتِ شناخته‌شده + fallbackِ ناشناخته', () => {
+    expect(itemStatusMeta('pending').label).toBe('در انتظار داوری');
+    expect(itemStatusMeta('approved').label).toBe('تأیید شد');
+    expect(itemStatusMeta('rejected').label).toBe('رد شد');
+    expect(itemStatusMeta('mystery').label).toBe('mystery');
+  });
+
+  it('شمارشِ رأی‌ها برای سربرگِ گروه', () => {
+    expect(summarizeVerdicts(['approved', 'rejected', 'pending', 'approved', 'future_x'])).toEqual({
+      total: 5,
+      approved: 2,
+      rejected: 1,
+      pending: 1,
+    });
+    expect(summarizeVerdicts([])).toEqual({ total: 0, approved: 0, rejected: 0, pending: 0 });
   });
 });
