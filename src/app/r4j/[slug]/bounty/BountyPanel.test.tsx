@@ -203,19 +203,30 @@ describe('BountyPanel — دروازه‌ی احراز هویت (403)', () => {
   });
 });
 
-describe('BountyPanel — تعهدِ موجود', () => {
-  it('تعهدِ فعلیِ کاربر پرمی‌شود، دکمه «به‌روزرسانی» و مسیرِ لغو دارد', async () => {
+describe('BountyPanel — کارتِ مدیریتِ تعهد', () => {
+  it('تعهدِ فعلی: مُهرِ «فعال در صندوق» + پرکردن ورودی + لغوی دومرحله‌ای', async () => {
     answerApi({ existing: bounty() });
     render(PANEL);
-    // تعهدِ موجود نمایش داده می‌شود
-    const chip = await screen.findByText('تعهدِ فعلیِ شما روی این پرونده');
-    expect(chip).toBeDefined();
+    // کارتِ مدیریت با مُهر و ریلِ چرخه نمایش داده می‌شود
+    expect(await screen.findByText('مدیریتِ تعهدِ شما')).toBeDefined();
+    expect(screen.getByText('فعال در صندوق')).toBeDefined();
+    expect(screen.getByText('تعهدِ فعال در صندوق')).toBeDefined();
     const input = screen.getByRole('textbox') as HTMLInputElement;
     expect(input.value).toBe('250,000');
     expect(screen.getByRole('button', { name: 'به‌روزرسانی تعهدِ جایزه' })).toBeDefined();
 
-    // درخواستِ لغو
+    // مرحله‌ی ۱ — نوارِ تأیید بدون POST
     fireEvent.click(screen.getByRole('button', { name: 'درخواست لغوی تعهد' }));
+    expect(await screen.findByText(/درخواستِ لغو برای مدیریت ارسال شود؟/)).toBeDefined();
+    expect(mocks.apiFetch.mock.calls.some((c) => String(c[0]).includes('/cancel/'))).toBe(false);
+
+    // انصرافِ مسیرِ اشتباه
+    fireEvent.click(screen.getByRole('button', { name: 'انصراف' }));
+    expect(screen.queryByText(/درخواستِ لغو برای مدیریت ارسال شود؟/)).toBeNull();
+
+    // مرحله‌ی ۲ — ارسال واقعی → مُهرِ «در انتظار تأیید»
+    fireEvent.click(screen.getByRole('button', { name: 'درخواست لغوی تعهد' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'ارسال درخواست لغو' }));
     await waitFor(() => expect(screen.getByText('درخواست لغو در انتظار تأیید')).toBeDefined());
     const cancelCall = mocks.apiFetch.mock.calls.find(
       (c) =>
@@ -223,5 +234,30 @@ describe('BountyPanel — تعهدِ موجود', () => {
         (c[1] as { method?: string })?.method === 'POST',
     );
     expect(cancelCall).toBeDefined();
+  });
+
+  it('در انتظارِ رأیِ لغو: مُهر + قفلِ فرم + یادداشتِ صادقانه (بدون دکمه‌ی لغوِ تکراری)', async () => {
+    answerApi({
+      existing: bounty({
+        status: 'cancel_requested',
+        cancel_requested_at: '2026-08-20T10:00:00Z',
+      }),
+    });
+    render(PANEL);
+
+    expect(await screen.findByText('مدیریتِ تعهدِ شما')).toBeDefined();
+    expect(screen.getByText('درخواست لغو در انتظار تأیید')).toBeDefined();
+    // ریل: ایستِ «درخواستِ لغو» فعال است
+    expect(screen.getByText('درخواستِ لغو')).toBeDefined();
+    // صداقتِ محاسبه — آنچه پس از تأیید لغو رخ می‌دهد
+    expect(screen.getByText(/از «صندوقِ لحظه‌ای»/)).toBeDefined();
+    // فرم قفل است (بک‌اند هم set_or_update را رد می‌کند)
+    expect(screen.getByRole('button', { name: 'ثبت تعهدِ جایزه' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(screen.getByText(/تا نتیجه‌ی درخواستِ لغو از سوی مدیریت/)).toBeDefined();
+    // دکمه‌ی لغوِ تکراری نداریم
+    expect(screen.queryByRole('button', { name: 'درخواست لغوی تعهد' })).toBeNull();
   });
 });

@@ -4,8 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   BadgeCheck,
+  CalendarDays,
+  Check,
   CircleAlert,
   EyeOff,
+  Hourglass,
+  Loader2,
   Lock,
   Medal,
   PenLine,
@@ -13,16 +17,17 @@ import {
   TrendingUp,
   Trophy,
   Undo2,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/lib/use-auth';
 import { isApiError } from '@/lib/api';
 import {
   BOUNTY_MIN_TOMAN,
   bountyFa,
-  bountyStatusMeta,
   cancelMyBounty,
   fetchCriminalDetailLive,
   fetchMyBountyFor,
+  jalaliDateFa,
   parseTomanInput,
   setCriminalBounty,
   type MyBounty,
@@ -45,6 +50,140 @@ import { cn, formatPersianNumber, toPersianDigits } from '@/lib/utils';
  */
 
 const QUICK_AMOUNTS = [50_000, 100_000, 500_000, 1_000_000, 5_000_000];
+
+/* ────────────────────────────────────────────────────────────
+ * اتم‌های «کارتِ مدیریتِ تعهد» — آینه‌ی state machine بک‌اند
+ * ──────────────────────────────────────────────────────────── */
+
+/** مُهرِ وضعیتِ تعهد — نبضِ سبز برای فعال، خط‌چینِ کهربایی برای در انتظارِ لغو */
+function BountyStatusStamp({ status }: { status: string }) {
+  if (status === 'cancel_requested') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-amber-300 bg-amber-50 px-3 py-1 text-[10.5px] font-black leading-none text-amber-700">
+        <span className="relative flex h-2 w-2" aria-hidden="true">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+        </span>
+        درخواست لغو در انتظار تأیید
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-[10.5px] font-black leading-none text-emerald-700 ring-1 ring-emerald-500/25">
+      <span className="relative flex h-2 w-2" aria-hidden="true">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+      </span>
+      فعال در صندوق
+    </span>
+  );
+}
+
+type StationState = 'done' | 'active' | 'idle';
+
+const STATION_DOT_DONE: Record<string, string> = {
+  emerald: 'bg-emerald-500',
+  amber: 'bg-amber-500',
+  slate: 'bg-slate-400',
+};
+
+const STATION_DOT_ACTIVE: Record<string, { ping: string; dot: string; ring: string }> = {
+  emerald: { ping: 'bg-emerald-400', dot: 'bg-emerald-500', ring: 'ring-emerald-100' },
+  amber: { ping: 'bg-amber-400', dot: 'bg-amber-500', ring: 'ring-amber-100' },
+  slate: { ping: 'bg-slate-300', dot: 'bg-slate-400', ring: 'ring-slate-100' },
+};
+
+function StationDot({ state, tone }: { state: StationState; tone: string }) {
+  if (state === 'done') {
+    return (
+      <span
+        className={cn(
+          'flex h-[22px] w-[22px] items-center justify-center rounded-full text-white shadow-sm',
+          STATION_DOT_DONE[tone] ?? STATION_DOT_DONE.slate,
+        )}
+      >
+        <Check className="h-3 w-3" strokeWidth={3.5} aria-hidden="true" />
+      </span>
+    );
+  }
+  if (state === 'active') {
+    const t = STATION_DOT_ACTIVE[tone] ?? STATION_DOT_ACTIVE.slate;
+    return (
+      <span
+        className="relative flex h-[22px] w-[22px] items-center justify-center"
+        aria-hidden="true"
+      >
+        <span
+          className={cn(
+            'absolute inline-flex h-3.5 w-3.5 animate-ping rounded-full opacity-60',
+            t.ping,
+          )}
+        />
+        <span className={cn('relative h-3.5 w-3.5 rounded-full ring-4', t.dot, t.ring)} />
+      </span>
+    );
+  }
+  return (
+    <span
+      aria-hidden="true"
+      className="h-[22px] w-[22px] rounded-full border-2 border-dashed border-ink-200 bg-white"
+    />
+  );
+}
+
+/**
+ * ریلِ چرخه‌ی تعهد — موقعیتِ زنده در state machine:
+ *   active → ایستِ اول نبض‌دار سبز؛ cancel_requested → ایست دوم نبض‌دار کهربایی.
+ */
+function BountyJourneyRail({ status }: { status: string }) {
+  const pending = status === 'cancel_requested';
+  const stations: { key: string; label: string; state: StationState; tone: string }[] = [
+    {
+      key: 'active',
+      label: 'تعهدِ فعال در صندوق',
+      state: pending ? 'done' : 'active',
+      tone: 'emerald',
+    },
+    {
+      key: 'cancel',
+      label: 'درخواستِ لغو',
+      state: pending ? 'active' : 'idle',
+      tone: 'amber',
+    },
+    { key: 'settled', label: 'مختومه', state: 'idle', tone: 'slate' },
+  ];
+  return (
+    <div className="mt-4 flex items-start" role="list" aria-label="چرخه‌ی تعهد">
+      {stations.map((s, i) => (
+        <div key={s.key} className="contents">
+          {i > 0 && (
+            <span
+              aria-hidden="true"
+              className={cn(
+                'mx-1.5 mt-[11px] min-w-3 flex-1 border-t-2 border-dashed',
+                stations[i - 1].state === 'done' ? 'border-emerald-300' : 'border-ink-200',
+              )}
+            />
+          )}
+          <div role="listitem" className="flex w-[76px] shrink-0 flex-col items-center gap-1.5">
+            <StationDot state={s.state} tone={s.tone} />
+            <span
+              className={cn(
+                'text-center text-[10px] font-extrabold leading-4',
+                s.state === 'done' && 'text-ink-700',
+                s.state === 'active' &&
+                  (s.tone === 'amber' ? 'text-amber-700' : 'text-emerald-700'),
+                s.state === 'idle' && 'text-ink-300',
+              )}
+            >
+              {s.label}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /* ────────────────────────────────────────────────────────────
  * اتم‌های نمایشیِ پنل
@@ -149,6 +288,8 @@ export function BountyPanel({
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [gateMessage, setGateMessage] = useState<string | null>(null);
 
@@ -189,10 +330,15 @@ export function BountyPanel({
         ? `حداقل مبلغِ جایزه ${bountyFa(BOUNTY_MIN_TOMAN)} است.`
         : null
     : null;
-  const canSubmit = parsed !== null && parsed >= BOUNTY_MIN_TOMAN && !submitting;
+  const hasActiveExisting = existing !== null && existing.status === 'active';
+  /** تعهد در صفِ رأیِ مدیریت برای لغو است — ویرایش/ثبت جدید توسط بک‌اند مسدود می‌شود */
+  const pendingCancelReview = existing !== null && existing.status === 'cancel_requested';
+  /** هر تعهدی که هنوز «لغو شده» نیست، داخلِ صندوق محسوب می‌شود (قراردادِ بک‌اند) */
+  const countedInFund = existing !== null && existing.status !== 'canceled';
+  const canSubmit =
+    parsed !== null && parsed >= BOUNTY_MIN_TOMAN && !submitting && !pendingCancelReview;
 
   // پیش‌نمایشِ «پس از ثبت» — با آگاهی از معنای set_or_update
-  const hasActiveExisting = existing !== null && existing.status === 'active';
   const projectedTotal =
     parsed !== null
       ? hasActiveExisting
@@ -205,18 +351,18 @@ export function BountyPanel({
     if (parsed !== null && parsed >= BOUNTY_MIN_TOMAN && projectedTotal && projectedTotal > 0) {
       return Math.min(100, Math.round((parsed / projectedTotal) * 100));
     }
-    if (hasActiveExisting && liveTotal > 0) {
+    if (countedInFund && liveTotal > 0) {
       return Math.min(100, Math.round((existing.amount_toman / liveTotal) * 100));
     }
     return null;
-  }, [parsed, projectedTotal, hasActiveExisting, existing, liveTotal]);
+  }, [parsed, projectedTotal, countedInFund, existing, liveTotal]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setTouched(true);
     setApiError(null);
     setGateMessage(null);
-    if (parsed === null || parsed < BOUNTY_MIN_TOMAN) return;
+    if (parsed === null || parsed < BOUNTY_MIN_TOMAN || pendingCancelReview) return;
     setSubmitting(true);
     try {
       await setCriminalBounty(criminalId, parsed);
@@ -268,15 +414,26 @@ export function BountyPanel({
     }
   }
 
-  async function handleCancel() {
+  async function handleConfirmCancel() {
     if (!existing || canceling) return;
     setCanceling(true);
-    setApiError(null);
+    setCancelError(null);
     try {
+      // قرارداد: بعد از این‌جا تعهد در صفِ رأیِ مدیریت می‌ماند و «فعال» حساب می‌شود
+      // تا وقتی مدیریت لغو را تأیید کند — همان چیزی که به کاربر وعده می‌دهیم.
       const updated = await cancelMyBounty(existing.id);
-      setExisting((prev) => (prev ? { ...prev, status: updated.status } : prev));
+      setExisting((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: updated.status,
+              cancel_requested_at: updated.cancel_requested_at,
+            }
+          : prev,
+      );
+      setConfirmingCancel(false);
     } catch (err) {
-      setApiError(
+      setCancelError(
         isApiError(err) && err.message
           ? err.message
           : 'ثبت درخواستِ لغو انجام نشد؛ دوباره تلاش کنید.',
@@ -352,8 +509,6 @@ export function BountyPanel({
     );
   }
 
-  const existingMeta = existing ? bountyStatusMeta(existing.status) : null;
-
   return (
     <div className="grid gap-6 lg:grid-cols-12">
       {/* ═════════ ستونِ اصلی ═════════ */}
@@ -410,7 +565,7 @@ export function BountyPanel({
                 </p>
                 <p className="mt-1.5 text-[10.5px] font-black text-ink-400">تعهدِ ثبت‌شده</p>
               </div>
-              {hasActiveExisting && liveTotal > 0 && (
+              {countedInFund && hasActiveExisting && liveTotal > 0 && (
                 <div className="hidden border-s border-ink-100 ps-5 text-center sm:block">
                   <p className="text-[22px] font-black tabular-nums leading-none text-brand-600 md:text-2xl">
                     {sharePct !== null ? `٪${toPersianDigits(sharePct)}` : '—'}
@@ -422,45 +577,133 @@ export function BountyPanel({
           </div>
         </section>
 
-        {/* تعهدِ فعلیِ کاربر */}
+        {/* کارتِ مدیریتِ تعهد — چرخه‌ی زنده، لغوی دومرحله‌ای، صداقتِ محاسبه */}
         {existing && (
-          <section className="flex flex-wrap items-center justify-between gap-4 overflow-hidden rounded-[26px] border border-brand-200 bg-gradient-to-l from-brand-50 via-white to-white p-5 shadow-[0_1px_2px_rgba(15,20,32,.04)]">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-600">
-                <Medal className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[12px] font-bold text-brand-700">
-                  تعهدِ فعلیِ شما روی این پرونده
-                </p>
-                <p className="mt-0.5 text-lg font-black tabular-nums leading-tight text-brand-800">
-                  {bountyFa(existing.amount_toman)}
-                </p>
+          <section
+            aria-label="مدیریت تعهد شما"
+            className="relative overflow-hidden rounded-[26px] border border-brand-200 bg-gradient-to-l from-brand-50/80 via-white to-white p-5 shadow-[0_1px_2px_rgba(15,20,32,.04),0_20px_40px_-30px_rgba(11,77,67,.45)] md:p-6"
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-16 end-10 h-40 w-40 rounded-full bg-brand-500/[.09] blur-3xl"
+            />
+            <div className="relative flex flex-wrap items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-600 ring-1 ring-brand-500/20">
+                  <Medal className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-[14.5px] font-black text-ink-900">مدیریتِ تعهدِ شما</h2>
+                  <p className="mt-0.5 text-[11px] font-bold text-ink-400">
+                    تعهدِ فعلی روی این پرونده — شفاف، زنده و در کنترلِ شما
+                  </p>
+                </div>
               </div>
+              <BountyStatusStamp status={existing.status} />
             </div>
-            <div className="flex items-center gap-2">
-              {existingMeta && (
-                <span
-                  className={cn(
-                    'rounded-full px-3 py-1 text-[11px] font-extrabold',
-                    existingMeta.badge,
-                  )}
-                >
-                  {existingMeta.label}
+
+            {/* مبلغ + سهم */}
+            <div className="relative mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+              <p className="text-[26px] font-black tabular-nums leading-none text-brand-800 md:text-[30px]">
+                {bountyFa(existing.amount_toman)}
+              </p>
+              {countedInFund && liveTotal > 0 && sharePct !== null && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[11px] font-black text-brand-700 ring-1 ring-brand-200">
+                  <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />٪
+                  {toPersianDigits(sharePct)} از صندوق
                 </span>
               )}
-              {existing.status === 'active' && (
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  disabled={canceling}
-                  className="flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3.5 py-1.5 text-[11px] font-extrabold text-ink-500 transition-colors hover:border-rose-300 hover:text-rose-600 disabled:opacity-50"
-                >
-                  <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  {canceling ? 'در حال ثبت…' : 'درخواست لغوی تعهد'}
-                </button>
+            </div>
+
+            {/* ریلِ چرخه‌ی تعهد */}
+            <BountyJourneyRail status={existing.status} />
+
+            {/* متا: تاریخ‌ها */}
+            <div className="relative mt-4 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[10.5px] font-bold text-ink-500 ring-1 ring-ink-100">
+                <CalendarDays className="h-3 w-3" aria-hidden="true" />
+                ثبت تعهد: {jalaliDateFa(existing.created_at) ?? '—'}
+              </span>
+              {pendingCancelReview && existing.cancel_requested_at && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[10.5px] font-bold text-amber-700 ring-1 ring-amber-200">
+                  <CalendarDays className="h-3 w-3" aria-hidden="true" />
+                  درخواست لغو: {jalaliDateFa(existing.cancel_requested_at) ?? '—'}
+                </span>
               )}
             </div>
+
+            {/* صداقتِ محاسبه — آنچه پس از تأییدِ لغو رخ می‌دهد */}
+            {pendingCancelReview && (
+              <div className="relative mt-4 flex items-start gap-2.5 rounded-2xl border border-amber-200/80 bg-amber-50/70 px-3.5 py-3">
+                <Hourglass className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+                <p className="text-[11.5px] font-bold leading-6 text-amber-800">
+                  تعهدِ شما تا رأیِ مدیریت در صندوق حساب می‌شود. پس از تأییدِ لغو، از «صندوقِ
+                  لحظه‌ای»، «جایزهٔ فعلیِ این پرونده» و شمارشِ «تعهد‌های ثبت‌شده» خارج شده و ویرایش
+                  یا ثبتِ تعهدِ جدید تا آن‌گاه ممکن نیست.
+                </p>
+              </div>
+            )}
+
+            {/* اقدام: لغوی دومرحله‌ای */}
+            {hasActiveExisting && (
+              <div className="relative mt-4 border-t border-brand-100 pt-3.5">
+                {confirmingCancel ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3.5">
+                    <p className="text-[11.5px] font-extrabold leading-6 text-amber-800">
+                      درخواستِ لغو برای مدیریت ارسال شود؟ پس از تأییدِ مدیریت، تعهدِ شما از «صندوقِ
+                      لحظه‌ای»، «جایزهٔ فعلیِ پرونده» و شمارشِ «تعهد‌های ثبت‌شده» خارج می‌شود.
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void handleConfirmCancel()}
+                        disabled={canceling}
+                        className="flex items-center gap-1.5 rounded-full bg-amber-600 px-3.5 py-1.5 text-[11px] font-black text-white transition-colors hover:bg-amber-700 disabled:opacity-60"
+                      >
+                        {canceling && (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                        )}
+                        {canceling ? 'در حال ارسال…' : 'ارسال درخواست لغو'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfirmingCancel(false);
+                          setCancelError(null);
+                        }}
+                        disabled={canceling}
+                        className="flex items-center gap-1 rounded-full border border-ink-200 bg-white px-3.5 py-1.5 text-[11px] font-black text-ink-500 transition-colors hover:border-ink-300 disabled:opacity-60"
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden="true" />
+                        انصراف
+                      </button>
+                    </div>
+                    {cancelError && (
+                      <p role="alert" className="mt-2 text-[11px] font-black text-rose-600">
+                        {cancelError}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[11px] font-bold leading-5 text-ink-400">
+                      مبلغ را از فرمِ پایین ویرایش کنید یا برای لغو، درخواست ثبت کنید.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmingCancel(true);
+                        setCancelError(null);
+                      }}
+                      className="flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3.5 py-1.5 text-[11px] font-black text-ink-500 transition-colors hover:border-rose-300 hover:text-rose-600"
+                    >
+                      <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      درخواست لغوی تعهد
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         )}
 
@@ -518,9 +761,11 @@ export function BountyPanel({
           icon={Trophy}
           title={hasActiveExisting ? 'ویرایش مبلغِ تعهد' : 'مبلغِ تعهدِ جایزه (تومان)'}
           hint={
-            hasActiveExisting
-              ? 'ثبتِ مبلغِ جدید، تعهدِ قبلیِ شما را با همان به‌روزرسانی می‌کند (جمع نمی‌شود).'
-              : undefined
+            pendingCancelReview
+              ? 'درخواستِ لغو در صفِ رأیِ مدیریت است؛ تا نهایی‌شدن، ویرایش یا ثبتِ تعهدِ جدید ممکن نیست.'
+              : hasActiveExisting
+                ? 'ثبتِ مبلغِ جدید، تعهدِ قبلیِ شما را با همان به‌روزرسانی می‌کند (جمع نمی‌شود).'
+                : undefined
           }
         >
           <form onSubmit={handleSubmit}>
@@ -630,6 +875,13 @@ export function BountyPanel({
                   ? 'به‌روزرسانی تعهدِ جایزه'
                   : 'ثبت تعهدِ جایزه'}
             </button>
+            {pendingCancelReview && (
+              <p className="mt-3 flex items-start gap-1.5 text-[11.5px] font-bold leading-6 text-amber-700">
+                <Hourglass className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                تا نتیجه‌ی درخواستِ لغو از سوی مدیریت، امکانِ ویرایش مبلغ یا ثبتِ تعهدِ جدید روی این
+                پرونده نیست.
+              </p>
+            )}
 
             {/* صداقتِ مکانیزم */}
             <ul className="mt-5 grid gap-1.5 text-[11px] leading-6 text-ink-400">
@@ -669,6 +921,14 @@ export function BountyPanel({
                       {`٪${toPersianDigits(sharePct ?? 0)}`}
                     </span>{' '}
                     از صندوقِ {bountyFa(projectedTotal!)} خواهد بود.
+                  </p>
+                ) : pendingCancelReview ? (
+                  <p>
+                    تعهدِ شما تا رأیِ مدیریت{' '}
+                    <span className="font-black tabular-nums text-amber-600">
+                      {`٪${toPersianDigits(sharePct ?? 0)}`}
+                    </span>{' '}
+                    از صندوق است؛ پس از تأییدِ لغو، سهم شما صفر می‌شود.
                   </p>
                 ) : hasActiveExisting ? (
                   <p>
