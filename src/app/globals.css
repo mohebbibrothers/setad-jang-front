@@ -514,6 +514,33 @@
   animation: authViewOut calc(var(--morph-ms) * 0.72) ease-in both;
 }
 
+/* شیکِ خانه‌های OTP هنگام کد اشتباه — خطای بک‌اند باید «حس» شود نه فقط
+   خوانده؛ سینوسیِ میزان با حرکت به‌چپ‌و‌راست، فقط هنگام invalid (کلاس
+   وضعیت‌گرا اضافه/حذف می‌شود پس انیمیشن هر بار از نو اجرا می‌گردد). */
+@keyframes otpShake {
+  10%,
+  90% {
+    transform: translateX(-1px);
+  }
+  20%,
+  80% {
+    transform: translateX(2px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-4px);
+  }
+  40%,
+  60% {
+    transform: translateX(4px);
+  }
+}
+
+.otp-shake {
+  animation: otpShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
 /* صفحه‌ی موفقیت — ضربِ تأییدِ کوتاه و شیرین */
 @keyframes authSuccessIn {
   from {

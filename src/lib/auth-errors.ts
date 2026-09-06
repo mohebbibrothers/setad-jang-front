@@ -46,22 +46,33 @@ export function parseWaitSeconds(message: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-/** اولین پیامِ غیرخالیِ یک مقدارِ errorsِ DRF (رشته/آرایه/شیء تودرتو). */
+/** کلّ پیام‌های غیرخالیِ یک مقدارِ errorsِ DRF (رشته/آرایه/شیء تودرتو). */
+function collectDeepStrings(value: unknown, out: string[] = []): string[] {
+  if (typeof value === 'string' && value.trim()) out.push(value);
+  else if (Array.isArray(value)) for (const item of value) collectDeepStrings(item, out);
+  else if (value && typeof value === 'object')
+    for (const item of Object.values(value as Record<string, unknown>))
+      collectDeepStrings(item, out);
+  return out;
+}
+
+const HAS_PERSIAN = /[؀-ۿ]/;
+
+/**
+ * بهترین پیام برای نمایش — «فارسی‌ترجیح».
+ *
+ * چرا؟ سیاستِ رمزِ بک‌اند خطاها را از دو validator می‌آورد: سفارشیِ
+ * فارسیِ BesatPasswordPolicyValidator و validatorهای استانداردِ جنگو که
+ * پیام ترجمه‌شده‌ی فرعی‌شان می‌تواند انگلیسی بماند («This password is
+ * too short…»). چرخه‌ی تأیید رمز با هر کدام اول می‌تواند آغاز شود؛ بدون
+ * این ترجیح، کاربر ممکن بود پیامِ نخوانای انگلیسی ببیند در حالی‌که خطای
+ * فارسیِ دقیقِ همان نقض چند سطر بعدست. قاعده: اولین پیامِ فارسی؛ وگرنه
+ * اولین پیام.
+ */
 function firstDeepString(value: unknown): string | null {
-  if (typeof value === 'string' && value.trim()) return value;
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const s = firstDeepString(item);
-      if (s) return s;
-    }
-  }
-  if (value && typeof value === 'object') {
-    for (const item of Object.values(value as Record<string, unknown>)) {
-      const s = firstDeepString(item);
-      if (s) return s;
-    }
-  }
-  return null;
+  const all = collectDeepStrings(value);
+  if (all.length === 0) return null;
+  return all.find((s) => HAS_PERSIAN.test(s)) ?? all[0];
 }
 
 const FIELD_MAP: Array<[readonly string[], 'identifier' | 'code' | 'password']> = [

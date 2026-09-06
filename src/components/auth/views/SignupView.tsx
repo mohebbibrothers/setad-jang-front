@@ -24,7 +24,7 @@ import { coerceAuthError, type AuthErrorModel } from '@/lib/auth-errors';
 import { prepareIdentifierForSubmit, validateIdentifier } from '@/lib/auth-identifier';
 import { patchAuthFlow, useAuthFlowDraft } from '@/lib/auth-flow-session';
 import { isOtpComplete } from '@/lib/otp';
-import { Alert, Field, SubmitButton, inputClass } from '../ui';
+import { Alert, AuthErrorBox, Field, SubmitButton, inputClass } from '../ui';
 import { IdentifierField } from '../IdentifierField';
 import { PasswordField, isPasswordAcceptable } from '../PasswordField';
 import { OtpStep } from '../OtpStep';
@@ -90,10 +90,13 @@ export const SignupView = memo(function SignupView({
         }}
       >
         {challenge.sendError ? (
-          <Alert kind={isDuplicateError(challenge.sendError) ? 'info' : 'error'}>
-            {challenge.sendError.message}{' '}
-            {isDuplicateError(challenge.sendError) ? duplicateCTA : null}
-          </Alert>
+          isDuplicateError(challenge.sendError) ? (
+            <Alert kind="info">
+              {challenge.sendError.message} {duplicateCTA}
+            </Alert>
+          ) : (
+            <AuthErrorBox model={challenge.sendError} />
+          )
         ) : null}
 
         <p className="text-[12.5px] leading-6 text-ink-500">
@@ -143,11 +146,17 @@ export const SignupView = memo(function SignupView({
   return (
     <form onSubmit={submit} noValidate className="space-y-4">
       {error ? (
-        <Alert kind={isDuplicateError(error) ? 'info' : 'error'}>
-          {error.message} {isDuplicateError(error) ? duplicateCTA : null}
-        </Alert>
+        isDuplicateError(error) ? (
+          <Alert kind="info">
+            {error.message} {duplicateCTA}
+          </Alert>
+        ) : (
+          <AuthErrorBox model={error} />
+        )
       ) : null}
-      {challenge.sendError ? <Alert kind="error">{challenge.sendError.message}</Alert> : null}
+      {challenge.sendError && !isDuplicateError(challenge.sendError) ? (
+        <AuthErrorBox model={challenge.sendError} />
+      ) : null}
 
       <OtpStep
         id="signup-otp"

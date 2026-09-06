@@ -12,7 +12,7 @@
  *   • شناسه یکتا (ایمیل/موبایل) — تشخیص kind سِمت سرور است؛ ما فقط
  *     مقدار تمیزشده (ارقام لاتین) را می‌فرستیم.
  *   • 401/403 پیام دقیق خود بک‌اند را می‌بینند؛ خطاها بازنویسی نمی‌شوند.
- *   • verify هنگام کامل‌شدن ۵ رقم خودکار ارسال می‌شود (once).
+ *   • verify هنگام کامل‌شدن ۶ رقم خودکار ارسال می‌شود (once).
  *   • «مرا به خاطر بسپار» = persist توکن (localStorage در برابر session).
  *   • رمزِ ورود به‌عمدت در draft سشن نمی‌ماند (امنیت)؛ فقط کد OTP و مرحله.
  */
@@ -30,7 +30,7 @@ import { coerceAuthError, type AuthErrorModel } from '@/lib/auth-errors';
 import { prepareIdentifierForSubmit, validateIdentifier } from '@/lib/auth-identifier';
 import { patchAuthFlow, useAuthFlowDraft, type LoginMethod } from '@/lib/auth-flow-session';
 import { isOtpComplete } from '@/lib/otp';
-import { Alert, SubmitButton } from '../ui';
+import { AuthErrorBox, SubmitButton } from '../ui';
 import { IdentifierField } from '../IdentifierField';
 import { PasswordField } from '../PasswordField';
 import { OtpStep } from '../OtpStep';
@@ -155,7 +155,7 @@ function PasswordLoginForm({
 
   return (
     <form onSubmit={submit} noValidate className="space-y-4">
-      {error ? <Alert kind="error">{error.message}</Alert> : null}
+      {error ? <AuthErrorBox model={error} /> : null}
 
       <IdentifierField
         id="login-identifier"
@@ -267,8 +267,8 @@ function OtpLoginFlow({
   if (draft.step === 'code') {
     return (
       <div className="space-y-4">
-        {error ? <Alert kind="error">{error.message}</Alert> : null}
-        {challenge.sendError ? <Alert kind="error">{challenge.sendError.message}</Alert> : null}
+        {error ? <AuthErrorBox model={error} /> : null}
+        {challenge.sendError ? <AuthErrorBox model={challenge.sendError} /> : null}
 
         <OtpStep
           id="login-otp"
@@ -314,7 +314,7 @@ function OtpLoginFlow({
 
   return (
     <form onSubmit={sendCode} noValidate className="space-y-4">
-      {challenge.sendError ? <Alert kind="error">{challenge.sendError.message}</Alert> : null}
+      {challenge.sendError ? <AuthErrorBox model={challenge.sendError} /> : null}
       <p className="text-[12.5px] leading-6 text-ink-500">
         بدون نیاز به رمز عبور؛ کد ورود برایتان ارسال می‌شود.
       </p>

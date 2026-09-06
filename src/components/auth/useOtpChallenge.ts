@@ -10,7 +10,7 @@
  * تایمر یا پیشرفت را نمی‌شکنند.
  *
  * خواندن این فایل با ثابت‌های otp.py بک‌اند یکی است:
- *   کد ۵ رقمی · TTL ۳۰۰ ثانیه · ۵ تلاش · cooldown ۶۰ ثانیه.
+ *   کد ۶ رقمی · TTL ۳۰۰ ثانیه · ۵ تلاش · cooldown ۶۰ ثانیه.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';

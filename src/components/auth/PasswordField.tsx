@@ -1,35 +1,52 @@
 'use client';
 
 /**
- * ورودی رمز عبور — دو حالت:
+ * ورودی رمز عبور — سه لایه:
  *   • حالت ساده (ورود): فقط چشم نمایش/پنهان.
- *   • حالت ساخت (ثبت‌نام/بازیابی): چک‌لیست زنده‌ی قواعد.
+ *   • حالت ساخت (رمز جدید): **متر قدرت چرخه‌ی رنگ** + چک‌لیست زنده‌ی
+ *     قواعد که آینه‌ی دقیقِ AUTH_PASSWORD_VALIDATORS بک‌اند است
+ *     (سیاست بومی + جنگو → lib/password-policy).
  *
- * قواعد آینه‌ی بک‌اند (django validate_password با پیش‌فرض‌های پروژه):
- *   حداقل ۸ کاراکتر · نباید کاملاً عدد باشد.
- * (قاعده‌ی «رمز رایج نباشد» نقطه‌ای قابل اعتبارسنجی سمت کلاینت نیست؛
- *  اگر سرور گفت، همان پیام فارسی‌اش نمایش داده می‌شود.)
+ * معنای هر تحول در این ورودی:
+ *   متر یک «نمره‌ی اعتماد» است که زیر دست کاربر بالا می‌رود (۰..۴)،
+ *   چک‌لیست می‌گوید از کدام قاعده‌ی بک‌اند نقض می‌خورید، و پیامِ نهایی
+ *   سرور هم اگر برگردد، درست روی همین فیلد می‌نشیند (error prop).
  */
 
-import { useState } from 'react';
-import { Check, Eye, EyeOff } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Check, Eye, EyeOff, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toLatinDigits } from '@/lib/auth-identifier';
+import {
+  analyzePassword,
+  isPasswordAcceptable,
+  PASSWORD_RULE_LABELS,
+  SCORE_LABELS,
+  type PasswordRule,
+} from '@/lib/password-policy';
 import { Field, inputClass } from './ui';
 
-const MIN_LENGTH = 8;
+export { isPasswordAcceptable };
 
-export function passwordRules(value: string): { minLength: boolean; notNumeric: boolean } {
-  return {
-    minLength: value.length >= MIN_LENGTH,
-    notNumeric: !/^\d+$/.test(toLatinDigits(value)),
-  };
-}
+/** ترتیبِ نمایش قاعده‌ها در چِک‌لیست — از هارد‌کور به اختیاری‌تر. */
+const CHECKLIST_ORDER: PasswordRule[] = [
+  'length',
+  'classes',
+  'notNumeric',
+  'noSequential',
+  'noKeyboardRow',
+  'noBirthYear',
+  'noPlatformToken',
+  'notCommon',
+];
 
-export function isPasswordAcceptable(value: string): boolean {
-  const r = passwordRules(value);
-  return r.minLength && r.notNumeric;
-}
+/** رنگ متر بر اساس نمره — از رز سرخ تا برند سبز. */
+const METER_STYLES: Record<number, { bar: string; text: string }> = {
+  0: { bar: 'bg-rose-400', text: 'text-rose-600' },
+  1: { bar: 'bg-rose-400', text: 'text-rose-600' },
+  2: { bar: 'bg-amber-400', text: 'text-amber-600' },
+  3: { bar: 'bg-mint-500', text: 'text-brand-600' },
+  4: { bar: 'bg-brand-500', text: 'text-brand-600' },
+};
 
 export function PasswordField({
   id,
@@ -48,14 +65,15 @@ export function PasswordField({
   error?: string | null;
   label?: string;
   autoComplete?: string;
-  /** چک‌لیست زنده‌ی قواعد (برای رمز جدید) */
+  /** چک‌لیست زنده‌ی قواعد + متر قدرت (برای رمز جدید) */
   withChecklist?: boolean;
   autoFocus?: boolean;
   disabled?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
-  const rules = passwordRules(value);
+  const analysis = useMemo(() => analyzePassword(value), [value]);
   const showChecklist = withChecklist && value.length > 0;
+  const meter = METER_STYLES[analysis.score];
 
   return (
     <Field id={id} label={label} error={error}>
@@ -70,9 +88,9 @@ export function PasswordField({
           disabled={disabled}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={withChecklist ? 'حداقل ۸ کاراکتر' : '••••••••'}
+          placeholder={withChecklist ? 'حداقل ۱۰ نویسه' : '••••••••'}
           aria-invalid={Boolean(error)}
-          aria-describedby={error ? `${id}-error` : undefined}
+          aria-describedby={error ? `${id}-error` : showChecklist ? `${id}-checklist` : undefined}
           className={cn(inputClass(Boolean(error)), 'pl-11 text-left tracking-[0.08em]')}
         />
         <button
@@ -92,10 +110,53 @@ export function PasswordField({
       </div>
 
       {showChecklist ? (
-        <ul className="flex flex-wrap gap-x-4 gap-y-1 pt-0.5" aria-live="polite">
-          <Rule ok={rules.minLength} label="حداقل ۸ کاراکتر" />
-          <Rule ok={rules.notNumeric} label="فقط عدد نباشد" />
-        </ul>
+        <div id={`${id}-checklist`} className="space-y-2 pt-1" aria-live="polite">
+          {/* متر قدرت — ۴ سگمنت با پرشدن تدریجی بر اساس نمره */}
+          <div className="flex items-center gap-2.5">
+            <div
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={4}
+              aria-valuenow={analysis.score}
+              aria-label={`قدرت رمز: ${SCORE_LABELS[analysis.score]}`}
+              className="flex flex-1 gap-1"
+            >
+              {[0, 1, 2, 3].map((i) => (
+                <span
+                  key={i}
+                  aria-hidden="true"
+                  className={cn(
+                    'h-1.5 flex-1 rounded-full transition-all duration-300',
+                    i < analysis.score ? meter.bar : 'bg-ink-100',
+                  )}
+                />
+              ))}
+            </div>
+            <span
+              className={cn(
+                'shrink-0 text-[11px] font-extrabold transition-colors duration-300',
+                meter.text,
+              )}
+            >
+              {SCORE_LABELS[analysis.score]}
+            </span>
+          </div>
+
+          {/* چک‌لیست قواعد — دو ستونه روی sm+، تکی در موبایل */}
+          <ul className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+            {CHECKLIST_ORDER.map((key) => (
+              <Rule key={key} ok={analysis.rules[key]} label={PASSWORD_RULE_LABELS[key]} />
+            ))}
+          </ul>
+
+          {/* اولین نقض — جمله‌ی دقیق بک‌اند، تا «حالا دقیقاً چه کار کنم؟» */}
+          {!analysis.acceptable && analysis.firstViolation ? (
+            <p className="flex items-start gap-1.5 text-[11.5px] font-medium leading-5 text-rose-600">
+              <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {analysis.firstViolation}
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </Field>
   );
@@ -105,14 +166,14 @@ function Rule({ ok, label }: { ok: boolean; label: string }) {
   return (
     <li
       className={cn(
-        'flex items-center gap-1 text-[11.5px] font-medium transition-colors duration-200',
+        'flex items-center gap-1.5 text-[11.5px] font-medium transition-colors duration-200',
         ok ? 'text-brand-600' : 'text-ink-500/80',
       )}
     >
       <span
         aria-hidden="true"
         className={cn(
-          'flex h-[15px] w-[15px] items-center justify-center rounded-full border transition-all duration-200',
+          'flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full border transition-all duration-200',
           ok
             ? 'border-brand-500 bg-brand-500 text-white'
             : 'border-ink-200 bg-white text-transparent',
@@ -120,7 +181,7 @@ function Rule({ ok, label }: { ok: boolean; label: string }) {
       >
         <Check className="h-[10px] w-[10px]" strokeWidth={3.5} />
       </span>
-      {label}
+      <span aria-label={`${label} — ${ok ? 'برقرار است' : 'نقض شده'}`}>{label}</span>
     </li>
   );
 }

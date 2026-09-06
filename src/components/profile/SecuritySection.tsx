@@ -37,6 +37,7 @@ import {
 } from '@/lib/current-session';
 import { Alert, SubmitButton } from '@/components/auth/ui';
 import { PasswordField, isPasswordAcceptable } from '@/components/auth/PasswordField';
+import { analyzePassword } from '@/lib/password-policy';
 import {
   SectionCard,
   Badge,
@@ -72,7 +73,9 @@ function ChangePasswordCard() {
     }
     if (!isPasswordAcceptable(newPassword)) {
       setFieldErrors({
-        new_password: 'رمز جدید قواعد امنیتی را ندارد (حداقل ۸ کاراکتر، فقط عدد نباشد).',
+        // پیامِ دقیقِ همان قاعده‌ی نقض‌شده (آینه‌ی سیاست بک‌اند) — نه حدسِ تلفیقی
+        new_password:
+          analyzePassword(newPassword).firstViolation ?? 'رمز جدید قواعد امنیتی سایت را ندارد.',
       });
       return;
     }

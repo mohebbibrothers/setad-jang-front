@@ -2,22 +2,28 @@
 
 /**
  * ═══════════════════════════════════════════════════════════════════
- * IdentifiersSection — مدیریت شناسه‌های ورود (ایمیل | موبایل)
+ * IdentifiersSection — شناسه‌های ورود (ایمیل | موبایل)
  *
- * قراردادِ دقیقِ بک‌اند (apps/authentication — Phase H.2):
+ * منبع حقیقت = پیلودِ UserMeSerializer بک‌اند (سینکِ دوسویه):
+ *   user.identifiers = [{kind, value, is_primary, is_verified}] — لیست
+ *   کانال‌های «متصل»، با نشانِ «اصل‌یه» و وضعیتِ تأیید هر کانال. این
+ *   یعنی هیچ «علمِ جلسه‌ای» (session knowledge) در کار نیست: پرچمِ
+ *   تأییدِ موبایل و شناسه‌ی اصلی از خودِ سرور می‌آیند و پس از رفرش
+ *   مرورگر هم گم نمی‌شوند.
  *
- *   POST /auth/identifiers/add/request/  {identifier}        → کد می‌فرستد
- *     + مواردِ مجاز: اتصالِ شناسه‌ی غایب، یا تأییدِ مجددِ «همانِ»
- *       متصلِ تأییدنشده؛ خطاها (متن‌های فارسیِ آماده): قبلاً تأیید شده /
- *       کانال اشغال است (جایگزینی پشتیبانی نمی‌شود) / متعلق به دیگری.
- *   POST /auth/identifiers/add/verify/   {identifier, code}  → UserMe کامل
- *   POST /auth/identifiers/make-primary/ {identifier_kind}   → UserMe کامل
+ * چرخهٔ سینک: identifiersAddVerify / identifierMakePrimary هر دو
+ * UserMeSerializerِ کامل برمی‌گردانند → applyUser(freshUser) نوپایِ
+ * سراسری را یک‌جا نو می‌کند → همین سکشن بدون هیچ حدسی دوباره رندر و
+ * نشان‌ها/کارت‌ها از نو سنجیده می‌شوند.
  *
- * نکته‌ی صادقانه‌ی قرارداد: بک‌اند وضعیتِ تأییدِ موبایل و شناسه‌ی اصلیِ
- * فعلی را در UserMe برنمی‌گرداند (فقط is_email_verified هست). پس UI هیچ
- * نشانِ جعلی نمی‌سازد؛ وضعیتِ موبایل از «خودِ رفتارِ سرور» یاد گرفته
- * می‌شود (علمِ جلسه): اگر add/request گفت «قبلاً تأیید شده» یا آخرین
- * verify موفق بود → تأییدشده. چرخه همگرا و بدون حدس.
+ * flowها (Phase H.2):
+ *   POST /auth/identifiers/add/request/ {identifier}      → کد ۶رقمی
+ *   POST /auth/identifiers/add/verify/  {identifier,code} → کاربرِ نو
+ *   POST /auth/identifiers/make-primary/{identifier_kind} → کاربرِ نو
+ *
+ * سیاست امنیتی بک‌اند که همین‌جا به کاربر شفاف‌سازی می‌شود: جایگزینیِ
+ * یک شناسه‌ی موجود در همان کانال پشتیبانی نمی‌شود؛ فقط «اتصالِ شناسه‌ی
+ * غایب» یا «تأییدِ مجددِ همانِ متصل‌یِ تأییدنشده».
  * ═══════════════════════════════════════════════════════════════════
  */
 
@@ -27,42 +33,51 @@ import {
   identifierAddRequest,
   identifierAddVerify,
   identifierMakePrimary,
+  type AuthIdentifier,
   type AuthUser,
   type IdentifierKind,
 } from '@/lib/auth';
 import { applyUser } from '@/lib/use-auth';
-import { coerceAuthError } from '@/lib/auth-errors';
+import { coerceAuthError, type AuthErrorModel } from '@/lib/auth-errors';
 import {
+  detectIdentifierKind,
+  formatIdentifierForDisplay,
   prepareIdentifierForSubmit,
   validateIdentifier,
-  formatIdentifierForDisplay,
 } from '@/lib/auth-identifier';
-import { isOtpComplete, OTP_RESEND_COOLDOWN_SECONDS, formatCountdown } from '@/lib/otp';
-import { Alert, SubmitButton } from '@/components/auth/ui';
+import {
+  isOtpComplete,
+  OTP_CODE_LENGTH_FA,
+  OTP_RESEND_COOLDOWN_SECONDS,
+  formatCountdown,
+} from '@/lib/otp';
+import { Alert, AuthErrorBox, SubmitButton } from '@/components/auth/ui';
 import { IdentifierField } from '@/components/auth/IdentifierField';
 import { OtpInput } from '@/components/auth/OtpInput';
 import { SectionCard, Badge, GhostButton } from './account-ui';
-
-/* ── انواع ── */
+import { cn } from '@/lib/utils';
 
 type Step = 'idle' | 'input' | 'code';
 
-interface KindCard {
-  kind: IdentifierKind;
-  title: string;
-  icon: React.ReactNode;
-  /** مقدارِ متصل (در صورت وجود) */
-  value: string | null;
-  /** وضعیتِ تأییدِ آموخته‌شده: true (تأیید)، false (تأییدنشده)، null (ناشناخته) */
-  verified: boolean | null;
-}
+const KIND_META: Record<
+  IdentifierKind,
+  { title: string; icon: React.ReactNode; addLabel: string }
+> = {
+  email: { title: 'ایمیل', icon: <Mail className="h-[18px] w-[18px]" />, addLabel: 'افزودن ایمیل' },
+  phone: {
+    title: 'شماره موبایل',
+    icon: <Smartphone className="h-[18px] w-[18px]" />,
+    addLabel: 'افزودن شماره موبایل',
+  },
+};
+
+/** دو کانال بصورت پایدار: ایمیل اول، موبایل دوم — آینه‌ی نظم بک‌اند. */
+const KIND_ORDER: IdentifierKind[] = ['email', 'phone'];
 
 export function IdentifiersSection({ user }: { user: AuthUser }) {
-  const email = user.email ?? null;
-  const phone = user.profile?.phone_number ?? null;
-
-  // علمِ جلسه درباره‌ی تأیید موبایل (بک‌اند آن را در UserMe نمی‌دهد)
-  const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
+  const byKind = new Map<IdentifierKind, AuthIdentifier>(
+    (user.identifiers ?? []).map((item) => [item.kind, item]),
+  );
 
   const [activeKind, setActiveKind] = useState<IdentifierKind | null>(null);
   const [step, setStep] = useState<Step>('idle');
@@ -70,7 +85,7 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
   const [lockedInput, setLockedInput] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AuthErrorModel | null>(null);
   const [identifierError, setIdentifierError] = useState<string | null>(null);
   const [codeInvalid, setCodeInvalid] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -89,23 +104,6 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
   }, [cooldownUntil]);
 
   const cooldownLeft = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
-
-  const cards: KindCard[] = [
-    {
-      kind: 'email',
-      title: 'ایمیل',
-      icon: <Mail className="h-[18px] w-[18px]" />,
-      value: email,
-      verified: email ? Boolean(user.is_email_verified) : null,
-    },
-    {
-      kind: 'phone',
-      title: 'شماره موبایل',
-      icon: <Smartphone className="h-[18px] w-[18px]" />,
-      value: phone,
-      verified: phone ? phoneVerified : null,
-    },
-  ];
 
   const resetFlow = () => {
     setActiveKind(null);
@@ -138,6 +136,14 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
       setIdentifierError(validationError);
       return;
     }
+    const kind = activeKind ?? 'email'; // flow فقط با activeKind تعریف‌شده باز است
+    if (detectIdentifierKind(identifier) !== kind) {
+      const other = kind === 'email' ? 'phone' : 'email';
+      setIdentifierError(
+        `این مقدار از نوع ${KIND_META[other].title} است، نه ${KIND_META[kind].title}.`,
+      );
+      return;
+    }
     setBusy(true);
     setError(null);
     setIdentifierError(null);
@@ -148,16 +154,11 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
       setCode('');
     } catch (err) {
       const model = coerceAuthError(err);
-      // همگراییِ صادقانه: اگر سرور گفت «قبلاً تأیید شده»، نشان را ببین
       if (model.message.includes('قبلاً') && model.message.includes('تأیید')) {
-        if (activeKind === 'phone') setPhoneVerified(true);
-        if (activeKind === 'email') {
-          /* ایمیل از UserMe فیدبک می‌گیرد */
-        }
         setNotice(model.message);
         resetFlow();
       } else {
-        setError(model.message);
+        setError(model);
         if (model.fieldErrors.identifier) setIdentifierError(model.fieldErrors.identifier);
       }
     } finally {
@@ -174,8 +175,7 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
       setCooldownUntil(Date.now() + OTP_RESEND_COOLDOWN_SECONDS * 1000);
       setCode('');
     } catch (err) {
-      const model = coerceAuthError(err);
-      setError(model.message);
+      setError(coerceAuthError(err));
     } finally {
       setBusy(false);
     }
@@ -191,13 +191,11 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
         identifier: prepareIdentifierForSubmit(identifier),
         code: finalCode,
       });
-      applyUser(freshUser); // پاسخ = UserMeSerializer کامل → سینکِ سراسری
-      if (activeKind === 'phone') setPhoneVerified(true);
+      applyUser(freshUser); // پاسخ = UserMe کامل با identifiers نو → سینک سراسری
       setNotice('شناسه با موفقیت به حساب شما متصل و تأیید شد.');
       resetFlow();
     } catch (err) {
-      const model = coerceAuthError(err);
-      setError(model.message);
+      setError(coerceAuthError(err));
       setCodeInvalid(true);
       setCode('');
     } finally {
@@ -215,7 +213,7 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
       applyUser(freshUser);
       setNotice('شناسه‌ی اصلی حساب با موفقیت تغییر کرد.');
     } catch (err) {
-      setError(coerceAuthError(err).message);
+      setError(coerceAuthError(err));
     } finally {
       setBusy(false);
     }
@@ -225,35 +223,50 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
     <SectionCard
       icon={<ShieldQuestion className="h-[18px] w-[18px]" />}
       title="شناسه‌های ورود"
-      description="با هر کدام از این شناسه‌ها می‌توانید وارد شوید یا رمز را بازیابی کنید. اتصالِ شناسه‌ی جدید فقط با کد تأیید انجام می‌شود."
+      description="با هر کدام از این شناسه‌ها می‌توانید وارد شوید یا رمز را بازیابی کنید. اتصال شناسه‌ی جدید فقط با کد تأیید انجام می‌شود."
     >
       <div className="space-y-3">
         {notice ? <Alert kind="success">{notice}</Alert> : null}
-        {error && step === 'idle' ? <Alert kind="error">{error}</Alert> : null}
+        {error && step === 'idle' ? <AuthErrorBox model={error} /> : null}
 
-        {cards.map((card) => {
-          const flowOpen = activeKind === card.kind && step !== 'idle';
+        {KIND_ORDER.map((kind) => {
+          const meta = KIND_META[kind];
+          const attached = byKind.get(kind) ?? null;
+          const flowOpen = activeKind === kind && step !== 'idle';
           return (
             <div
-              key={card.kind}
-              className="rounded-2xl border border-ink-100 bg-white p-4 transition-shadow duration-200 hover:shadow-[0_10px_26px_-16px_rgba(15,20,32,.22)]"
+              key={kind}
+              className={cn(
+                'rounded-2xl border bg-white p-4 transition-shadow duration-200 hover:shadow-[0_10px_26px_-16px_rgba(15,20,32,.22)]',
+                attached?.is_primary ? 'border-[#f3dfa8]' : 'border-ink-100',
+              )}
             >
               <div className="flex flex-wrap items-center gap-3">
                 <span
                   aria-hidden="true"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600"
+                  className={cn(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                    attached?.is_verified
+                      ? 'bg-mint-500/10 text-brand-600'
+                      : 'bg-brand-50 text-brand-600',
+                  )}
                 >
-                  {card.icon}
+                  {meta.icon}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-[13.5px] font-extrabold text-ink-900">{card.title}</h3>
-                    {card.value && card.verified ? (
+                    <h3 className="text-[13.5px] font-extrabold text-ink-900">{meta.title}</h3>
+                    {attached?.is_primary ? (
+                      <Badge tone="gold" icon={<Crown className="h-3.5 w-3.5" />}>
+                        شناسه اصلی
+                      </Badge>
+                    ) : null}
+                    {attached?.is_verified ? (
                       <Badge tone="ok" icon={<BadgeCheck className="h-3.5 w-3.5" />}>
                         تأیید شده
                       </Badge>
                     ) : null}
-                    {card.value && card.verified === false ? (
+                    {attached && !attached.is_verified ? (
                       <Badge tone="warn" icon={<TriangleAlert className="h-3.5 w-3.5" />}>
                         تأیید نشده
                       </Badge>
@@ -264,30 +277,30 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
                     dir="ltr"
                     style={{ textAlign: 'right' }}
                   >
-                    {card.value ? formatIdentifierForDisplay(card.value) : 'متصل نشده'}
+                    {attached ? formatIdentifierForDisplay(attached.value) : 'متصل نشده'}
                   </p>
                 </div>
 
                 {/* روی گوشی، کنش‌ها به خطِ تمام‌عرضِ خودشان می‌روند تا
                     کنارِ عنوان/شناسه له نشوند (ریسپانسیوِ ردیف‌ها). */}
                 <div className="flex flex-wrap items-center gap-2 max-sm:basis-full max-sm:justify-end">
-                  {!card.value && !flowOpen ? (
-                    <GhostButton onClick={() => startFlow(card.kind, null)} disabled={busy}>
-                      افزودن {card.title}
+                  {!attached && !flowOpen ? (
+                    <GhostButton onClick={() => startFlow(kind, null)} disabled={busy}>
+                      {meta.addLabel}
                     </GhostButton>
                   ) : null}
-                  {card.value && card.verified !== true && !flowOpen ? (
-                    <GhostButton onClick={() => startFlow(card.kind, card.value)} disabled={busy}>
-                      تأیید {card.title}
+                  {attached && !attached.is_verified && !flowOpen ? (
+                    <GhostButton onClick={() => startFlow(kind, attached.value)} disabled={busy}>
+                      تأیید {meta.title}
                     </GhostButton>
                   ) : null}
-                  {card.value && card.verified === true ? (
+                  {attached && attached.is_verified && !attached.is_primary ? (
                     <button
                       type="button"
-                      onClick={() => makePrimary(card.kind)}
+                      onClick={() => makePrimary(kind)}
                       disabled={busy}
                       title="این شناسه، روش پیش‌فرض ورود و بازیابی حساب می‌شود"
-                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] font-bold text-brand-700 transition-colors hover:bg-brand-50 disabled:opacity-60"
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] font-bold text-[#9a6b00] transition-colors hover:bg-[#fff7e0] disabled:opacity-60"
                     >
                       <Crown className="h-3.5 w-3.5" />
                       تنظیم به‌عنوان شناسه‌ی اصلی
@@ -300,7 +313,7 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
                 <div className="mt-4 rounded-xl bg-ink-50/60 p-4">
                   {error ? (
                     <div className="mb-3">
-                      <Alert kind="error">{error}</Alert>
+                      <AuthErrorBox model={error} />
                     </div>
                   ) : null}
 
@@ -309,7 +322,7 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
                       {lockedInput ? (
                         <div>
                           <span className="mb-1.5 block text-[13px] font-bold text-ink-900">
-                            {card.title}
+                            {meta.title}
                           </span>
                           <div
                             className="flex h-12 items-center rounded-xl border border-ink-200 bg-white px-3.5 text-left text-[14px] font-bold text-ink-800"
@@ -318,12 +331,12 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
                             {formatIdentifierForDisplay(identifier)}
                           </div>
                           <p className="mt-1.5 text-[12px] leading-5 text-ink-500">
-                            کد تأیید برای همین {card.title.toLowerCase()} ارسال می‌شود.
+                            کد تأیید برای همین {meta.title.toLowerCase()} ارسال می‌شود.
                           </p>
                         </div>
                       ) : (
                         <IdentifierField
-                          id={`identifier-add-${card.kind}`}
+                          id={`identifier-add-${kind}`}
                           value={identifier}
                           onChange={(v) => {
                             setIdentifier(v);
@@ -332,7 +345,7 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
                           }}
                           error={identifierError}
                           disabled={busy}
-                          label={card.title}
+                          label={meta.title}
                         />
                       )}
                       <div className="flex items-center gap-3">
@@ -353,14 +366,14 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
                   {step === 'code' ? (
                     <div className="space-y-4">
                       <p className="text-center text-[12.5px] leading-6 text-ink-600">
-                        کد ۵رقمی به{' '}
+                        کد {OTP_CODE_LENGTH_FA} به{' '}
                         <bdi dir="ltr" className="font-extrabold text-ink-900">
                           {formatIdentifierForDisplay(identifier)}
                         </bdi>{' '}
                         ارسال شد.
                       </p>
                       <OtpInput
-                        id={`identifier-otp-${card.kind}`}
+                        id={`identifier-otp-${kind}`}
                         value={code}
                         onChange={(v) => {
                           setCode(v);
@@ -382,7 +395,7 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
                           }}
                           className="text-ink-500 transition-colors hover:text-ink-800"
                         >
-                          ویرایش {card.title.toLowerCase()}
+                          ویرایش {meta.title.toLowerCase()}
                         </button>
                         <button
                           type="button"
@@ -405,8 +418,8 @@ export function IdentifiersSection({ user }: { user: AuthUser }) {
 
         <p className="pt-1 text-[11.5px] leading-5 text-ink-500">
           شناسه‌ی اصلی، روش پیش‌فرضِ ورود و بازیابی حساب است؛ تغییر آن فقط برای شناسه‌های تأییدشده
-          ممکن است. جایگزینیِ یک شناسه‌ی موجود طبق سیاست امنیتی بک‌اند پشتیبانی نمی‌شود — فقط اتصالِ
-          شناسه‌ی غایب.
+          ممکن است. جایگزینیِ یک شناسه‌ی موجود طبق سیاست امنیتی پشتیبانی نمی‌شود — فقط اتصالِ
+          شناسه‌ی غایب یا تأییدِ شناسه‌ی متصلِ تأییدنشده.
         </p>
       </div>
     </SectionCard>

@@ -10,8 +10,8 @@ import {
 } from './otp';
 
 describe('ثابت‌های قرارداد OTP بک‌اند', () => {
-  it('طول ۵، TTL ۳۰۰ ثانیه، cooldown ۶۰ ثانیه', () => {
-    expect(OTP_CODE_LENGTH).toBe(5);
+  it('طول ۶، TTL ۳۰۰ ثانیه، cooldown ۶۰ ثانیه — آینه‌ی otp.py', () => {
+    expect(OTP_CODE_LENGTH).toBe(6);
     expect(OTP_TTL_SECONDS).toBe(300);
     expect(OTP_RESEND_COOLDOWN_SECONDS).toBe(60);
   });
@@ -19,25 +19,25 @@ describe('ثابت‌های قرارداد OTP بک‌اند', () => {
 
 describe('sanitizeOtpInput', () => {
   it('ارقام فارسی را لاتین و غیررقم‌ها را حذف می‌کند', () => {
-    expect(sanitizeOtpInput('۱۲۳۴۵')).toBe('12345');
-    expect(sanitizeOtpInput('کد شما: 12-345')).toBe('12345');
+    expect(sanitizeOtpInput('۱۲۳۴۵۶')).toBe('123456');
+    expect(sanitizeOtpInput('کد شما: 12-3456')).toBe('123456');
     expect(sanitizeOtpInput(' 1 2 3 ')).toBe('123');
   });
 
   it('به طول مجاز کد سقف می‌زند', () => {
-    expect(sanitizeOtpInput('123456789')).toBe('12345');
+    expect(sanitizeOtpInput('123456789')).toBe('123456');
   });
 });
 
 describe('splitOtp / isOtpComplete', () => {
   it('رشته‌ی ناقص را با سلول خالی کامل می‌کند', () => {
-    expect(splitOtp('12')).toEqual(['1', '2', '', '', '']);
-    expect(splitOtp('')).toEqual(['', '', '', '', '']);
+    expect(splitOtp('12')).toEqual(['1', '2', '', '', '', '']);
+    expect(splitOtp('')).toEqual(['', '', '', '', '', '']);
   });
 
   it('کامل‌بودن فقط با طولِ دقیق', () => {
-    expect(isOtpComplete('12345')).toBe(true);
-    expect(isOtpComplete('1234')).toBe(false);
+    expect(isOtpComplete('123456')).toBe(true);
+    expect(isOtpComplete('12345')).toBe(false);
   });
 });
 

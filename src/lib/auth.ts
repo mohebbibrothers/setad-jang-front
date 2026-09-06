@@ -29,7 +29,7 @@ import { setTokens, clearTokens, getRefreshToken } from './auth-tokens';
 /*  Constants — mirror apps/authentication/serializers.py                     */
 /* ───────────────────────────────────────────────────────────────────────── */
 
-export const OTP_CODE_LENGTH = 5;
+export const OTP_CODE_LENGTH = 6;
 export const IDENTIFIER_MAX_LENGTH = 254;
 
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -73,6 +73,21 @@ export type AuthSuccessResult = {
 /** @deprecated kept for import compatibility — use AuthSuccessResult. */
 export type TokenResponse = AuthSuccessResult;
 
+/**
+ * قراردادِ دقیقِ user در UserMeSerializer (بک‌اند، کامیتِ حسّاس:
+ * «پیلودِ کاملِ شناسه‌ها»). فیلدهای شناسه‌ای که صفحه‌ی پروفایل مصرف
+ * می‌کند: phone_number، primary_identifier ('email'|'phone')،
+ * is_email_verified / is_phone_verified و لیستِ کاملِ identifiers —
+ * آیتمِ هر «کانالِ متصل» با نشانِ اصلی و وضعیتِ تأیید. لیست همیشه فقط
+ * شناسه‌های موجود را دارد و نظمش پایدار است: ایمیل، سپس موبایل.
+ */
+export type AuthIdentifier = {
+  kind: IdentifierKind;
+  value: string;
+  is_primary: boolean;
+  is_verified: boolean;
+};
+
 export type AuthUser = {
   id: number | string;
   email?: string | null;
@@ -82,19 +97,12 @@ export type AuthUser = {
   full_name?: string;
   role?: string;
   is_email_verified?: boolean;
+  is_phone_verified?: boolean;
   is_active?: boolean;
   is_staff?: boolean;
-  is_verified?: boolean;
   date_joined?: string;
-  primary_identifier?: string;
-  primary_identifier_kind?: IdentifierKind;
-  identifiers?: Array<{
-    id: number;
-    value: string;
-    kind: IdentifierKind;
-    is_primary?: boolean;
-    is_verified?: boolean;
-  }>;
+  primary_identifier?: IdentifierKind | null;
+  identifiers?: AuthIdentifier[];
   profile?: AuthProfile;
 };
 

@@ -72,6 +72,8 @@ const BADGE_TONES = {
   warn: 'bg-amber-50 text-amber-700 ring-amber-200',
   neutral: 'bg-ink-50 text-ink-600 ring-ink-200',
   danger: 'bg-rose-50 text-rose-700 ring-rose-200',
+  // «شناسه اصلی» — طلاییِ گرم و ممتاز، متمایز از warnِ کهربایی
+  gold: 'bg-[#fff7e0] text-[#9a6b00] ring-[#f3dfa8]',
 } as const;
 
 export function Badge({

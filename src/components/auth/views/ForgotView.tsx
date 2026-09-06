@@ -17,7 +17,7 @@ import { coerceAuthError, type AuthErrorModel } from '@/lib/auth-errors';
 import { prepareIdentifierForSubmit, validateIdentifier } from '@/lib/auth-identifier';
 import { patchAuthFlow, useAuthFlowDraft } from '@/lib/auth-flow-session';
 import { isOtpComplete } from '@/lib/otp';
-import { Alert, SubmitButton } from '../ui';
+import { AuthErrorBox, SubmitButton } from '../ui';
 import { IdentifierField } from '../IdentifierField';
 import { PasswordField, isPasswordAcceptable } from '../PasswordField';
 import { OtpStep } from '../OtpStep';
@@ -95,8 +95,8 @@ export const ForgotView = memo(function ForgotView({
 
     return (
       <form onSubmit={submit} noValidate className="space-y-4">
-        {error ? <Alert kind="error">{error.message}</Alert> : null}
-        {challenge.sendError ? <Alert kind="error">{challenge.sendError.message}</Alert> : null}
+        {error ? <AuthErrorBox model={error} /> : null}
+        {challenge.sendError ? <AuthErrorBox model={challenge.sendError} /> : null}
 
         <OtpStep
           id="forgot-otp"
@@ -156,7 +156,7 @@ export const ForgotView = memo(function ForgotView({
         }
       }}
     >
-      {challenge.sendError ? <Alert kind="error">{challenge.sendError.message}</Alert> : null}
+      {challenge.sendError ? <AuthErrorBox model={challenge.sendError} /> : null}
       <p className="text-[12.5px] leading-6 text-ink-500">
         شناسه‌ی حساب‌تان را وارد کنید تا کد بازیابی برایتان ارسال شود.
       </p>

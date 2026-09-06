@@ -1,21 +1,33 @@
 'use client';
 
 /**
- * ورودی کد یکبارمصرف ۵خانه — پرمیر در تعامل:
+ * ورودی کد یکبارمصرف شش‌خانه (سینک با AUTH_OTP_CODE_LENGTH=6 بک‌اند) —
+ * پرمیر در تعامل:
  *   • تایپ → پرش خودکار به خانه‌ی بعد؛ Backspace روی خانه‌ی خالی →
  *     برگشت و پاک‌کردن خانه‌ی قبلی؛
- *   • پیست در هر خانه → توزیع ارقام از همان خانه (متن «کد شما: ۱۲۳۴۵»
+ *   • پیست در هر خانه → توزیع ارقام از همان خانه (متن «کد شما: ۱۲۳۴۵۶»
  *     هم به‌خاطر sanitizeOtpInput تمیز می‌شود)؛
  *   • ارقام فارسی/عربی لاتین می‌شوند؛ ناوبری با ←→؛
  *   • ردیف خانه‌ها LTR (ارقام ذاتاً چپ‌به‌راست‌اند) ولی متن‌های اطراف RTL؛
  *   • autoComplete="one-time-code" روی اولین خانه برای autofill موبایل.
+ *
+ * ریسپانسیوِ شش سلول: به‌جای عرضِ ثابت (که در موبایل ۳۲۰px سرریز
+ * می‌کرد)، سلول‌ها flex-1 با min-w-0 می‌گیرند — یعنی هر سلول سهمِ
+ * برابرِ ردیف را با سقف ۵۲px و کفِ ~۴۰px برمی‌دارد؛ روی صفحه‌های بزرگ
+ * با max-w ردیف، جمع می‌مانند. هیچ حدسِ عددی در کار نیست.
  *
  * منطق خالص (sanitize/split) در lib/otp است و تست‌پوششی دارد.
  */
 
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { OTP_CODE_LENGTH, isOtpComplete, sanitizeOtpInput, splitOtp } from '@/lib/otp';
+import {
+  OTP_CODE_LENGTH,
+  OTP_CODE_LENGTH_FA,
+  isOtpComplete,
+  sanitizeOtpInput,
+  splitOtp,
+} from '@/lib/otp';
 
 export function OtpInput({
   id,
@@ -29,7 +41,7 @@ export function OtpInput({
   id: string;
   value: string;
   onChange: (value: string) => void;
-  /** وقتی هر ۵ رقم کامل شد (برای سابمیت خودکار) */
+  /** وقتی هر ۶ رقم کامل شد (برای سابمیت خودکار) */
   onComplete?: (code: string) => void;
   invalid?: boolean;
   disabled?: boolean;
@@ -102,8 +114,11 @@ export function OtpInput({
     <div
       dir="ltr"
       role="group"
-      aria-label="کد یکبارمصرف پنج‌رقمی"
-      className="flex justify-center gap-2.5 sm:gap-3"
+      aria-label={`کد یکبارمصرف ${OTP_CODE_LENGTH_FA}`}
+      className={cn(
+        'mx-auto flex w-full max-w-[340px] justify-stretch gap-2 sm:gap-2.5',
+        invalid && 'otp-shake',
+      )}
     >
       {cells.map((cell, i) => (
         <input
@@ -125,7 +140,7 @@ export function OtpInput({
           onPaste={(e) => handlePaste(i, e)}
           onFocus={(e) => e.target.select()}
           className={cn(
-            'h-14 w-12 rounded-xl border bg-ink-50/60 text-center text-[22px] font-extrabold tabular-nums text-ink-900 sm:h-[60px] sm:w-[52px]',
+            'h-14 min-w-0 flex-1 rounded-xl border bg-ink-50/60 text-center text-[20px] font-extrabold tabular-nums text-ink-900 sm:h-[60px] sm:text-[22px]',
             'caret-brand-500 outline-none transition-all duration-150 focus:bg-white focus:ring-4',
             invalid
               ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-500/15'

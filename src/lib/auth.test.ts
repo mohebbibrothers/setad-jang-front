@@ -111,8 +111,8 @@ describe('forgotPasswordConfirm — بدون صدور توکن', () => {
 });
 
 describe('ثابت طول کد', () => {
-  it('OTP_CODE_LENGTH با بک‌اند یکی است (۵)', () => {
-    expect(OTP_CODE_LENGTH).toBe(5);
+  it('OTP_CODE_LENGTH با بک‌اند یکی است (۶ — AUTH_OTP_CODE_LENGTH)', () => {
+    expect(OTP_CODE_LENGTH).toBe(6);
   });
 });
 

@@ -1,22 +1,30 @@
 /**
  * ابزارهای خالصِ ورودی کد یکبارمصرف — بدون DOM، کاملاً تست‌پذیر.
  *
- * قرارداد بک‌اند (otp.py):
- *   طول کد = ۵ رقم، TTL = ۳۰۰ ثانیه، حداکثر ۵ تلاش اشتباه،
- *   cooldown ارسال مجدد = ۶۰ ثانیه.
+ * قرارداد بک‌اند (apps/authentication/otp.py):
+ *   طول کد = ۶ رقم (AUTH_OTP_CODE_LENGTH)، TTL = ۳۰۰ ثانیه
+ *   (AUTH_OTP_TTL_SECONDS)، حداکثر ۵ تلاش اشتباه
+ *   (AUTH_OTP_MAX_ATTEMPTS)، cooldown ارسال مجدد = ۶۰ ثانیه
+ *   (AUTH_OTP_COOLDOWN_SECONDS).
+ *
+ *   این مقادیر از روی خودِ فایل خوانده شده‌اند؛ اگر بک‌اند تنظیمات را
+ *   عوض کند، همین‌جا باید به‌روز شود (تست‌ها آن را قفل می‌کنند).
  */
 
 import { toLatinDigits } from './auth-identifier';
 
-export const OTP_CODE_LENGTH = 5;
+export const OTP_CODE_LENGTH = 6;
 export const OTP_TTL_SECONDS = 5 * 60;
 export const OTP_MAX_ATTEMPTS = 5;
 export const OTP_RESEND_COOLDOWN_SECONDS = 60;
 
+/** برچسب فارسیِ طول کد — برای جمله‌های «کد شش‌رقمی…» بدون هاردکد پراکنده. */
+export const OTP_CODE_LENGTH_FA = 'شش‌رقمی';
+
 /**
  * هر ورودیِ کاربر (تایپ/پیست، ارقام فارسی یا لاتین) → رشته‌ی تمیزِ
  * فقط‌رقمی با سقف طولِ کد. حرف/فاصله/انتهای خط همه حذف می‌شوند تا
- * پیستِ «کد شما: ۱۲۳۴۵» هم بی‌دردسر کار کند.
+ * پیستِ «کد شما: ۱۲۳۴۵۶» هم بی‌دردسر کار کند.
  */
 export function sanitizeOtpInput(raw: string, length: number = OTP_CODE_LENGTH): string {
   return toLatinDigits(raw).replace(/\D/g, '').slice(0, length);

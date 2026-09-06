@@ -55,11 +55,33 @@ describe('coerceAuthError', () => {
   it('400 با خطای فیلد → به فیلد مربوط نسبت داده می‌شود', () => {
     const model = coerceAuthError(
       new ApiError('داده‌های ارسالی معتبر نیستند.', 400, {
-        password: ['رمز عبور باید حداقل ۸ کاراکتر باشد.'],
+        password: ['رمز عبور باید حداقل 10 نویسه باشد.'],
       }),
     );
-    expect(model.fieldErrors.password).toBe('رمز عبور باید حداقل ۸ کاراکتر باشد.');
-    expect(model.message).toBe('رمز عبور باید حداقل ۸ کاراکتر باشد.');
+    expect(model.fieldErrors.password).toBe('رمز عبور باید حداقل 10 نویسه باشد.');
+    expect(model.message).toBe('رمز عبور باید حداقل 10 نویسه باشد.');
+  });
+
+  it('400 با مخلوطِ پیام‌های انگلیسی+فارسی → فارسی‌ترجیح انتخاب می‌شود', () => {
+    // واقع‌گرایی: validate_password جنگو پیامِ MinLength استانداردش را
+    // گاهی انگلیسی بازمی‌گرداند کنار پیامِ فارسیِ validator سفارشی؛
+    // کاربر باید فارسیِ دقیق ببیند — نه متنِ نخوانا.
+    const model = coerceAuthError(
+      new ApiError('داده‌های ارسالی معتبر نیستند.', 400, {
+        password: [
+          'This password is too short. It must contain at least 10 characters.',
+          'رمز عبور باید حداقل 10 نویسه باشد.',
+        ],
+      }),
+    );
+    expect(model.fieldErrors.password).toBe('رمز عبور باید حداقل 10 نویسه باشد.');
+  });
+
+  it('400 فقط با پیامِ انگلیسی → همان (هرگز پیامِ جعلی نمی‌سازد)', () => {
+    const model = coerceAuthError(
+      new ApiError('خطا', 400, { password: ['This password is too common.'] }),
+    );
+    expect(model.fieldErrors.password).toBe('This password is too common.');
   });
 
   it('status=0 → kind=network با پیام آفلاین', () => {

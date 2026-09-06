@@ -55,11 +55,18 @@ import type { AuthUser, AuthSession, SessionsPage } from '@/lib/auth';
 const ME: AuthUser = {
   id: 7,
   email: 'user@example.com',
+  phone_number: '+989120000000',
+  primary_identifier: 'phone',
   first_name: 'علی',
   last_name: 'رضایی',
   full_name: 'علی رضایی',
   role: 'user',
   is_email_verified: true,
+  is_phone_verified: true,
+  identifiers: [
+    { kind: 'email', value: 'user@example.com', is_primary: false, is_verified: true },
+    { kind: 'phone', value: '+989120000000', is_primary: true, is_verified: true },
+  ],
   date_joined: '2023-05-10T10:00:00Z',
   profile: {
     phone_number: '+989120000000',
@@ -234,6 +241,44 @@ describe('ویرایش هویتی — PATCHِ تدریجی دقیق', () => {
 });
 
 describe('شناسه‌های ورود', () => {
+  it('نشان «شناسه اصلی» فقط روی کانالِ primary می‌نشیند و هر دو کانال تأییدشده‌اند', async () => {
+    login();
+    render(<ProfileApp />);
+    await waitFor(() => expect(screen.getByText('علی رضایی')).toBeTruthy());
+    switchTab('شناسه‌ها');
+
+    await waitFor(() => expect(screen.getByText('شناسه اصلی')).toBeTruthy());
+    // کوئری‌ها محدود به سکشن شناسه‌ها (برچسب «تأیید شده» جاهای دیگر هم هست)
+    const sectionEl = screen.getByRole('heading', { name: 'شناسه‌های ورود' }).closest('section');
+    const inside = within(sectionEl as HTMLElement);
+    // فقط یک نشانِ طلایی — روی موبایل (primary)
+    expect(inside.getAllByText('شناسه اصلی')).toHaveLength(1);
+    expect(inside.getAllByText('تأیید شده')).toHaveLength(2);
+    // روی کانالِ primary دکمه‌ی «تنظیم…» وجود ندارد؛ فقط روی ایمیل (غیراصلیِ تأییدشده)
+    expect(inside.getAllByRole('button', { name: /تنظیم به‌عنوان شناسه‌ی اصلی/ })).toHaveLength(1);
+  });
+
+  it('کانالِ تأییدنشده «تأیید نشده» را نشان می‌دهد و CTA تأیید ارائه می‌کند', async () => {
+    const unverifiedPhone: AuthUser = {
+      ...ME,
+      is_phone_verified: false,
+      primary_identifier: 'email',
+      identifiers: [
+        { kind: 'email', value: 'user@example.com', is_primary: true, is_verified: true },
+        { kind: 'phone', value: '+989120000000', is_primary: false, is_verified: false },
+      ],
+    };
+    setTokens({ access: 'a', refresh: 'r', persist: true });
+    setCachedUser(unverifiedPhone);
+    getMeMock.mockResolvedValue(unverifiedPhone);
+    render(<ProfileApp />);
+    await waitFor(() => expect(screen.getByText('علی رضایی')).toBeTruthy());
+    switchTab('شناسه‌ها');
+
+    await waitFor(() => expect(screen.getByText('تأیید نشده')).toBeTruthy());
+    expect(screen.getByRole('button', { name: 'تأیید شماره موبایل' })).toBeTruthy();
+  });
+
   it('تنظیم شناسه‌ی اصلی: بدنه‌ی قراردادی identifier_kind می‌فرستد و کش را سینک می‌کند', async () => {
     login();
     identifierMakePrimaryMock.mockResolvedValue(ME);
@@ -251,7 +296,12 @@ describe('شناسه‌های ورود', () => {
   });
 
   it('افزودن ایمیلِ غایب: درخواست کد → تأیید → سینکِ UserMe', async () => {
-    const noEmail: AuthUser = { ...ME, email: null, is_email_verified: false };
+    const noEmail: AuthUser = {
+      ...ME,
+      email: null,
+      is_email_verified: false,
+      identifiers: [{ kind: 'phone', value: '+989120000000', is_primary: true, is_verified: true }],
+    };
     setTokens({ access: 'a', refresh: 'r', persist: true });
     setCachedUser(noEmail);
     getMeMock.mockResolvedValue(noEmail);
@@ -269,13 +319,13 @@ describe('شناسه‌های ورود', () => {
 
     await waitFor(() => expect(identifierAddRequestMock).toHaveBeenCalledWith('new@example.com'));
 
-    const cells = screen.getAllByRole('textbox', { name: /رقم \d از 5/ });
-    fireEvent.change(cells[0], { target: { value: '12345' } });
+    const cells = screen.getAllByRole('textbox', { name: /رقم \d از 6/ });
+    fireEvent.change(cells[0], { target: { value: '123456' } });
 
     await waitFor(() =>
       expect(identifierAddVerifyMock).toHaveBeenCalledWith({
         identifier: 'new@example.com',
-        code: '12345',
+        code: '123456',
       }),
     );
     await waitFor(() =>
