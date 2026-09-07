@@ -122,7 +122,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
             />
             <div
               aria-hidden="true"
-              className="from-ink-950/95 via-ink-950/40 to-ink-950/10 absolute inset-0 bg-gradient-to-t"
+              className="absolute inset-0 bg-gradient-to-t from-ink-950/95 via-ink-950/40 to-ink-950/10"
             />
           </div>
 
@@ -196,7 +196,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                     {formatPersianNumber(campaign.purchased_shares ?? 0)} سهم از{' '}
                     {formatPersianNumber(campaign.total_shares ?? 0)} تأمین شد
                   </span>
-                  <span className="text-mint-300 text-[16px] font-black tabular-nums">
+                  <span className="text-[16px] font-black tabular-nums text-mint-300">
                     ٪{formatPersianNumber(pct)}
                   </span>
                 </div>
@@ -209,7 +209,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </div>
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-2 text-[11.5px] font-extrabold text-white ring-1 ring-white/15 backdrop-blur-sm">
-                  <Users className="text-mint-300 h-3.5 w-3.5" aria-hidden="true" />
+                  <Users className="h-3.5 w-3.5 text-mint-300" aria-hidden="true" />
                   {formatPersianNumber(campaign.participant_count ?? 0)} مشارکت‌کننده
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-2 text-[11.5px] font-extrabold tabular-nums text-white ring-1 ring-white/15 backdrop-blur-sm">
@@ -249,10 +249,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                   className="rounded-2xl border border-ink-100 bg-ink-50/60 px-3.5 py-3"
                 >
                   <div className="text-[10.5px] font-bold text-ink-400">{k.label}</div>
-                  <div
-                    className="mt-1 truncate text-[13.5px] font-extrabold tabular-nums text-ink-900"
-                    title={k.value}
-                  >
+                  <div className="mt-1 break-words text-[12.5px] font-extrabold tabular-nums leading-6 text-ink-900 sm:text-[13.5px]">
                     {k.value}
                   </div>
                 </div>
@@ -336,7 +333,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
             {/* دفترِ شفافیت */}
             {transparency ? (
               <div
-                className="border-mint-200 overflow-hidden rounded-3xl border bg-gradient-to-b from-mint-50/70 to-white shadow-[0_2px_10px_-6px_rgba(13,128,116,.12)]"
+                className="overflow-hidden rounded-3xl border border-mint-200 bg-gradient-to-b from-mint-50/70 to-white shadow-[0_2px_10px_-6px_rgba(13,128,116,.12)]"
                 aria-labelledby="transparency-h"
               >
                 <div className="flex items-center gap-2 border-b border-mint-100 bg-mint-50/80 px-4 py-3">
@@ -376,8 +373,8 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                     </div>
                   )}
                   <div className="flex items-center justify-between rounded-xl bg-mint-50 px-2.5 py-2 ring-1 ring-mint-100">
-                    <dt className="text-mint-800 font-extrabold">جذبِ خالص</dt>
-                    <dd className="text-mint-800 text-[13px] font-extrabold tabular-nums">
+                    <dt className="font-extrabold text-mint-800">جذبِ خالص</dt>
+                    <dd className="text-[13px] font-extrabold tabular-nums text-mint-800">
                       {formatTomanFull(transparency.net_raised_amount)}
                     </dd>
                   </div>
@@ -414,7 +411,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                     </div>
                   </div>
                 </dl>
-                <p className="text-mint-800/90 border-t border-mint-100 bg-mint-50/50 px-4 py-2.5 text-[10px] font-medium leading-5">
+                <p className="border-t border-mint-100 bg-mint-50/50 px-4 py-2.5 text-[10px] font-medium leading-5 text-mint-800/90">
                   {transparency.public_note ||
                     'این گزارش عمومی، بدون نمایش اطلاعات خصوصی مشارکت‌کنندگان تولید شده است.'}
                 </p>

@@ -4,7 +4,7 @@ import { Landmark } from 'lucide-react';
 import { useState } from 'react';
 
 /**
- * لوگوی دایره‌ایِ مددکار در نوارِ اسپانسرهای حبِ /madadkar.
+ * لوگوی مددکار — کوچک (پیش‌فرض: چیپ‌های فشرده) و بزرگ (کارت‌های سالن اعتماد).
  *
  * چرا کامپوننتِ کلاینت؟ صفحهٔ حب یک Server Component است و پراپ‌های تابعی
  * (مثل onError) در پیلودِ RSC سریالایز نمی‌شوند — پرеренدرِ بیلد در CI
@@ -13,10 +13,30 @@ import { useState } from 'react';
  * مدیریتِ خطا این‌جا داخلی است: اگر تصویر لود نشد، آیکونِ فالبک جایگزین می‌شود
  * (به‌جای حلقهٔ خالیِ نامفهوم).
  */
-export function SponsorLogo({ src }: { src: string | null | undefined }) {
+const SIZES = {
+  sm: {
+    box: 'h-7 w-7 rounded-full',
+    icon: 'h-3.5 w-3.5',
+  },
+  lg: {
+    box: 'h-11 w-11 rounded-xl',
+    icon: 'h-5 w-5',
+  },
+} as const;
+
+export function SponsorLogo({
+  src,
+  size = 'sm',
+}: {
+  src: string | null | undefined;
+  size?: keyof typeof SIZES;
+}) {
   const [failed, setFailed] = useState(false);
+  const s = SIZES[size] ?? SIZES.sm;
   return (
-    <span className="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-ink-50 ring-1 ring-ink-100">
+    <span
+      className={`relative flex items-center justify-center overflow-hidden bg-ink-50 ring-1 ring-ink-100 ${s.box}`}
+    >
       {src && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -27,7 +47,7 @@ export function SponsorLogo({ src }: { src: string | null | undefined }) {
           onError={() => setFailed(true)}
         />
       ) : (
-        <Landmark className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
+        <Landmark className={`${s.icon} text-ink-400`} aria-hidden="true" />
       )}
     </span>
   );

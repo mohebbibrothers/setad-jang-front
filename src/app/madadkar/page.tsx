@@ -4,10 +4,13 @@ import {
   ChevronLeft,
   HandHeart,
   HeartHandshake,
+  Landmark,
   ReceiptText,
+  Scale,
   ShieldCheck,
   Sparkles,
   Timer,
+  Users,
 } from 'lucide-react';
 import { fetchCampaignsList, fetchSponsors } from '@/lib/madadkar';
 import { HubGrid } from '@/components/madadkar/HubGrid';
@@ -73,45 +76,59 @@ export default async function MadadkarHubPage() {
               <HeartHandshake className="h-4 w-4 text-mint-400" aria-hidden="true" />
               اپِ «مدد به حرکت» — پشتیبانیِ مالیِ جمعی
             </p>
-            <h1 className="mt-5 text-3xl font-black leading-tight text-white md:text-5xl">
-              کنارِ هر دستِ خالی،
-              <span className="from-mint-300 block bg-gradient-to-l to-mint-500 bg-clip-text text-transparent">
-                صدها دستِ یاری‌رسان
+            <h1 className="mt-5 text-[28px] font-black leading-[1.35] text-white sm:text-4xl md:text-[46px] md:leading-[1.35]">
+              هر سهمِ تو،
+              <span className="block bg-gradient-to-l from-mint-200 via-mint-300 to-mint-500 bg-clip-text text-transparent">
+                یک پیامِ امید به میدان
               </span>
             </h1>
-            <p className="mt-4 max-w-2xl text-[14px] leading-8 text-white/75 md:text-[15px]">
-              هر سهمی که می‌خری، یک قدمِ مستقیم به میدان است: پرداختِ امن از درگاهِ رسمی، رسیدِ
-              دیجیتالِ قابلِ استعلام و دفتریِ شفاف که مسیرِ هر تومان را نشانت می‌دهد.
+            <p className="mt-4 max-w-2xl text-[13.5px] leading-8 text-white/75 md:text-[15px]">
+              سهم بگیر، از درگاهِ رسمی و امن پرداخت کن، رسیدِ دیجیتالت را لحظه‌ای بگیر — و مسیرِ هر
+              تومان را تا رسیدن به میدان، در دفترِ شفافیتِ عمومی دنبال کن.
             </p>
             {/* آمارِ زنده */}
-            <div className="mt-8 flex flex-wrap items-stretch gap-3">
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 backdrop-blur-sm">
-                <div className="text-mint-300 text-2xl font-black tabular-nums md:text-3xl">
-                  {formatPersianNumber(activeCount)}
+            <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {[
+                {
+                  value: formatPersianNumber(activeCount),
+                  label: 'حرکتِ در حال جمع‌آوری',
+                  icon: Sparkles,
+                },
+                {
+                  /* صداقتِ مالی: حتی وقتی هنوز چیزی تأمین نشده، عددِ صفرِ
+                     واقعی را نشان می‌دهیم — خطِ تیره کاربر را به شک می‌اندازد. */
+                  value: `${formatPersianNumber(totalRaised)} تومان`,
+                  label: 'تأمین‌شده تا این لحظه',
+                  icon: HeartHandshake,
+                },
+                {
+                  value: formatPersianNumber(totalParticipants),
+                  label: 'مشارکتِ ثبت‌شده',
+                  icon: Users,
+                },
+              ].map((s) => (
+                <div
+                  key={s.label}
+                  className="flex items-center gap-3.5 rounded-2xl border border-white/10 bg-white/[.05] px-4 py-4 backdrop-blur-sm sm:flex-col sm:items-start sm:gap-0 sm:px-5"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint-500/15 text-mint-300 ring-1 ring-mint-500/25 sm:hidden">
+                    <s.icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate text-[22px] font-black tabular-nums text-mint-300 md:text-[26px]">
+                      {s.value}
+                    </div>
+                    <div className="mt-0.5 text-[12px] font-bold text-white/70 sm:mt-1">
+                      {s.label}
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-1 text-[12px] font-bold text-white/70">
-                  حرکتِ در حال جمع‌آوری
-                </div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 backdrop-blur-sm">
-                <div className="text-mint-300 text-2xl font-black tabular-nums md:text-3xl">
-                  {totalRaised > 0 ? `${formatPersianNumber(totalRaised)} تومان` : '—'}
-                </div>
-                <div className="mt-1 text-[12px] font-bold text-white/70">
-                  تأمین‌شده تا این لحظه
-                </div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 backdrop-blur-sm">
-                <div className="text-mint-300 text-2xl font-black tabular-nums md:text-3xl">
-                  {formatPersianNumber(totalParticipants)}
-                </div>
-                <div className="mt-1 text-[12px] font-bold text-white/70">مشارکتِ ثبت‌شده</div>
-              </div>
+              ))}
             </div>
             <div className="mt-8">
               <a
                 href="#campaigns"
-                className="text-ink-950 shadow-mint-900/40 inline-flex items-center gap-2 rounded-2xl bg-mint-500 px-6 py-3.5 text-[14px] font-extrabold shadow-lg transition-all hover:bg-mint-400 active:scale-[.98]"
+                className="inline-flex items-center gap-2 rounded-2xl bg-mint-500 px-6 py-3.5 text-[14px] font-extrabold text-ink-950 shadow-lg shadow-mint-900/40 transition-all hover:bg-mint-400 active:scale-[.98]"
               >
                 مشاهدهٔ حرکت‌ها
                 <ChevronLeft className="h-4 w-4" aria-hidden="true" />
@@ -186,68 +203,160 @@ export default async function MadadkarHubPage() {
         </div>
       </section>
 
-      {/* ══════════ نوارِ مددکاران ══════════ */}
-      {sponsors.length > 0 && (
-        <section className="border-y border-ink-100 bg-ink-50/50 py-10">
-          <div className="container-edge">
-            <p className="mb-5 flex items-center gap-2 text-[12px] font-extrabold text-ink-500">
-              <BadgeCheck className="h-4 w-4 text-mint-600" aria-hidden="true" />
-              مددکارانِ رسمیِ مجموعه — حامیِ هر حرکت، یک نامِ مسئول
+      {/* ══════════ سالنِ اعتماد — مددکاران + تضمین‌ها + دعوتِ پایانی ══════════ */}
+      <section className="relative overflow-hidden bg-ink-950 pb-16 pt-14 text-white md:pb-20 md:pt-16">
+        {/* بافت و هاله‌ها */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.5]"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(-45deg, rgba(255,255,255,.03) 0 2px, transparent 2px 16px)',
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-32 top-0 h-80 w-80 rounded-full bg-brand-500/15 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-24 bottom-10 h-72 w-72 rounded-full bg-mint-500/15 blur-3xl"
+        />
+
+        <div className="container-edge relative space-y-12 md:space-y-14">
+          {/* تیترِ بخش */}
+          <div className="max-w-2xl">
+            <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[11.5px] font-bold text-white/80 backdrop-blur-sm">
+              <Scale className="h-4 w-4 text-mint-400" aria-hidden="true" />
+              اعتماد، پیش از هر تومان
             </p>
-            <div className="flex flex-wrap items-center gap-2.5">
-              {sponsors.map((sp) => {
-                const logo = absoluteMediaUrl(sp.logo);
-                return (
-                  <span
-                    key={sp.id}
-                    className="inline-flex items-center gap-2 rounded-full border border-ink-100 bg-white py-1.5 pl-4 pr-1.5 shadow-[0_2px_8px_-4px_rgba(15,20,32,.08)]"
-                  >
-                    <SponsorLogo src={logo} />
-                    <span className="text-[12.5px] font-extrabold text-ink-800">{sp.name}</span>
-                  </span>
-                );
-              })}
+            <h2 className="mt-4 text-[22px] font-black leading-9 text-white md:text-[28px] md:leading-[1.6]">
+              یاریِ تو این‌جا
+              <span className="mx-1.5 bg-gradient-to-l from-mint-200 to-mint-400 bg-clip-text text-transparent">
+                شفاف، امن و قابلِ استعلام
+              </span>
+              به میدان می‌رسد
+            </h2>
+            <p className="mt-3 text-[12.5px] leading-7 text-white/65 md:text-[13.5px] md:leading-8">
+              سه قانونِ شکس‌ناپذیرِ این سالن: پولِ تو فقط روی صفحهٔ بانکی ثبت می‌شود، سهمت تا لحظهٔ
+              پرداخت محفوظ است، و برای هر تومان یک ردِ دیجیتالِ عمومی هست.
+            </p>
+          </div>
+
+          {/* تضمین‌های سه‌گانه */}
+          <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+            {[
+              {
+                icon: ShieldCheck,
+                ring: 'ring-mint-500/25 bg-mint-500/12 text-mint-300',
+                title: 'پرداختِ امن',
+                text: 'تراکنش‌ها فقط روی صفحهٔ رسمیِ درگاه ثبت می‌شوند؛ اطلاعاتِ کارت هرگز به ما نمی‌رسد.',
+              },
+              {
+                icon: Timer,
+                ring: 'ring-amber-400/25 bg-amber-400/12 text-amber-300',
+                title: 'رزروِ منصفِ ۱۵ دقیقه‌ای',
+                text: 'سهمت تا پایانِ پرداخت محفوظ است؛ اگر پرداخت تمام نشود، خودکار و بی‌هزینه آزاد می‌شود.',
+              },
+              {
+                icon: ReceiptText,
+                ring: 'ring-brand-300/25 bg-brand-400/12 text-brand-200',
+                title: 'رسید و دفترِ شفافیت',
+                text: 'هر پرداختِ موفق، رسیدِ دیجیتالِ قابلِ استعلام دارد و اثرش در دفترِ شفافیت ثبت می‌شود.',
+              },
+            ].map((t) => (
+              <div
+                key={t.title}
+                className="group flex items-start gap-3.5 rounded-3xl border border-white/10 bg-white/[.05] p-4 backdrop-blur-sm transition-colors duration-300 hover:border-mint-500/25 hover:bg-white/[.08] sm:block sm:p-5"
+              >
+                <span
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1 ${t.ring} transition-transform duration-300 group-hover:scale-105`}
+                >
+                  <t.icon className="h-[22px] w-[22px]" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[14.5px] font-extrabold text-white">{t.title}</p>
+                  <p className="mt-1.5 text-[11.5px] leading-6 text-white/65 sm:mt-2 sm:text-[12px] sm:leading-7">
+                    {t.text}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* مددکارانِ رسمی */}
+          {sponsors.length > 0 && (
+            <div>
+              <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <p className="flex items-center gap-2 text-[13px] font-extrabold text-white/85">
+                    <Landmark className="h-4 w-4 text-mint-400" aria-hidden="true" />
+                    مددکارانِ رسمیِ مجموعه
+                  </p>
+                  <p className="mt-1.5 text-[11.5px] font-medium leading-6 text-white/55">
+                    حامیِ هر حرکت، یک نامِ رسمی و مسئول است؛ نه یک صفحهٔ بی‌نام.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {sponsors.map((sp) => {
+                  const logo = absoluteMediaUrl(sp.logo);
+                  return (
+                    <div
+                      key={sp.id}
+                      className="flex items-center gap-3.5 rounded-2xl border border-white/10 bg-white/[.05] p-3.5 backdrop-blur-sm transition-colors duration-300 hover:border-mint-500/25 hover:bg-white/[.08] sm:p-4"
+                    >
+                      <span className="relative flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-white/95 ring-1 ring-white/20">
+                        <SponsorLogo src={logo} size="lg" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-1.5 text-[13.5px] font-extrabold text-white">
+                          <span className="truncate">{sp.name}</span>
+                          <BadgeCheck
+                            className="h-4 w-4 shrink-0 text-mint-400"
+                            aria-hidden="true"
+                          />
+                        </p>
+                        <p className="mt-0.5 text-[10.5px] font-bold text-white/55">
+                          حامیِ رسمی و مسئولِ حرکت‌ها
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* دعوتِ پایانی */}
+          <div className="relative overflow-hidden rounded-[28px] border border-mint-500/25 bg-gradient-to-l from-mint-500/90 via-mint-600 to-brand-700 p-6 shadow-[0_30px_60px_-30px_rgba(13,128,116,.55)] sm:p-8">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 opacity-25"
+              style={{
+                backgroundImage:
+                  'repeating-linear-gradient(-45deg, rgba(255,255,255,.12) 0 2px, transparent 2px 14px)',
+              }}
+            />
+            <div className="relative flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-[17px] font-black text-white sm:text-[20px]">
+                  دستِ تو هنوز قصه را تمام نکرده
+                </p>
+                <p className="mt-1.5 max-w-xl text-[12px] font-medium leading-7 text-white/85 sm:text-[13px]">
+                  اولین سهم را همین حالا ثبت کن؛ همین امروز صفرِ «تأمین‌شده» با دستِ تو جابه‌جا
+                  می‌شود و رسیدت برای همیشه در دفترِ شفافیت می‌ماند.
+                </p>
+              </div>
+              <a
+                href="#campaigns"
+                className="inline-flex h-12 shrink-0 items-center gap-2 rounded-2xl bg-white px-6 text-[13.5px] font-extrabold text-ink-900 shadow-[0_14px_30px_-12px_rgba(0,0,0,.45)] transition-all hover:bg-mint-50 active:scale-[.98]"
+              >
+                مشاهدهٔ حرکت‌ها
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              </a>
             </div>
           </div>
-        </section>
-      )}
-
-      {/* ══════════ نوارِ اعتماد ══════════ */}
-      <section className="section-y">
-        <div className="container-edge grid gap-3 sm:grid-cols-3">
-          {[
-            {
-              icon: ShieldCheck,
-              tone: 'text-brand-600 bg-brand-500/10',
-              title: 'پرداختِ امن',
-              text: 'تراکنش‌ها فقط روی صفحهٔ رسمیِ درگاه ثبت می‌شوند؛ اطلاعاتِ کارت هرگز به ما نمی‌رسد.',
-            },
-            {
-              icon: Timer,
-              tone: 'text-amber-600 bg-amber-500/10',
-              title: 'رزروِ منصفِ ۱۵ دقیقه‌ای',
-              text: 'سهم شما تا پایانِ پرداخت محفوظ است؛ اگر پرداخت نشود خودکار و بی‌هزینه آزاد می‌گردد.',
-            },
-            {
-              icon: ReceiptText,
-              tone: 'text-mint-700 bg-mint-500/10',
-              title: 'رسیدِ قابلِ استعلام',
-              text: 'هر پرداختِ موفق رسیدِ دیجیتالِ رمزنگاری‌شده دارد که هویتش عموماً قابلِ بررسی است.',
-            },
-          ].map((t) => (
-            <div
-              key={t.title}
-              className="rounded-3xl border border-ink-100 bg-white p-5 shadow-[0_2px_10px_-6px_rgba(15,20,32,.06)]"
-            >
-              <span
-                className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl ${t.tone}`}
-              >
-                <t.icon className="h-[22px] w-[22px]" aria-hidden="true" />
-              </span>
-              <p className="mt-3 text-[14.5px] font-extrabold text-ink-900">{t.title}</p>
-              <p className="mt-1.5 text-[12px] leading-7 text-ink-500">{t.text}</p>
-            </div>
-          ))}
         </div>
       </section>
     </main>

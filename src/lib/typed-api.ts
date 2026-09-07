@@ -38,6 +38,7 @@
  */
 
 import { apiFetch, safeApiFetch, type FetchOptions } from './api';
+import { canonicalApiLookup } from './utils';
 import type { paths } from '@/types/api';
 
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -138,8 +139,10 @@ const API_PREFIX = '/api/v1';
  *   buildPath('/api/v1/r4j/criminals/{lookup}/', { lookup: 'ali-x' })
  *     → '/r4j/criminals/ali-x/'
  *
- * هر مقدار با `encodeURIComponent` امن‌سازی می‌شود تا اسلاگ فارسی یا حاوی
- * کاراکتر ویژه، مسیر را نشکند.
+ * هر مقدار با `canonicalApiLookup` امن‌سازی می‌شود — یعنی هم اسلاگ فارسی
+ * و کاراکتر ویژه مسیر را نمی‌شکند، هم اگر نوعِ ISR ورودی را از قبل
+ * percent-encoded تحویل داده باشد، double-encoding رخ نمی‌دهد
+ * (نگهبانِ باگِ ۴۰۴ِ اسلاگِ فارسی — سند کامل در lib/utils).
  */
 export function buildPath(template: string, params?: Record<string, unknown>): string {
   const withParams = template.replace(/\{([^}]+)\}/g, (_match, key: string) => {
@@ -147,7 +150,7 @@ export function buildPath(template: string, params?: Record<string, unknown>): s
     if (value === undefined || value === null || value === '') {
       throw new Error(`پارامتر مسیر «${key}» برای ${template} داده نشده است`);
     }
-    return encodeURIComponent(String(value));
+    return canonicalApiLookup(String(value));
   });
 
   return withParams.startsWith(API_PREFIX) ? withParams.slice(API_PREFIX.length) : withParams;

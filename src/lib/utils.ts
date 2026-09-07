@@ -32,6 +32,39 @@ export function truncate(text: string, maxLen = 120): string {
 }
 
 /**
+ * نرمال‌سازیِ lookup برای استفاده در API path — سند و نگهبانِ باگِ
+ * double-encoding در پروداکشن (Next.js 15.5.x, مسیرهای ISR با پارامِ فارسی):
+ *
+ *   در صفحه‌های RSC با `revalidate`، وقتی کاربر روی مسیرِ
+ *   `/madadkar/تست` می‌زند، ممکن است `params.slug` هنوز percent-encoded
+ *   («%D8%AA%D8%B3%D8%AA») تحویل شود؛ در حالی که در route handler ها
+ *   همان مقدار دیکود‌شده («تست») می‌رسد. اگر روی مقدارِ انکدشده دوباره
+ *   `encodeURIComponent` بزنیم، «%» خودش انکد می‌شود («%25D8…») و
+ *   لایه‌های میانی (Nginx → ASGI → Django) فقط یک لایه decode می‌کنند،
+ *   پس بک‌اند رشته‌ی هنوز-انکدشده را با اسلاگِ دیتابیس تطبیق نمی‌دهد و
+ *   پاسخ ۴۰۴ می‌شود — دقیقاً باگِ «صفحه‌ی جزئیات حرکت ۴۰۴ می‌دهد».
+ *
+ *   این تابع ورودی را در صورت نیاز یک‌بار decode و سپس دقیقاً یک‌بار
+ *   encode می‌کند؛ یعنی idempotent است و روی هر دو حالتِ ورودی
+ *   (خام/انکدشده) خروجیِ درست و یکسان می‌دهد.
+ *
+ * مثال:
+ *   canonicalApiLookup('تست')            → '%D8%AA%D8%B3%D8%AA'
+ *   canonicalApiLookup('%D8%AA%D8%B3%D8%AA') → '%D8%AA%D8%B3%D8%AA'
+ */
+export function canonicalApiLookup(lookup: string): string {
+  let decoded = lookup;
+  if (lookup.includes('%')) {
+    try {
+      decoded = decodeURIComponent(lookup);
+    } catch {
+      decoded = lookup; // دنباله‌ی % ناقص — خام می‌گذریم و یک لایه encode
+    }
+  }
+  return encodeURIComponent(decoded);
+}
+
+/**
  * Normalise any backend-supplied media URL to an absolute one.
  *
  * Django's `ImageField.to_representation()` returns an absolute URL

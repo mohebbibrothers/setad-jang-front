@@ -163,25 +163,12 @@ export function fetchCriminalsPage(
 }
 
 /**
- * نرمال‌سازیِ lookup برای استفاده در API path — سندِ باگِ پروداکشن:
- *   paramsِ Next ممکن است (با اسلاگ‌های یونیکد/فارسی مثل «رضا-پهلوی») هنوز
- *   percent-encoded تحویل شود؛ encodeURIComponent روی یک رشته‌ای که از قبل
- *   انکد شده «double-encoding» می‌سازد و لایه‌های میانی (Nginx، ASGI،
- *   Django) فقط یک لایه decode می‌کنند → بک‌اند رشته‌ی هنوز-انکدشده را با
- *   اسلاگِ دیتابیس تطبیق نمی‌دهد و ۴۰۴ می‌گیریم.
- *   این تابع همیشه «دقیقاً یک لایه encode» تضمین می‌کند (idempotent).
+ * نگهبانِ باگِ double-encoding — منبعِ واحدِ حقیقت در `lib/utils.ts` است
+ * (همان‌جا سند کامل ریشه‌ی باگِ ISR آمده)؛ این re-export برای سازگاریِ
+ * importهای موجودِ همین ماژول نگه داشته شده است.
  */
-export function canonicalApiLookup(lookup: string): string {
-  let decoded = lookup;
-  if (lookup.includes('%')) {
-    try {
-      decoded = decodeURIComponent(lookup);
-    } catch {
-      decoded = lookup; // دنباله‌ی % ناقص — خام رد می‌کنیم و یک لایه encode
-    }
-  }
-  return encodeURIComponent(decoded);
-}
+import { canonicalApiLookup } from './utils';
+export { canonicalApiLookup };
 
 /** جزئیات یک مجرم — lookup می‌تواند slug یا id باشد (قراردادِ هیبریدیِ بک‌اند) */
 export function fetchCriminalDetail(lookup: string) {

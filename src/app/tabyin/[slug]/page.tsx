@@ -23,7 +23,7 @@ import {
   resolveContentKind,
   videoThumbnailGifUrl,
 } from '@/lib/media-meta';
-import { cn, formatPersianNumber } from '@/lib/utils';
+import { cn, canonicalApiLookup, formatPersianNumber } from '@/lib/utils';
 import { asText, normalizeTabyinAttachments } from '@/lib/tabyin-attachments';
 import { TabyinStage, type TabyinStageAttachment } from '@/components/tabyin/TabyinStage';
 
@@ -57,7 +57,8 @@ type TabyinContent = {
 export const revalidate = 180;
 
 async function fetchContent(slug: string) {
-  return safeApiFetch<TabyinContent>('/tabyin/contents/' + encodeURIComponent(slug) + '/', {
+  // canonicalApiLookup = نگهبانِ باگِ ۴۰۴ِ اسلاگ/شناسه‌ی یونیکد در ISR
+  return safeApiFetch<TabyinContent>('/tabyin/contents/' + canonicalApiLookup(slug) + '/', {
     revalidate: 180,
     tags: ['tabyin'],
   });

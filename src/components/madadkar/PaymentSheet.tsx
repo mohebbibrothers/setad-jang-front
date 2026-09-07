@@ -143,10 +143,12 @@ function Stepper({
   label,
   onClick,
   disabled,
+  className = '',
 }: {
   label: string;
   onClick: () => void;
   disabled?: boolean;
+  className?: string;
 }) {
   return (
     <button
@@ -154,7 +156,7 @@ function Stepper({
       onClick={onClick}
       disabled={disabled}
       aria-label={`تغییر تعداد سهم ${label}`}
-      className="inline-flex h-9 min-w-[40px] shrink-0 items-center justify-center rounded-full bg-white px-2.5 text-[12px] font-extrabold tabular-nums text-ink-700 ring-1 ring-ink-200 transition-all duration-150 hover:text-brand-700 hover:ring-brand-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+      className={`inline-flex h-10 min-w-[44px] shrink-0 items-center justify-center rounded-full bg-white px-3 text-[12px] font-extrabold tabular-nums text-ink-700 ring-1 ring-ink-200 transition-all duration-150 hover:text-brand-700 hover:ring-brand-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
     >
       {label}
     </button>
@@ -185,7 +187,7 @@ function GatewayBadge({ gateway }: { gateway: string }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-extrabold text-[#6B4A00]">پرداخت امن از طریق {gateway}</p>
-        <p className="mt-0.5 text-[11px] font-medium leading-5 text-[#8A6A1F]">
+        <p className="mt-1 text-[11px] font-medium leading-6 text-[#8A6A1F]">
           درگاهِ رسمی روی سکوی شاپرک؛ اطلاعاتِ کارت فقط در صفحهٔ بانکی ثبت می‌شود.
         </p>
       </div>
@@ -569,6 +571,11 @@ export function PaymentSheet({ open, onClose, campaign, gatewayName = 'zarinpal'
               transition={{ type: 'spring', stiffness: 320, damping: 28 }}
               className="relative flex max-h-[96vh] w-full max-w-[640px] flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_50px_100px_-25px_rgba(0,0,0,.55)] sm:max-h-[92vh] sm:rounded-[28px]"
             >
+              {/* دستگیرهٔ کشیدن — فقط موبایل (شیتِ پایین‌چسب) */}
+              <div className="flex justify-center pb-1 pt-2.5 sm:hidden" aria-hidden="true">
+                <span className="h-1.5 w-11 rounded-full bg-ink-200" />
+              </div>
+
               {/* ── سربرگ: ریلِ مراحل + بستن ─────────────────────────── */}
               <div className="relative flex shrink-0 items-center justify-between border-b border-ink-100 bg-white/95 px-4 py-3 sm:px-6">
                 <StepRail stage={stage} />
@@ -668,7 +675,7 @@ export function PaymentSheet({ open, onClose, campaign, gatewayName = 'zarinpal'
               </div>
 
               {/* ── بدنهٔ پیمایشی ─────────────────────────────────────── */}
-              <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+              <div className="flex-1 overflow-y-auto px-4 pb-5 pt-4 sm:px-6 sm:pb-6 sm:pt-5">
                 <AnimatePresence mode="wait" initial={false}>
                   {/* ════════════ ایستگاه ۱ — انتخاب سهم ════════════ */}
                   {stage === 'select' && (
@@ -768,7 +775,7 @@ export function PaymentSheet({ open, onClose, campaign, gatewayName = 'zarinpal'
                         <>
                           {/* انتخابگر سهم */}
                           <div className="rounded-2xl border border-ink-100 bg-gradient-to-b from-white to-brand-50/30 p-4 sm:p-5">
-                            <div className="mb-3 flex items-center justify-between gap-3">
+                            <div className="mb-3.5 flex items-center justify-between gap-3">
                               <span className="text-[13px] font-extrabold text-ink-700">
                                 تعداد سهم
                               </span>
@@ -782,17 +789,12 @@ export function PaymentSheet({ open, onClose, campaign, gatewayName = 'zarinpal'
                                 <span className="text-[11.5px] font-bold opacity-85">سهم</span>
                               </span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Stepper
-                                label="−۱۰"
-                                disabled={shareCount <= 1}
-                                onClick={() => setSafe(shareCount - 10)}
-                              />
-                              <Stepper
-                                label="−۱"
-                                disabled={shareCount <= 1}
-                                onClick={() => setSafe(shareCount - 1)}
-                              />
+
+                            {/* اسلایدر + استپرها — یک نمونه‌ی DOM با reorder
+                                سی‌اس‌اسی: روی موبایل اسلایدر تمام‌عرض و استپرها
+                                در سطرِ تنفسیِ بعد؛ روی sm+ همه در یک سطر دورِ اسلایدر.
+                                (بدونِ کنترلِ دوتایی — تست‌ها و a11y تمیز می‌مانند.) */}
+                            <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-3 sm:flex-nowrap sm:justify-start sm:gap-y-2">
                               <input
                                 type="range"
                                 min={1}
@@ -801,40 +803,60 @@ export function PaymentSheet({ open, onClose, campaign, gatewayName = 'zarinpal'
                                 value={shareCount}
                                 onChange={(e) => setSafe(+e.target.value)}
                                 aria-label="تعداد سهم"
-                                className="participate-range min-w-0 flex-1 accent-brand-600"
+                                className="participate-range order-first w-full accent-brand-600 sm:order-3 sm:w-auto sm:min-w-0 sm:flex-1"
                                 style={{
                                   background: (() => {
                                     const pct =
                                       ((shareCount - 1) / Math.max(1, remaining - 1)) * 100;
-                                    return `linear-gradient(to left, var(--brand-500, #0D8074) 0%, var(--brand-700, #085C54) ${pct}%, #EAEEF2 ${pct}%, #EAEEF2 100%)`;
+                                    return `linear-gradient(to left, var(--brand-500, #0D8074) 0%, var(--brand-700, #0F6F67) ${pct}%, #EAEEF2 ${pct}%, #EAEEF2 100%)`;
                                   })(),
                                 }}
+                              />
+                              <Stepper
+                                label="−۱۰"
+                                disabled={shareCount <= 1}
+                                onClick={() => setSafe(shareCount - 10)}
+                                className="order-2 sm:order-1"
+                              />
+                              <Stepper
+                                label="−۱"
+                                disabled={shareCount <= 1}
+                                onClick={() => setSafe(shareCount - 1)}
+                                className="order-3 sm:order-2"
+                              />
+                              <span
+                                className="order-4 h-5 w-px bg-ink-100 sm:hidden"
+                                aria-hidden="true"
                               />
                               <Stepper
                                 label="+۱"
                                 disabled={shareCount >= remaining}
                                 onClick={() => setSafe(shareCount + 1)}
+                                className="order-5 sm:order-4"
                               />
                               <Stepper
                                 label="+۱۰"
                                 disabled={shareCount >= remaining}
                                 onClick={() => setSafe(shareCount + 10)}
+                                className="order-6 sm:order-5"
                               />
                             </div>
-                            <div className="mt-2 flex justify-between px-1 text-[10.5px] font-bold tabular-nums text-ink-400">
+
+                            <div className="mt-2.5 flex justify-between px-0.5 text-[10.5px] font-bold tabular-nums text-ink-400">
                               {ticks.map((t) => (
                                 <button
                                   key={t}
                                   type="button"
                                   onClick={() => setSafe(t)}
-                                  className="transition-colors hover:text-brand-700"
+                                  className="px-1 py-0.5 transition-colors hover:text-brand-700"
                                 >
                                   {formatPersianNumber(t)}
                                 </button>
                               ))}
                             </div>
-                            <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
-                              <span className="ml-1 text-[11.5px] font-bold text-ink-500">
+
+                            <div className="mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-2">
+                              <span className="ml-1 basis-full text-[11.5px] font-bold text-ink-500 sm:basis-auto">
                                 انتخاب سریع:
                               </span>
                               {quickPicks.map((v, i) => {
@@ -888,25 +910,26 @@ export function PaymentSheet({ open, onClose, campaign, gatewayName = 'zarinpal'
                               معادل {formatPersianNumber(totalRial)} ریال
                             </div>
                             {shareOfCampaignPct > 0 && (
-                              <div className="mt-3 inline-flex items-center gap-1.5 border-t border-white/15 pt-3 text-[11.5px] font-medium opacity-90">
+                              <div className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 border-t border-white/15 pt-3 text-[11.5px] font-medium leading-6 opacity-90">
                                 <svg
                                   width="14"
                                   height="14"
                                   viewBox="0 0 24 24"
                                   fill="currentColor"
                                   aria-hidden="true"
+                                  className="shrink-0"
                                 >
                                   <path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 14.6 7 18.2l1.9-5.8L4 8.8h6.1z" />
                                 </svg>
-                                با این مشارکت{' '}
+                                <span>با این مشارکت</span>
                                 <strong className="font-extrabold">
                                   {shareOfCampaignPct < 0.1
                                     ? `کمتر از ٪${formatPersianNumber('0.1')}`
                                     : `٪${formatPersianNumber(
                                         shareOfCampaignPct.toFixed(shareOfCampaignPct < 1 ? 2 : 1),
                                       )}`}
-                                </strong>{' '}
-                                از این حرکت را شما تأمین می‌کنید.
+                                </strong>
+                                <span>از این حرکت را شما تأمین می‌کنید.</span>
                               </div>
                             )}
                           </div>
@@ -1272,7 +1295,7 @@ export function PaymentSheet({ open, onClose, campaign, gatewayName = 'zarinpal'
 
               {/* ── پابرگ — فقط ایستگاه‌های ۱ و ۲ ─────────────────────── */}
               {stage !== 'transfer' && (
-                <div className="flex shrink-0 items-center justify-between gap-3 border-t border-ink-100 bg-white px-4 py-3.5 sm:px-6">
+                <div className="flex shrink-0 items-center justify-between gap-3 border-t border-ink-100 bg-white px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3.5 sm:px-6 sm:pb-3.5">
                   {stage === 'select' ? (
                     <>
                       <button
@@ -1310,9 +1333,11 @@ export function PaymentSheet({ open, onClose, campaign, gatewayName = 'zarinpal'
                           type="button"
                           onClick={() => canContinue && setStage('review')}
                           disabled={!canContinue}
-                          className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-gradient-to-l from-mint-500 to-brand-700 text-[14px] font-extrabold text-white shadow-[0_10px_24px_-6px_rgba(13,128,116,.55)] transition-all hover:brightness-105 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-gradient-to-l from-mint-500 to-brand-700 px-3 text-[12.5px] font-extrabold text-white shadow-[0_10px_24px_-6px_rgba(13,128,116,.55)] transition-all hover:brightness-105 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:text-[14px]"
                         >
-                          <span>ادامه — {formatPersianNumber(totalToman)} تومان</span>
+                          <span className="truncate whitespace-nowrap">
+                            ادامه — {formatPersianNumber(totalToman)} تومان
+                          </span>
                           <svg
                             width="16"
                             height="16"
@@ -1384,11 +1409,15 @@ export function PaymentSheet({ open, onClose, campaign, gatewayName = 'zarinpal'
                         type="button"
                         onClick={onInitiate}
                         disabled={!canSubmit}
-                        className="relative inline-flex h-12 flex-1 items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-to-l from-[#F7B500] to-[#E09A00] text-[14px] font-extrabold text-[#5A3B00] shadow-[0_10px_24px_-6px_rgba(224,154,0,.55)] transition-all hover:brightness-105 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="relative inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-l from-[#F7B500] to-[#E09A00] px-3 text-[12px] font-extrabold text-[#5A3B00] shadow-[0_10px_24px_-6px_rgba(224,154,0,.55)] transition-all hover:brightness-105 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:text-[14px]"
                       >
                         {submitting ? (
                           <>
-                            <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                            <svg
+                              className="h-5 w-5 shrink-0 animate-spin"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                            >
                               <circle
                                 cx="12"
                                 cy="12"
@@ -1404,7 +1433,7 @@ export function PaymentSheet({ open, onClose, campaign, gatewayName = 'zarinpal'
                                 strokeLinecap="round"
                               />
                             </svg>
-                            در حال ساخت تراکنش…
+                            <span className="truncate">در حال ساخت تراکنش…</span>
                           </>
                         ) : (
                           <>
@@ -1418,11 +1447,14 @@ export function PaymentSheet({ open, onClose, campaign, gatewayName = 'zarinpal'
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               aria-hidden="true"
+                              className="shrink-0"
                             >
                               <rect x="3" y="11" width="18" height="11" rx="2" />
                               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                             </svg>
-                            اتصال امن به درگاه و پرداخت {formatPersianNumber(totalToman)} تومان
+                            <span className="truncate whitespace-nowrap">
+                              اتصال امن و پرداخت {formatPersianNumber(totalToman)} تومان
+                            </span>
                           </>
                         )}
                       </button>
@@ -1431,7 +1463,7 @@ export function PaymentSheet({ open, onClose, campaign, gatewayName = 'zarinpal'
                 </div>
               )}
               {stage === 'transfer' && checkState !== 'success' && (
-                <div className="shrink-0 border-t border-ink-100 bg-white px-4 py-3 text-center">
+                <div className="shrink-0 border-t border-ink-100 bg-white px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 text-center sm:pb-3">
                   <Link
                     href={`/madadkar/${encodeURIComponent(campaign.slug)}`}
                     className="text-[11.5px] font-bold text-ink-500 underline-offset-4 transition-colors hover:text-brand-700 hover:underline"
@@ -1504,7 +1536,7 @@ function TransferSuccess({
           {formatPersianNumber(shareCount)} سهم از «{title}» حالا به نام توست.
         </p>
       </div>
-      <div className="border-mint-200 mx-auto max-w-[360px] space-y-2 rounded-2xl border bg-mint-50/60 p-3.5 text-right">
+      <div className="mx-auto max-w-[360px] space-y-2 rounded-2xl border border-mint-200 bg-mint-50/60 p-3.5 text-right">
         <div className="flex items-center justify-between text-[12px] font-bold">
           <span className="text-ink-500">مبلغ تأییدشده</span>
           <span className="font-extrabold tabular-nums text-ink-900">

@@ -141,7 +141,7 @@ describe('فلویِ کامل: انتخاب → بازبینی → انتقال'
     expect(await screen.findByText('صورتحساب مشارکت')).toBeTruthy();
     expect(screen.getByText('۴ سهم')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: /اتصال امن به درگاه/ }));
+    fireEvent.click(screen.getByRole('button', { name: /اتصال امن و پرداخت/ }));
 
     await waitFor(() => {
       const calls = mocks.apiFetch.mock.calls as [string, { body?: string; method?: string }?][];
@@ -167,7 +167,7 @@ describe('فلویِ کامل: انتخاب → بازبینی → انتقال'
 
     render(<PaymentSheet open onClose={() => {}} campaign={campaign} />);
     fireEvent.click(await screen.findByRole('button', { name: /ادامه/ }));
-    fireEvent.click(await screen.findByRole('button', { name: /اتصال امن به درگاه/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /اتصال امن و پرداخت/ }));
 
     expect(
       await screen.findByText(/موجودی به‌روزرسانی شد؛ برخی سهم‌ها لحظاتی پیش رزرو شدند/),
@@ -187,7 +187,7 @@ describe('فلویِ کامل: انتخاب → بازبینی → انتقال'
 
     render(<PaymentSheet open onClose={() => {}} campaign={campaign} />);
     fireEvent.click(await screen.findByRole('button', { name: /ادامه/ }));
-    fireEvent.click(await screen.findByRole('button', { name: /اتصال امن به درگاه/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /اتصال امن و پرداخت/ }));
 
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('درگاه');

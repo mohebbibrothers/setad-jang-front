@@ -23,7 +23,12 @@
  */
 
 import { apiFetch, safeApiFetch, ApiError } from './api';
-import { absoluteMediaUrl, formatPersianNumber, toPersianDigits } from './utils';
+import {
+  absoluteMediaUrl,
+  canonicalApiLookup,
+  formatPersianNumber,
+  toPersianDigits,
+} from './utils';
 import { isoToJalali, JALALI_MONTH_NAMES } from './jalali';
 
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -186,7 +191,9 @@ export async function fetchCampaignsList(opts?: {
 
 /** جزئیات حرکت از روی slug (ISR). null = یافت نشد. */
 export async function fetchCampaignDetail(slug: string): Promise<MadadkarCampaignDetail | null> {
-  return safeApiFetch<MadadkarCampaignDetail>(`/madadkar/campaigns/${encodeURIComponent(slug)}/`, {
+  // canonicalApiLookup = نگهبانِ باگِ ۴۰۴ِ اسلاگِ فارسی (double-encoding در ISR)
+  const key = canonicalApiLookup(slug);
+  return safeApiFetch<MadadkarCampaignDetail>(`/madadkar/campaigns/${key}/`, {
     revalidate: 300,
     tags: [`campaign:${slug}`, 'madadkar'],
   });
@@ -194,10 +201,11 @@ export async function fetchCampaignDetail(slug: string): Promise<MadadkarCampaig
 
 /** دفتر شفافیت مالی عمومی (ISR). null = ناموفق (پنل به‌حالت خاموش می‌ماند). */
 export async function fetchTransparency(slug: string): Promise<MadadkarTransparency | null> {
-  return safeApiFetch<MadadkarTransparency>(
-    `/madadkar/campaigns/${encodeURIComponent(slug)}/transparency/`,
-    { revalidate: 120, tags: [`campaign:${slug}`, 'madadkar'] },
-  );
+  const key = canonicalApiLookup(slug);
+  return safeApiFetch<MadadkarTransparency>(`/madadkar/campaigns/${key}/transparency/`, {
+    revalidate: 120,
+    tags: [`campaign:${slug}`, 'madadkar'],
+  });
 }
 
 /** مددکاران برای strip عمومی (ISR). */
@@ -215,7 +223,7 @@ export async function fetchCampaignDetailClient(
 ): Promise<MadadkarCampaignDetail | null> {
   try {
     return await apiFetch<MadadkarCampaignDetail>(
-      `/madadkar/campaigns/${encodeURIComponent(slug)}/`,
+      `/madadkar/campaigns/${canonicalApiLookup(slug)}/`,
     );
   } catch {
     return null;
@@ -228,7 +236,7 @@ export async function initiateParticipation(
   body: { share_count: number; mobile?: string; email?: string },
 ): Promise<MadadkarInitiated> {
   return apiFetch<MadadkarInitiated>(
-    `/madadkar/campaigns/${encodeURIComponent(slug)}/participate/`,
+    `/madadkar/campaigns/${canonicalApiLookup(slug)}/participate/`,
     { method: 'POST', body: JSON.stringify(body) },
   );
 }
