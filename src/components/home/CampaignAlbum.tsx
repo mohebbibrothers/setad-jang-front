@@ -1840,7 +1840,7 @@ export function CampaignAlbum({
                       className={`relative shrink-0 overflow-hidden rounded-[12px] transition-all duration-200 sm:rounded-[14px] ${
                         active
                           ? 'scale-[1.05] shadow-[0_12px_28px_-8px_rgba(37,197,186,.55)] ring-2 ring-mint-500'
-                          : 'hover:ring-mint-300 opacity-70 ring-1 ring-white/15 hover:scale-[1.03] hover:opacity-100'
+                          : 'opacity-70 ring-1 ring-white/15 hover:scale-[1.03] hover:opacity-100 hover:ring-mint-300'
                       }`}
                       style={{ width: 72, height: 54, scrollSnapAlign: 'center' }}
                     >

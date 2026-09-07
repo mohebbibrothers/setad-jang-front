@@ -39,7 +39,7 @@ export default function MyStoriesPage() {
         />
         <span
           aria-hidden="true"
-          className="bg-mint-200/40 pointer-events-none absolute -bottom-32 -left-16 h-56 w-56 rounded-full blur-3xl"
+          className="pointer-events-none absolute -bottom-32 -left-16 h-56 w-56 rounded-full bg-mint-200/40 blur-3xl"
         />
         <div className="container-edge relative mx-auto max-w-3xl px-4 py-7 text-center md:py-9">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3.5 py-1.5 text-[11.5px] font-extrabold text-brand-700 shadow-sm ring-1 ring-inset ring-brand-600/15 backdrop-blur">

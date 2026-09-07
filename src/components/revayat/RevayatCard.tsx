@@ -339,7 +339,7 @@ export function RevayatCard({
       ) : kind === 'image' && heroUrl ? (
         <Link
           href={detailHref}
-          className="bg-ink-950 relative block overflow-hidden"
+          className="relative block overflow-hidden bg-ink-950"
           aria-label={title || 'مشاهده‌ی روایت'}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}

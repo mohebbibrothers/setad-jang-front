@@ -424,7 +424,7 @@ export function PaydoneClient({
                   </p>
 
                   {/* کارتِ رسید */}
-                  <div className="border-mint-200 mt-6 overflow-hidden rounded-2xl border bg-gradient-to-b from-mint-50/70 to-white text-right">
+                  <div className="mt-6 overflow-hidden rounded-2xl border border-mint-200 bg-gradient-to-b from-mint-50/70 to-white text-right">
                     <div className="flex items-center gap-3 border-b border-mint-100 px-4 py-3">
                       {coverUrl && (
                         <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl ring-1 ring-ink-100">

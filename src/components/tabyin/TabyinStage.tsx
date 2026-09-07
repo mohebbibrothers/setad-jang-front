@@ -277,7 +277,7 @@ export function TabyinStage({
           />
         </div>
       ) : selected.media_type === 'image' ? (
-        <div className="bg-ink-950 relative overflow-hidden rounded-[24px] shadow-[0_30px_70px_-35px_rgba(11,53,48,.6)] ring-1 ring-ink-900/10">
+        <div className="relative overflow-hidden rounded-[24px] bg-ink-950 shadow-[0_30px_70px_-35px_rgba(11,53,48,.6)] ring-1 ring-ink-900/10">
           {/* پس‌زمینه‌ی محو از خودِ تصویر — قابِ گالری‌وار.
               plain <img>: پس‌زمینه‌ی تزئینی است و خطایش از رویِ تصویرِ
               اصلی (که همان نشانی است) شناسایی می‌شود. */}
