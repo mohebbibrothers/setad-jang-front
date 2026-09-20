@@ -86,23 +86,27 @@ export default async function MadadkarHubPage() {
               سهم بگیر، از درگاهِ رسمی و امن پرداخت کن، رسیدِ دیجیتالت را لحظه‌ای بگیر — و مسیرِ هر
               تومان را تا رسیدن به میدان، در دفترِ شفافیتِ عمومی دنبال کن.
             </p>
-            {/* آمارِ زنده */}
+            {/* آمارِ زنده — قراردادِ تایپوگرافیِ یکسان: عددِ بزرگِ منت +
+                واحدِ کوچکِ کم‌رنگ‌تر؛ هر سه باکس واحدِ دقیق دارند، نه فقط تومان */}
             <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {[
                 {
                   value: formatPersianNumber(activeCount),
+                  unit: 'حرکت',
                   label: 'حرکتِ در حال جمع‌آوری',
                   icon: Sparkles,
                 },
                 {
                   /* صداقتِ مالی: حتی وقتی هنوز چیزی تأمین نشده، عددِ صفرِ
                      واقعی را نشان می‌دهیم — خطِ تیره کاربر را به شک می‌اندازد. */
-                  value: `${formatPersianNumber(totalRaised)} تومان`,
+                  value: formatPersianNumber(totalRaised),
+                  unit: 'تومان',
                   label: 'تأمین‌شده تا این لحظه',
                   icon: HeartHandshake,
                 },
                 {
                   value: formatPersianNumber(totalParticipants),
+                  unit: 'مشارکت',
                   label: 'مشارکتِ ثبت‌شده',
                   icon: Users,
                 },
@@ -117,6 +121,9 @@ export default async function MadadkarHubPage() {
                   <div className="min-w-0">
                     <div className="truncate text-[22px] font-black tabular-nums text-mint-300 md:text-[26px]">
                       {s.value}
+                      <span className="ms-1 text-[12.5px] font-extrabold text-mint-200/70 md:text-[14px]">
+                        {s.unit}
+                      </span>
                     </div>
                     <div className="mt-0.5 text-[12px] font-bold text-white/70 sm:mt-1">
                       {s.label}
