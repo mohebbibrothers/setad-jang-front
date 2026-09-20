@@ -93,7 +93,7 @@ export default async function MadadkarHubPage() {
                 {
                   value: formatPersianNumber(activeCount),
                   unit: 'حرکت',
-                  label: 'حرکتِ در حال جمع‌آوری',
+                  label: 'در حال جمع‌آوری',
                   icon: Sparkles,
                 },
                 {
@@ -107,7 +107,7 @@ export default async function MadadkarHubPage() {
                 {
                   value: formatPersianNumber(totalParticipants),
                   unit: 'مشارکت',
-                  label: 'مشارکتِ ثبت‌شده',
+                  label: 'ثبت‌شده',
                   icon: Users,
                 },
               ].map((s) => (
