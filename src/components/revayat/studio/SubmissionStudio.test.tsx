@@ -122,7 +122,9 @@ describe('SubmissionStudio', () => {
     expect(screen.getAllByText('کاربر آزمایشی').length).toBeGreaterThan(0);
     expect(screen.getByPlaceholderText(/یک عنوانِ کوتاه و گیرا/)).toBeTruthy();
     expect(screen.getByPlaceholderText(/همه‌چیز را بنویس/)).toBeTruthy();
-    expect(screen.getByText('هنوز روایتی نفرستاده‌ای')).toBeTruthy();
+    // حالتِ خالیِ لیست پس از fetch ناهمزمان می‌آید — getBy همگام در
+    // رانرهای کند (CI) flake می‌شود؛ findBy تا رسیدنش صبر می‌کند.
+    expect(await screen.findByText('هنوز روایتی نفرستاده‌ای')).toBeTruthy();
   });
 
   it('بوش‌گرِ خودکار: نشانی mp4 → نوعِ «ویدئو» + نشانِ تشخیص خودکار؛ لمسِ دستی، خودکار را می‌برد', async () => {
