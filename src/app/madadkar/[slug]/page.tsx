@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   Image as ImageIcon,
   Landmark,
+  Layers,
   Scale,
   ShieldCheck,
   Timer,
@@ -33,9 +34,14 @@ import {
  * ═══════════════════════════════════════════════════════════════════
  * madadkar/[slug] — صفحهٔ جزئیاتِ حرکت
  *
- *   • SSR کامل + ISR (revalidate روی fetchها) — هیرو، توضیحات، گالری و
- *     دفترِ شفافیتِ مالی همه سرور-رندرند؛ تعامل (شیتِ پرداخت، لایت‌باکس،
- *     اشتراک) فقط در جزیره‌های کوچکِ کلاینتی زندگی می‌کند.
+ *   • SSR کامل + ISR (revalidate روی fetchها) — هیرو، کارتِ فرمان،
+ *     توضیحات، گالری و دفترِ شفافیتِ مالی همه سرور-رندرند؛ تعامل
+ *     (شیتِ پرداخت، لایت‌باکس، اشتراک) فقط در جزیره‌های کوچکِ کلاینتی
+ *     زندگی می‌کند.
+ *   • معماریِ بالای صفحه: هیرو = صحنهٔ تصویریِ خالص (فقط کاور + مُهرِ
+ *     چرخه‌عمر)؛ هویت، مترِ پیشرفت، چیپ‌های وضعیت و جفتِ دکمهٔ
+ *     هم‌ابعاد در «کارتِ فرمانِ» سفیدی می‌نشینند که روی لبهٔ پایینیِ
+ *     هیرو شناور است — هیچ متنی دیگر روی عکس له نمی‌شود.
  *   • دفترِ شفافیت مستقیماً از GET /campaigns/{slug}/transparency/
  *     (selector عمومیِ بک‌اند — بدون دادهٔ شخصی مشارکت‌کنندگان) تغذیه می‌شود.
  * ═══════════════════════════════════════════════════════════════════
@@ -107,10 +113,14 @@ export default async function CampaignDetailPage({ params }: PageProps) {
         </Link>
       </div>
 
-      {/* ── هیروی سینمایی ──────────────────────────────────────────── */}
+      {/* ── هیروی سینمایی — صحنهٔ تصویریِ خالص ─────────────────────────
+             اصلِ طراحی: روی تصویر «هیچ» متن/آمار/دکمه‌ای انباشته نمی‌شود؛
+             تنها لایهٔ متنی، یک مُهرِ چرخه‌عمر در گوشه است. هویت، مترِ
+             پیشرفت و اقدام همگی در «کارتِ فرمانِ» سفیدِ شناور زیر هیرو
+             زندگی می‌کنند. ────────────────────────────────────────── */}
       <section className="container-edge mt-3">
         <div className="relative overflow-hidden rounded-[24px] bg-ink-900 text-white shadow-[0_30px_60px_-30px_rgba(11,53,48,.45)]">
-          <div className="relative aspect-[16/9] w-full sm:aspect-[21/9]">
+          <div className="relative aspect-[16/10] w-full sm:aspect-[21/10] lg:aspect-[24/9]">
             <SmartImage
               src={coverUrl ?? null}
               alt={campaign.title}
@@ -120,14 +130,16 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               className="object-cover"
               priority
             />
+            {/* گرادیان دوطرفه: تیرگیِ بالا برای خواناییِ مُهر، تیرگیِ پایین
+                برای جوشِ نرم با کارتِ سفیدِ شناوری که روی لبه می‌نشیند */}
             <div
               aria-hidden="true"
-              className="absolute inset-0 bg-gradient-to-t from-ink-950/95 via-ink-950/40 to-ink-950/10"
+              className="absolute inset-0 bg-gradient-to-b from-ink-950/55 via-ink-950/10 to-ink-950/80"
             />
           </div>
 
-          {/* مُهرها */}
-          <div className="absolute right-4 top-4 flex flex-wrap items-center gap-2 sm:right-6 sm:top-6">
+          {/* مُهرِ چرخه‌عمر — تنها لایهٔ روی تصویر */}
+          <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
             {lifecycle === 'completed' ? (
               <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-mint-500 px-3 text-[12px] font-extrabold text-white shadow-lg ring-1 ring-white/25">
                 <svg
@@ -155,80 +167,108 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                 در حال جمع‌آوری
               </span>
             )}
-            {deadlineJalali && lifecycle === 'active' && (
-              <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-black/45 px-3 text-[12px] font-extrabold text-white ring-1 ring-white/20 backdrop-blur">
-                <Timer className="h-3.5 w-3.5" aria-hidden="true" />
-                مهلت: {deadlineJalali}
-              </span>
-            )}
-          </div>
-
-          {/* محتوای پایینیِ هیرو */}
-          <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 md:p-8">
-            <div className="inline-flex items-center gap-2">
-              <span className="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg bg-white/10 ring-1 ring-white/20 backdrop-blur-sm">
-                {sponsorLogo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={sponsorLogo} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <Landmark className="h-4 w-4 text-white/70" aria-hidden="true" />
-                )}
-              </span>
-              <span className="text-[12px] font-extrabold text-white/85">
-                {campaign.sponsor?.name || 'مددکار مجموعه'}
-              </span>
-              <BadgeCheck
-                className="h-4 w-4 text-mint-400"
-                aria-hidden="true"
-                aria-label="مددکار تأییدشده"
-              />
-            </div>
-
-            <h1 className="sm:leading-11 mt-2 max-w-3xl text-[20px] font-black leading-9 text-white sm:text-[26px] md:text-[32px]">
-              {campaign.title}
-            </h1>
-
-            {/* مترِ پیشرفتِ بزرگ + آمار */}
-            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-              <div>
-                <div className="mb-1.5 flex items-center justify-between text-[12px] font-bold text-white/80">
-                  <span>
-                    {formatPersianNumber(campaign.purchased_shares ?? 0)} سهم از{' '}
-                    {formatPersianNumber(campaign.total_shares ?? 0)} تأمین شد
-                  </span>
-                  <span className="text-[16px] font-black tabular-nums text-mint-300">
-                    ٪{formatPersianNumber(pct)}
-                  </span>
-                </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-white/15 ring-1 ring-white/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-l from-mint-400 to-mint-600 transition-[width] duration-700"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-2 text-[11.5px] font-extrabold text-white ring-1 ring-white/15 backdrop-blur-sm">
-                  <Users className="h-3.5 w-3.5 text-mint-300" aria-hidden="true" />
-                  {formatPersianNumber(campaign.participant_count ?? 0)} مشارکت‌کننده
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-2 text-[11.5px] font-extrabold tabular-nums text-white ring-1 ring-white/15 backdrop-blur-sm">
-                  {lifecycle === 'active'
-                    ? `${formatPersianNumber(Math.max(0, campaign.remaining_shares))} سهم باقی`
-                    : 'حرکت کامل شد'}
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* ── CTA + عدادِ ارقام ─────────────────────────────────────────── */}
-      <section className="container-edge mt-5">
-        <div className="grid gap-5 lg:grid-cols-[1fr_330px]">
+      {/* ── کارتِ فرمان + ستون‌ها (شناور روی لبهٔ پایینیِ هیرو) ──────── */}
+      <section className="container-edge">
+        <div className="relative z-10 -mt-10 grid gap-5 sm:-mt-14 lg:grid-cols-[1fr_330px] lg:items-start">
           {/* ستونِ محتوا */}
           <div className="min-w-0 space-y-8">
-            <ParticipateIsland campaign={sheetCampaign} lifecycle={lifecycle} />
+            {/* کارتِ فرمان — هویت + پیشرفت + وضعیت + اقدام */}
+            <div
+              id="madadkar-participate"
+              className="overflow-hidden rounded-[24px] border border-ink-100 bg-white shadow-[0_24px_50px_-24px_rgba(11,53,48,.38)]"
+            >
+              {/* نوارِ هویتی: مددکار + عنوان */}
+              <div className="border-b border-ink-100/80 bg-gradient-to-b from-ink-50/60 to-white px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-ink-100">
+                    {sponsorLogo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={sponsorLogo} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <Landmark className="h-4 w-4 text-ink-400" aria-hidden="true" />
+                    )}
+                  </span>
+                  <span className="truncate text-[12px] font-extrabold text-ink-600">
+                    {campaign.sponsor?.name || 'مددکار مجموعه'}
+                  </span>
+                  <BadgeCheck
+                    className="h-4 w-4 shrink-0 text-mint-600"
+                    aria-hidden="true"
+                    aria-label="مددکار تأییدشده"
+                  />
+                </div>
+                <h1 className="mt-2.5 text-[20px] font-black leading-9 text-ink-900 sm:text-[26px] sm:leading-[2.75rem]">
+                  {campaign.title}
+                </h1>
+              </div>
+
+              <div className="px-4 py-4 sm:px-6 sm:py-5">
+                {/* مترِ پیشرفت */}
+                <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+                  <p className="text-[12px] font-bold leading-6 text-ink-500">
+                    <span className="text-[17px] font-black tabular-nums text-ink-900">
+                      {formatPersianNumber(campaign.purchased_shares ?? 0)}
+                    </span>{' '}
+                    سهم از {formatPersianNumber(campaign.total_shares ?? 0)} سهم تأمین شد
+                  </p>
+                  <span className="text-[22px] font-black tabular-nums leading-none text-mint-600">
+                    ٪{formatPersianNumber(pct)}
+                  </span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={pct}
+                  aria-label="درصد تأمین حرکت"
+                  className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-ink-100"
+                >
+                  <div
+                    className="h-full rounded-full bg-gradient-to-l from-mint-400 via-mint-500 to-brand-600 transition-[width] duration-700"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+
+                {/* چیپ‌های وضعیت */}
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-xl bg-ink-50 px-3 py-2 text-[11.5px] font-extrabold tabular-nums text-ink-700 ring-1 ring-ink-100">
+                    <Users className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />
+                    {formatPersianNumber(campaign.participant_count ?? 0)} مشارکت‌کننده
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-xl bg-ink-50 px-3 py-2 text-[11.5px] font-extrabold tabular-nums text-ink-700 ring-1 ring-ink-100">
+                    <Layers className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />
+                    {lifecycle === 'active'
+                      ? `${formatPersianNumber(Math.max(0, campaign.remaining_shares ?? 0))} سهم باقی`
+                      : 'حرکت کامل شد'}
+                  </span>
+                  {deadlineJalali && lifecycle === 'active' && (
+                    <span className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] font-extrabold text-amber-700 ring-1 ring-amber-200/70">
+                      <Timer className="h-3.5 w-3.5" aria-hidden="true" />
+                      مهلت تا {deadlineJalali}
+                    </span>
+                  )}
+                </div>
+
+                {/* اقدام + ریزمه‌های اعتماد */}
+                <div className="mt-5 border-t border-dashed border-ink-100 pt-4 sm:pt-5">
+                  <ParticipateIsland campaign={sheetCampaign} lifecycle={lifecycle} />
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10.5px] font-bold text-ink-400">
+                    <span className="inline-flex items-center gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5 text-mint-600" aria-hidden="true" />
+                      پرداختِ امن
+                    </span>
+                    <span aria-hidden="true" className="h-1 w-1 rounded-full bg-ink-200" />
+                    <span>رسیدِ دیجیتال</span>
+                    <span aria-hidden="true" className="h-1 w-1 rounded-full bg-ink-200" />
+                    <span>شفافیتِ مالیِ کامل</span>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* ارقامِ کلیدی */}
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">

@@ -44,3 +44,27 @@ describe('EnamadSeal — قرارداد صحت‌سنجی اینماد', () => {
     expect(html.match(/<a /g)).toHaveLength(1);
   });
 });
+
+describe('EnamadSeal — تجربهٔ ضد «جعبهٔ خالی»', () => {
+  const html = renderToStaticMarkup(createElement(EnamadSeal));
+
+  it('پلکهٔ برنددار جزئی از HTML خام سرور-رندر است (بدون JS هم دیده می‌شود)', () => {
+    expect(html).toContain('نماد اعتماد الکترونیکی');
+    expect(html).toContain('در حال دریافت از اینماد');
+    expect(html).toContain('<svg');
+  });
+
+  it('تصویر نماد روی پلکه می‌نشیند و آن را کامل می‌پوشاند (bg سفید + absolute)', () => {
+    expect(html).toContain('absolute inset-0 z-10 h-full w-full bg-white object-contain');
+  });
+
+  it('تصویر تنبل و رمزگشاییِ ناهمگام باقی می‌ماند (خارج از مسیر بحرانی)', () => {
+    expect(html).toContain("loading='lazy'");
+    expect(html).toContain("decoding='async'");
+  });
+
+  it('ابعادِ قاب ثابت است تا هنگام رسیدنِ تصویر هیچ shift چیدمانی رخ ندهد', () => {
+    expect(html).toContain('h-[150px]');
+    expect(html).toContain('w-[118px]');
+  });
+});

@@ -13,7 +13,11 @@ import { EnamadSeal } from './EnamadSeal';
  *
  * زبان بصری آگاهانه همان زبان ستون‌های فوتر است (عنوان + خط زیرین
  * گرادیانی برند) تا سلول به‌جای «چسبیده‌شدن»، بخشی از همان سیستم طراحی
- * خوانده شود. className از بیرون تزریق می‌شود تا تصمیم‌های چیدمانیِ
+ * خوانده شود. دور نماد یک «پایهٔ نورِ» برندی (گرادیان محو) کشیده شده
+ * تا کارت به‌عنوان مُهرِ اعتمادِ صفحه از بدنه جدا و برجسته شود. چیپِ
+ * «اتصال زنده به اینماد» داخلِ خودِ EnamadSeal زندگی می‌کند و فقط وقتی
+ * رندر می‌شود که دریافتِ نماد شکست نخورده باشد — ادعای «زنده» هرگز
+ * دروغ نمی‌گوید. className از بیرون تزریق می‌شود تا تصمیم‌های چیدمانیِ
  * ردیف (ترتیب، مارجین) مالکیتش دست فوتر بماند.
  */
 export function TrustSeals({ className = '' }: { className?: string }) {
@@ -29,8 +33,16 @@ export function TrustSeals({ className = '' }: { className?: string }) {
         aria-hidden="true"
         className="mb-5 block h-[3px] w-9 rounded-full bg-gradient-to-l from-brand-500 to-mint-500"
       />
-      <EnamadSeal />
-      <p className="mt-3 max-w-[150px] text-[11.5px] font-medium leading-5 text-ink-500">
+      {/* پایهٔ نور — هالهٔ برندیِ نرم دور کارت نماد (چیپِ «اتصال زنده»
+          را خودِ EnamadSeal فقط در وضعیتِ موفق رندر می‌کند) */}
+      <div className="relative">
+        <span
+          aria-hidden="true"
+          className="absolute -inset-4 -z-10 rounded-[28px] bg-gradient-to-br from-brand-500/[0.10] via-mint-500/[0.12] to-transparent blur-md"
+        />
+        <EnamadSeal />
+      </div>
+      <p className="mt-3 max-w-[170px] text-center text-[11.5px] font-medium leading-5 text-ink-500">
         برای مشاهده وضعیت اعتبار، روی نماد کلیک کنید.
       </p>
     </section>

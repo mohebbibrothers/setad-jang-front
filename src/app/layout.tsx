@@ -278,6 +278,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Font provider: preconnect for TCP handshake savings. */}
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="" />
         <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+        {/* اینماد: تصویر نمادِ فوتر از این میزبان سرو می‌شود؛ گرم کردنِ
+            handshake هزینهٔ DNS+TLS را از مسیرِ بحرانیِ لود حذف می‌کند. */}
+        <link rel="preconnect" href="https://trustseal.enamad.ir" />
+        <link rel="dns-prefetch" href="https://trustseal.enamad.ir" />
         {/* Vazirmatn base font — user-pinned to v33.003 */}
         <link
           rel="stylesheet"

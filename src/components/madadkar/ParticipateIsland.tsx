@@ -10,17 +10,26 @@ import { PaymentSheet, type PaymentSheetCampaign } from './PaymentSheet';
  * ═══════════════════════════════════════════════════════════════════════════
  * ParticipateIsland — جزیرهٔ تعاملیِ صفحهٔ جزئیاتِ حرکت
  *
- * دو سطحِ CTA را مالک است و شیتِ پرداخت را حاضرِ دائم نگه می‌دارد:
- *   ۱) دکمهٔ بزرگِ زیرِ هیرو (دسکتاپ/موبایل)
- *   ۲) نوارِ چسبانِ پایینِ موبایل — قیمت هر سهم + دکمهٔ «مدد به حرکت»
- *      که هنگام اسکرولِ توضیحات/گالری همیشه در دستانِ شست است.
+ * قرارداد چیدمانی (پس از بازطراحی کارتِ فرمان):
+ *   خودِ این جزیره فقط سه چیز را مالک است:
+ *     ۱) «جفت دکمهٔ هم‌ابعاد» — در موبایل هر دو Full-Width و دقیقاً یک
+ *        مستطیلِ یکسان (h-[52px] / radius / فونت) پشتِ سرِ هم؛ در دسکتاپ
+ *        دکمهٔ اصلی کشسان + اشتراک با حداقل‌عرضِ ثابت، به‌هم‌پیوسته در یک
+ *        گرید و باز هم با ارتفاعِ یکسان. تفاوتِ سلسله‌مراتب فقط با رنگ
+ *        ساخته می‌شود، نه با ابعادِ ناسازگار.
+ *     ۲) نوارِ چسبانِ پایینِ موبایل — قیمت هر سهم + CTA همیشه در دستانِ
+ *        شست هنگام خواندن توضیحات/گالری.
+ *     ۳) شیتِ پرداخت حاضرِ دائم.
+ *   قابِ «کارتِ فرمان» (هویت/متر پیشرفت/چیپ‌ها) مالکیتِ سرور-کامپوننتِ
+ *   صفحه است و این جزیره داخلِ آن سوار می‌شود؛ لنگرِ
+ *   #madadkar-participate هم همان‌جا زندگی می‌کند.
  *
  * چرخه عمر (active/completed/closed) رفتار دکمه‌ها را قطعی می‌کند؛
  * اشتراک لینکِ صفحه با Web Share API (fallback: کپی به کلیپ‌بورد).
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-function HandIcon({ className = 'h-[18px] w-[18px]' }: { className?: string }) {
+function HandIcon({ className = 'h-[17px] w-[17px]' }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -40,7 +49,7 @@ function HandIcon({ className = 'h-[18px] w-[18px]' }: { className?: string }) {
   );
 }
 
-function ShareIcon({ className = 'h-4 w-4' }: { className?: string }) {
+function ShareIcon({ className = 'h-[17px] w-[17px]' }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -100,13 +109,13 @@ export function ParticipateIsland({
 
   return (
     <>
-      {/* دکمهٔ شناورِ بالا — زیرِ هیرو */}
-      <div id="madadkar-participate" className="flex flex-col gap-2.5 sm:flex-row">
+      {/* جفت دکمهٔ هم‌ابعاد — موبایل: دو ردیفِ یک‌سان؛ دسکتاپ: [1fr_auto] */}
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-[1fr_auto]">
         <button
           type="button"
           onClick={open}
           disabled={disabled}
-          className={`inline-flex h-[54px] flex-1 items-center justify-center gap-2 overflow-hidden rounded-[16px] text-[15.5px] font-extrabold text-white transition-all ${
+          className={`inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-[16px] text-[14.5px] font-extrabold text-white transition-all ${
             disabled
               ? 'cursor-not-allowed bg-ink-300'
               : 'bg-gradient-to-l from-mint-500 to-brand-700 shadow-[0_16px_36px_-12px_rgba(13,128,116,.6)] hover:brightness-105 active:scale-[0.99]'
@@ -119,7 +128,7 @@ export function ParticipateIsland({
           type="button"
           onClick={onShare}
           aria-live="polite"
-          className="inline-flex h-[54px] items-center justify-center gap-2 rounded-[16px] border-2 border-ink-100 bg-white px-6 text-[13.5px] font-extrabold text-ink-700 transition-colors hover:border-brand-200 hover:text-brand-700"
+          className="inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-[16px] border-2 border-ink-100 bg-white px-6 text-[14.5px] font-extrabold text-ink-700 transition-all hover:border-brand-200 hover:text-brand-700 sm:w-auto sm:min-w-[196px]"
         >
           <ShareIcon />
           {shareState === 'copied' ? 'لینک کپی شد!' : 'اشتراک حرکت'}
