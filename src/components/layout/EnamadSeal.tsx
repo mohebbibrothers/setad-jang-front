@@ -123,7 +123,7 @@ export function EnamadSeal() {
               نماد اعتماد الکترونیکی
             </span>
             <span className="text-[8px] font-bold leading-snug text-ink-400">
-              برای مشاهدهٔ وضعیت اعتبار کلیک کنید
+              برای مشاهدهٔ وضعیت کلیک کنید
             </span>
           </span>
         </a>
@@ -133,31 +133,26 @@ export function EnamadSeal() {
             setFailed(false);
             setNonce((n) => n + 1);
           }}
-          className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-extrabold text-ink-400 transition-colors hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60"
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold text-ink-400 transition-colors hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60"
         >
           <RotateCcw className="h-3 w-3" aria-hidden="true" />
-          تلاش دوباره برای دریافت نماد
+          تلاش دوباره
         </button>
       </span>
     );
   }
 
   // key=nonce → پس از «تلاش دوباره» کل مارکاپ از نو سوار و درخواستِ
-  // تصویر دوباره صادر می‌شود. چیپِ «اتصال زنده» فقط در همین شاخهٔ موفق
-  // رندر می‌شود؛ در شاخهٔ خطا ادعای اتصالِ زنده صادقانه نیست و جاش
-  // را دکمهٔ «تلاش دوباره» می‌گیرد.
+  // تصویر دوباره صادر می‌شود. پوستهٔ display:contents هیچ اثر چیدمانی
+  // ندارد و <a> دقیقاً جای قبلی‌اش در فلکسِ والد می‌نشیند. به‌درخواستِ
+  // محصول، زیر نماد «هیچ» نوشتهٔ اضافه‌ای (چیپ/کپشن) رندر نمی‌شود تا
+  // ارتفاعِ فوتر فشرده و تمیز بماند.
   return (
-    <span className="flex flex-col items-center gap-2.5">
-      <span
-        key={nonce}
-        ref={hostRef}
-        className="contents"
-        dangerouslySetInnerHTML={{ __html: SEAL_HTML }}
-      />
-      <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold text-mint-700">
-        <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-mint-500" />
-        اتصالِ زنده به اینماد
-      </span>
-    </span>
+    <span
+      key={nonce}
+      ref={hostRef}
+      className="contents"
+      dangerouslySetInnerHTML={{ __html: SEAL_HTML }}
+    />
   );
 }
