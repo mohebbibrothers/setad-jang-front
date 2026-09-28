@@ -179,7 +179,17 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
     shortLabel: 'دوره‌ها',
     glyph: 'graduation',
     accent: 'amber',
-    seeAllHref: (q, f) => seeAllUrl('/#education', q, f),
+    // هابِ /lms پارامترهای خودش را می‌خواند (q / category / level) — نه
+    // نامِ خامِ API (search). بدون این نگاشت، «مشاهده همه در دوره‌ها»
+    // کوئری را گم می‌کرد و کاتالوگِ بی‌فیلتر باز می‌شد (الگوی tabyin).
+    seeAllHref: (q, f) => {
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (f?.category) params.set('category', f.category);
+      if (f?.level) params.set('level', f.level);
+      const qs = params.toString();
+      return qs ? `/lms?${qs}` : '/lms';
+    },
   },
   kindness: {
     key: 'kindness',
@@ -510,9 +520,10 @@ async function fetchLms(
         title: clean(c.title),
         subtitle: parts.length ? parts.join(' · ') : clean(c.short_description),
         thumb: absoluteMediaUrl(c.cover_image),
-        // هاب /lms اکنون زنده است؛ هیتِ LMS به آن می‌رسد. مقصدِ نهایی
-        // (صفحه‌ی جزئیاتِ هر دوره) به‌محض ساخته‌شدن لینک‌سوزی دوباره می‌شود.
-        href: `/lms`,
+        // مقصدِ نهایی: صفحه‌ی جزئیاتِ کلاس (/lms/courses/<slug>) — هاب
+        // فقط برای ناوبریِ سراسری است؛ نتیجه‌ی جست‌وجو باید مستقیم به
+        // خودِ کلاس برسد.
+        href: `/lms/courses/${encodeURIComponent(c.slug)}`,
         badge: c.enrollments_count ? `${fa(c.enrollments_count)} یادگیرنده` : undefined,
         pill: c.level ? (LEVEL_LABEL[c.level] ?? c.level) : undefined,
       };

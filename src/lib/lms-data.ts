@@ -3,11 +3,14 @@ import { absoluteMediaUrl } from '@/lib/utils';
 import {
   LMS_HUB_PAGE_SIZE,
   buildStats,
+  normalizeLessonType,
   normalizeLevel,
   type LmsCatalogStats,
   type LmsCategoryNode,
   type LmsCourse,
+  type LmsCourseDetail,
   type LmsHubQuery,
+  type LmsLesson,
 } from './lms-shared';
 
 /**
@@ -153,6 +156,101 @@ export async function fetchLmsCoursesPage(query: LmsHubQuery): Promise<LmsCourse
       offline: !invalidPage,
     };
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * صفحه‌ی جزئیاتِ دوره — /lms/courses/<slug>
+ *
+ *  • جزئیات: AllowAny + کشِ وارینتِ اسلاگ (lms:public_detail) — بدون
+ *    لودرِ auth؛ نبودِ کلاس = 404 (با آفلاین قاطی نمی‌شود).
+ *  • مرتبط‌ها: همان فیلترِ category روی همان endpoint لیست — بدون
+ *    endpoint تازه، بدون N+1.
+ *  • ویدئوهای intro/lesson عمداً «خام» پاس داده می‌شوند؛ طبقه‌بندیِ امن
+ *    (classifyVideoUrl) لایه‌ی بالاتر است تا loader خالصِ داده بماند.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+type ApiLesson = {
+  id: number;
+  title: string;
+  slug: string;
+  description?: string;
+  order?: number;
+  content_type?: string;
+  content_type_display?: string;
+  video_provider?: string;
+  video_url?: string | null;
+  embed_url?: string | null;
+  duration_seconds?: number;
+  summary?: string;
+  attachment_title?: string;
+  attachment_file?: string | null;
+  is_preview?: boolean;
+};
+
+type ApiCourseDetail = ApiCourse & {
+  description?: string;
+  instructor_bio?: string;
+  intro_video_url?: string | null;
+  lessons?: ApiLesson[];
+};
+
+function mapLesson(l: ApiLesson): LmsLesson {
+  return {
+    id: l.id,
+    title: l.title,
+    slug: l.slug,
+    description: l.description || undefined,
+    order: l.order ?? 0,
+    contentType: normalizeLessonType(l.content_type),
+    contentTypeDisplay: l.content_type_display || '',
+    videoProvider: l.video_provider,
+    videoUrl: l.video_url?.trim() || undefined,
+    embedUrl: l.embed_url?.trim() || undefined,
+    durationSeconds: l.duration_seconds ?? 0,
+    summary: l.summary || undefined,
+    attachmentTitle: l.attachment_title || undefined,
+    attachmentUrl: absoluteMediaUrl(l.attachment_file),
+    isPreview: l.is_preview ?? false,
+  };
+}
+
+export type LmsCourseDetailResult =
+  { kind: 'ok'; course: LmsCourseDetail } | { kind: 'not-found' } | { kind: 'offline' };
+
+export async function fetchLmsCourseDetail(slug: string): Promise<LmsCourseDetailResult> {
+  try {
+    const data = await apiFetch<ApiCourseDetail>(`/lms/courses/${encodeURIComponent(slug)}/`, {
+      revalidate: 120,
+      tags: ['lms', 'courses', `course-${slug}`],
+    });
+    if (!data?.slug) return { kind: 'not-found' };
+    return {
+      kind: 'ok',
+      course: {
+        ...mapCourse(data),
+        description: data.description || undefined,
+        instructorBio: data.instructor_bio || undefined,
+        introVideoUrl: data.intro_video_url?.trim() || undefined,
+        lessons: (data.lessons ?? []).map(mapLesson).sort((a, b) => a.order - b.order),
+      },
+    };
+  } catch (err) {
+    if (isApiError(err) && err.status === 404) return { kind: 'not-found' };
+    return { kind: 'offline' };
+  }
+}
+
+/** کلاس‌های مرتبط — همان دسته، به‌جز خودِ دوره (حداکثر ۳). */
+export async function fetchLmsRelatedCourses(course: LmsCourseDetail): Promise<LmsCourse[]> {
+  if (!course.categorySlug) return [];
+  const data = await safeApiFetch<Paginated<ApiCourse>>(
+    `/lms/courses/?category=${encodeURIComponent(course.categorySlug)}&page_size=5`,
+    { revalidate: 180, tags: ['lms', 'courses', 'lms-related'] },
+  );
+  return (data?.results ?? [])
+    .map(mapCourse)
+    .filter((c) => c.slug !== course.slug)
+    .slice(0, 3);
 }
 
 export type { LmsCatalogStats, LmsCategoryNode, LmsCourse, LmsHubQuery };

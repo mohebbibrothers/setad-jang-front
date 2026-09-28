@@ -3,6 +3,7 @@ import Script from 'next/script';
 import { siteConfig } from '@/lib/site';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { SplashSafety } from '@/components/layout/SplashSafety';
 import './globals.css';
 
 /**
@@ -472,6 +473,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <Footer />
+        {/* توریِ امانِ اسپلش برای پاسخ‌های استریم‌شده (notFound/error در
+            روت‌های داینامیک) که اسکریپتِ inline بالا در آن‌ها اجرا نمی‌شود */}
+        <SplashSafety />
       </body>
     </html>
   );

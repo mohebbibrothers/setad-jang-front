@@ -41,6 +41,110 @@ export function normalizeLevel(raw: string | undefined | null): LmsLevel | null 
   return LMS_LEVELS.includes(raw as LmsLevel) ? (raw as LmsLevel) : null;
 }
 
+/* ── مدل‌های صفحه‌ی جزئیاتِ دوره — آینه‌ی Lesson/CourseDetailSerializer ── */
+export type LmsLessonType = 'video' | 'audio' | 'document' | 'article';
+export type LmsVideoProvider = 'direct_url' | 'embed' | 'uploaded_file' | 'hybrid';
+
+export type LmsLesson = {
+  id: number;
+  title: string;
+  slug: string;
+  description?: string;
+  order: number;
+  contentType: LmsLessonType;
+  contentTypeDisplay: string;
+  videoProvider?: LmsVideoProvider | string;
+  /** فیلدهای عمومیِ سریالایزرِ خلاصه — برای پیش‌نمایشِ بدونِ ورود کافی‌اند. */
+  videoUrl?: string;
+  embedUrl?: string;
+  durationSeconds: number;
+  summary?: string;
+  attachmentTitle?: string;
+  attachmentUrl?: string;
+  isPreview: boolean;
+};
+
+export type LmsCourseDetail = LmsCourse & {
+  description?: string;
+  instructorBio?: string;
+  introVideoUrl?: string;
+  lessons: LmsLesson[];
+};
+
+/* ── برچسبِ فارسیِ نوعِ جلسه (آینه‌ی LessonContentType) ───────────────── */
+export const LESSON_TYPE_LABEL: Record<LmsLessonType, string> = {
+  video: 'ویدئو',
+  audio: 'صوت',
+  document: 'سند',
+  article: 'متن',
+};
+
+export function normalizeLessonType(raw: string | undefined | null): LmsLessonType {
+  return raw === 'audio' || raw === 'document' || raw === 'article' ? raw : 'video';
+}
+
+/* ═══ طبقه‌بندیِ امنِ آدرسِ ویدئو — چه چیزی را «واقعاً» رندر می‌کنیم ═══
+ * قانونِ صیانت: embed_url/video_url را مدیری در پنل می‌نویسد (معتمد)، ولی
+ * ما باز هم فقط الگوهای شناخته‌شده را به پلیر می‌فرستیم؛ هر URLِ عجیب،
+ * بی‌صدا به «بدون ویدئو» سقوط می‌کند — نه لینک‌بازیِ بیرونی.
+ *   • فایلِ مستقیم (.mp4/.webm/.mov/.m3u8 یا میزبانِ مدیای خودمان) → <video>
+ *   • آپارات (/v/<hash>) → iframeِ embed استانداردِ آپارات
+ *   • یوتیوب (watch / youtu.be / embed) → youtube-nocookie embed
+ */
+export type LmsVideoSource = { kind: 'native' | 'embed'; src: string };
+
+const NATIVE_VIDEO_EXT = /\.(mp4|webm|mov|m3u8)(\?.*)?$/i;
+
+export function classifyVideoUrl(raw: string | undefined | null): LmsVideoSource | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+  const host = url.hostname.toLowerCase();
+
+  // یوتیوب — همیشه به nocookie embed تبدیل شود
+  if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
+    const id =
+      url.searchParams.get('v') ?? url.pathname.match(/\/(embed|shorts)\/([\w-]{6,})/)?.[2] ?? null;
+    return id ? { kind: 'embed', src: `https://www.youtube-nocookie.com/embed/${id}` } : null;
+  }
+  if (host === 'youtu.be') {
+    const id = url.pathname.replace(/^\//, '').split('/')[0];
+    return id ? { kind: 'embed', src: `https://www.youtube-nocookie.com/embed/${id}` } : null;
+  }
+  // آپارات — لینکِ صفحه به embed استاندارد تبدیل شود
+  if (host.endsWith('aparat.com')) {
+    const existing = url.pathname.match(/\/video\/video\/embed\/videohash\/([\w-]+)/);
+    if (existing) return { kind: 'embed', src: trimmed };
+    const page = url.pathname.match(/^\/v\/([\w-]+)/);
+    if (page)
+      return {
+        kind: 'embed',
+        src: `https://www.aparat.com/video/video/embed/videohash/${page[1]}/vt/frame`,
+      };
+    return null;
+  }
+  // فایلِ مستقیم (پسوندِ رسانه) — از جمله میزبانِ مدیای خودمان
+  if (NATIVE_VIDEO_EXT.test(url.pathname)) return { kind: 'native', src: trimmed };
+  // میزبان‌های ویدئو پلتفرم‌های شناخته‌شده که مسیر embed خام می‌دهند
+  if (/^player\.vimeo\.com$/.test(host) && /\/video\/\d+/.test(url.pathname))
+    return { kind: 'embed', src: trimmed };
+  return null;
+}
+
+/** چکیده‌ی وبلاگ‌نما از متنِ ساده — خط‌های خالی حذف، سقفِ نویسه رعایت شود. */
+export function teaserText(raw: string | undefined, maxLen = 170): string {
+  if (!raw) return '';
+  const flat = raw.replace(/\s+/g, ' ').trim();
+  if (flat.length <= maxLen) return flat;
+  return `${flat.slice(0, maxLen - 1).trimEnd()}…`;
+}
 /* ── مدل‌های نمایشی ─────────────────────────────────────────────────── */
 export type LmsCategoryNode = {
   slug: string;

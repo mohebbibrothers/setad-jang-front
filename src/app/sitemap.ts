@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { siteConfig } from '@/lib/site';
 import { fetchCriminalsPage } from '@/lib/r4j';
+import { safeApiFetch, type Paginated } from '@/lib/api';
 
 /**
  * Dynamic sitemap — homepage-milestone edition.
@@ -18,9 +19,10 @@ import { fetchCriminalsPage } from '@/lib/r4j';
  * tabyin content, campaigns, etc.) can then be appended with server-
  * side data fetching in this same handler.
  *
- * /r4j criminal casefiles ship in this handler too — fetched from the
- * public list endpoint with the same ISR cache the pages themselves
- * use (so this costs no extra backend load beyond the page fetches).
+ * /r4j criminal casefiles and /lms course pages ship in this handler
+ * too — fetched from their public list endpoints with the same ISR
+ * cache the pages themselves use (so this costs no extra backend load
+ * beyond the page fetches).
  *
  * WHY priorities are set the way they are
  * ────────────────────────────────────────
@@ -41,6 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/tabyin/new', priority: 0.6, changeFrequency: 'monthly' as const },
     { path: '/r4j', priority: 0.9, changeFrequency: 'daily' as const },
     { path: '/madadkar', priority: 0.9, changeFrequency: 'daily' as const },
+    { path: '/lms', priority: 0.9, changeFrequency: 'daily' as const },
     // /search is intentionally omitted — see robots.ts (infinite query
     // space; no ranking value). Listing it here would contradict the
     // Disallow rule and waste crawl budget.
@@ -63,6 +66,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.8,
+    });
+  }
+
+  // کلاس‌های عمومیِ «قرارگاه آموزشی» — تا ۱۰۰ کلاسِ تازه؛ همان تگ‌های
+  // کشِ صفحه‌ها تا هوکِ revalidate هردو را با هم باطل کند. خطا در این‌جا
+  // نباید کلِ sitemap را بکشد، پس لودرِ امن (safeApiFetch → null).
+  const courses = await safeApiFetch<Paginated<{ slug: string; published_at?: string }>>(
+    '/lms/courses/?page_size=100',
+    { revalidate: 300, tags: ['lms', 'courses'] },
+  );
+  for (const c of courses?.results ?? []) {
+    if (!c.slug) continue;
+    entries.push({
+      url: `${base}/lms/courses/${encodeURIComponent(c.slug)}`,
+      lastModified: c.published_at ? new Date(c.published_at) : now,
+      changeFrequency: 'weekly',
+      priority: 0.85,
     });
   }
 

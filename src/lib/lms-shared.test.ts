@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   LMS_LEVELS,
   buildStats,
+  classifyVideoUrl,
   formatLmsDuration,
   formatLmsHours,
   lmsHref,
+  normalizeLessonType,
   normalizeLevel,
   pageWindow,
   parseLmsHubQuery,
+  teaserText,
   type LmsCourse,
 } from './lms-shared';
 
@@ -148,5 +151,97 @@ describe('pageWindow', () => {
     expect(pageWindow(1, 20)).toEqual([1, 2, 'gap', 20]);
     expect(pageWindow(20, 20)).toEqual([1, 'gap', 19, 20]);
     expect(pageWindow(10, 20)).toEqual([1, 'gap', 9, 10, 11, 'gap', 20]);
+  });
+});
+
+describe('normalizeLessonType', () => {
+  it('نوع‌های شناخته‌شده عبور می‌کنند و بقیه به ویدئو سقوط می‌کنند', () => {
+    expect(normalizeLessonType('video')).toBe('video');
+    expect(normalizeLessonType('audio')).toBe('audio');
+    expect(normalizeLessonType('document')).toBe('document');
+    expect(normalizeLessonType('article')).toBe('article');
+    expect(normalizeLessonType('hologram')).toBe('video');
+    expect(normalizeLessonType(undefined)).toBe('video');
+    expect(normalizeLessonType('')).toBe('video');
+  });
+});
+
+/* classifyVideoUrl — دیوارِ آتشِ صفحه‌ی جزئیات: تنها الگوهای امنِ پخش
+ * عبور می‌کنند؛ هر آدرسِ عجیب بی‌صدا به «بدون ویدئو» سقوط می‌کند تا
+ * هیچ لینکِ کاربر‌ساخته‌ای در UI رندر نشود (قانونِ صیانتِ کلاینت). */
+describe('classifyVideoUrl', () => {
+  it('ورودیِ تهی و URLِ شکسته ⇒ null', () => {
+    expect(classifyVideoUrl(undefined)).toBeNull();
+    expect(classifyVideoUrl('')).toBeNull();
+    expect(classifyVideoUrl('   ')).toBeNull();
+    expect(classifyVideoUrl('not a url at all')).toBeNull();
+  });
+
+  it('پروتکل‌های خطرناک مسدود می‌شوند', () => {
+    expect(classifyVideoUrl('javascript:alert(1)')).toBeNull();
+    expect(classifyVideoUrl('data:text/html,<b>x</b>')).toBeNull();
+    expect(classifyVideoUrl('ftp://files.example.com/x.mp4')).toBeNull();
+  });
+
+  it('فایلِ مستقیمِ رسانه ⇒ native', () => {
+    expect(classifyVideoUrl('https://besat.me/media/lms/intro.mp4')).toEqual({
+      kind: 'native',
+      src: 'https://besat.me/media/lms/intro.mp4',
+    });
+    expect(classifyVideoUrl('https://cdn.example.com/v/a.webm?sig=1')).toEqual({
+      kind: 'native',
+      src: 'https://cdn.example.com/v/a.webm?sig=1',
+    });
+    expect(classifyVideoUrl('http://localhost:4010/media/x.m3u8')?.kind).toBe('native');
+  });
+
+  it('یوتیوب از هر شکلِ نشانی به nocookie embed تبدیل می‌شود', () => {
+    const exp = { kind: 'embed', src: 'https://www.youtube-nocookie.com/embed/abcDEF12345' };
+    expect(classifyVideoUrl('https://www.youtube.com/watch?v=abcDEF12345')).toEqual(exp);
+    expect(classifyVideoUrl('https://youtu.be/abcDEF12345')).toEqual(exp);
+    expect(classifyVideoUrl('https://www.youtube.com/embed/abcDEF12345')).toEqual(exp);
+    expect(classifyVideoUrl('https://www.youtube.com/shorts/abcDEF12345')).toEqual(exp);
+    // watch بدون v ⇒ رندرناممکن
+    expect(classifyVideoUrl('https://www.youtube.com/watch')).toBeNull();
+  });
+
+  it('آپارات: لینکِ صفحه به embed استاندارد تبدیل می‌شود و embedِ آماده دست‌نخورده می‌ماند', () => {
+    expect(classifyVideoUrl('https://www.aparat.com/v/xyz12')).toEqual({
+      kind: 'embed',
+      src: 'https://www.aparat.com/video/video/embed/videohash/xyz12/vt/frame',
+    });
+    expect(
+      classifyVideoUrl('https://www.aparat.com/video/video/embed/videohash/xyz12/vt/frame'),
+    ).toEqual({
+      kind: 'embed',
+      src: 'https://www.aparat.com/video/video/embed/videohash/xyz12/vt/frame',
+    });
+    expect(classifyVideoUrl('https://www.aparat.com/')).toBeNull();
+  });
+
+  it('ویمیوِ پلیر و میزبان‌های ناشناخته', () => {
+    expect(classifyVideoUrl('https://player.vimeo.com/video/123456789')).toEqual({
+      kind: 'embed',
+      src: 'https://player.vimeo.com/video/123456789',
+    });
+    // آدرسِ تصادفی بدون پسوندِ رسانه ⇒ رندر نمی‌شود (قانونِ اصلیِ صیانت)
+    expect(classifyVideoUrl('https://evil.example.com/click/me')).toBeNull();
+  });
+});
+
+describe('teaserText', () => {
+  it('خالی و کوتاه دست‌نخورده', () => {
+    expect(teaserText(undefined)).toBe('');
+    expect(teaserText('')).toBe('');
+    expect(teaserText('سلام')).toBe('سلام');
+  });
+
+  it('فاصله‌ها جمع و سقفِ نویسه با سه‌نقطه اعمال می‌شود', () => {
+    const flat = teaserText('خطِ اول\n\n   دوم\tبا فاصله');
+    expect(flat).toBe('خطِ اول دوم با فاصله');
+    const long = 'الف'.repeat(300);
+    const out = teaserText(long, 170);
+    expect(out.endsWith('…')).toBe(true);
+    expect(out.length).toBeLessThanOrEqual(170);
   });
 });
