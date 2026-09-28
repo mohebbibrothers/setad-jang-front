@@ -115,6 +115,7 @@ export function LmsToolsBar({
           <Link
             href={lmsHref({ featured: query.featured ? undefined : true, page: 1 }, query)}
             prefetch={false}
+            scroll={false}
             aria-pressed={Boolean(query.featured)}
             className={`inline-flex h-9 select-none items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[11.5px] font-extrabold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 active:scale-[.97] ${
               query.featured
@@ -130,6 +131,7 @@ export function LmsToolsBar({
             <Link
               href="/lms"
               prefetch={false}
+              scroll={false}
               className="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[12px] font-extrabold text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink-800"
             >
               <FilterX className="h-3.5 w-3.5" aria-hidden="true" />
@@ -154,6 +156,7 @@ function LevelChip({ href, active, label }: { href: string; active: boolean; lab
     <Link
       href={href}
       prefetch={false}
+      scroll={false}
       aria-current={active ? 'page' : undefined}
       className={`inline-flex h-8 shrink-0 select-none items-center whitespace-nowrap rounded-full px-3 text-[11.5px] font-extrabold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-50 active:scale-[.97] ${
         active

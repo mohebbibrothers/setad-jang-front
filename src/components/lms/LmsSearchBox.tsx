@@ -30,9 +30,19 @@ export function LmsSearchBox({
   const [value, setValue] = useState(initial);
   const [pending, startTransition] = useTransition();
   const firstRun = useRef(true);
+  /* آخرین عبارتی که «خودمان» به URL فرستاده‌ایم — محافظِ مسابقه: پاسخِ
+     RSCِ همان ناوبری (echo) نباید چیزی را که کاربر «حینِ لود» تایپ کرده
+     بازنویسی کند. فقط تغییرِ خار‌جیِ URL (Back/Forward، چیپ، پاک‌سازی)
+     مجاز به همگام‌سازیِ فیلد است. */
+  const lastSubmitted = useRef(initial.trim());
 
-  /* همگام‌سازی با URL بعد از ناوبری‌های بیرونی (برگردانِ فیلتر، Back/Forward). */
-  useEffect(() => setValue(initial), [initial]);
+  /* همگام‌سازی فقط با URLهای بیرونی؛ echo خودمان از صف رد می‌شود. */
+  useEffect(() => {
+    const incoming = initial.trim();
+    if (incoming === lastSubmitted.current) return;
+    lastSubmitted.current = incoming;
+    setValue(incoming);
+  }, [initial]);
 
   /* دیبانسِ زنده: تایپ می‌کنی، نتیجه همان‌جا باریک می‌شود. */
   useEffect(() => {
@@ -41,8 +51,9 @@ export function LmsSearchBox({
       return;
     }
     const q = value.trim();
-    if (q === (initial ?? '').trim()) return;
+    if (q === lastSubmitted.current) return;
     const t = setTimeout(() => {
+      lastSubmitted.current = q;
       startTransition(() => {
         router.replace(buildHref(q, preserveQuery), { scroll: false });
       });
@@ -53,8 +64,10 @@ export function LmsSearchBox({
 
   const submit = () => {
     const q = value.trim();
+    lastSubmitted.current = q;
     startTransition(() => {
-      router.push(buildHref(q, preserveQuery));
+      // بدون پرش: دک و نتایج همان‌جا زیرِ دستِ کاربر می‌مانند
+      router.push(buildHref(q, preserveQuery), { scroll: false });
     });
   };
 
@@ -85,7 +98,7 @@ export function LmsSearchBox({
         autoComplete="off"
         inputMode="search"
         maxLength={120}
-        className="h-full w-full min-w-0 bg-transparent text-[13.5px] font-bold text-ink-900 placeholder:font-medium placeholder:text-ink-400 focus:outline-none"
+        className="lms-search-input h-full w-full min-w-0 bg-transparent text-[13.5px] font-bold text-ink-900 placeholder:font-medium placeholder:text-ink-400 focus:outline-none"
       />
       {value.trim() !== '' && (
         <button
@@ -93,6 +106,7 @@ export function LmsSearchBox({
           aria-label="پاک کردن عبارت جست‌وجو"
           onClick={() => {
             setValue('');
+            lastSubmitted.current = '';
             startTransition(() => router.replace(buildHref('', preserveQuery), { scroll: false }));
           }}
           className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"

@@ -74,6 +74,7 @@ export function LmsRail({ tabs }: { tabs: LmsRailTab[] }) {
                 <Link
                   href={t.href}
                   prefetch={false}
+                  scroll={false}
                   aria-current={t.active ? 'page' : undefined}
                   onClick={(e) =>
                     e.currentTarget.scrollIntoView({

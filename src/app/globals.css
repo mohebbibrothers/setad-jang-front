@@ -294,6 +294,35 @@
     position: relative;
     z-index: 1;
   }
+  /* .section-melt — پایانِ نرمِ یک باندِ section-alt: همان طیفِ خاکستری
+     از لبه‌ی بالا ادامه می‌یابد و به‌تدریج در سفیدِ صفحه حل می‌شود تا
+     سکشنِ بعد (مثلاً راستی‌آزمایی گواهی در /lms) بدونِ «پرشِ رنگ»
+     (خاکستریِ یک‌دفعه → سفید) نشسته باشد. بافتِ نقطه‌چین هم فقط در
+     نیمه‌ی بالای باند با ماسک محو می‌شود. فرزندان بالای لایه‌ی بافت
+     می‌نشینند؛ همان الگوی stackingِ section-alt بدون تعقیبِ پورتال‌ها. */
+  .section-melt {
+    position: relative;
+    background-image: linear-gradient(180deg, #f2f5f8 0%, #f6f8fb 36%, #ffffff 64%);
+  }
+  .section-melt::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      rgba(15, 20, 32, 0.045) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 44%);
+    mask-image: linear-gradient(180deg, #000 0%, transparent 44%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .section-melt > * {
+    position: relative;
+    z-index: 1;
+  }
   /* Modals, dialogs, dropdowns and any element that explicitly declares
      itself a portaled overlay must NEVER be constrained by the parent
      section's stacking context. `position: fixed` is normally hoisted
@@ -407,6 +436,17 @@
    focus-within ring. Kill the inner ring for this specific input. */
 .gs-search-input:focus,
 .gs-search-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
+/* LMS hub — همان قاعده برای فیلدِ جست‌وجوی دکِ فرمان: قابِ بیرونی خودش
+   focus-within ring دارد؛ حلقه‌ی سراسریِ focus-visible این‌جا یک «قاب
+   بیضویِ تو‌در‌تو» می‌ساخت (گزارشِ کاربر). حلقه‌ی داخلی کشته می‌شود. */
+.lms-search-input:focus,
+.lms-search-input:focus-visible {
   outline: none !important;
   box-shadow: none !important;
   --tw-ring-shadow: 0 0 #0000 !important;

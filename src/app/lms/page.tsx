@@ -78,14 +78,16 @@ export default async function LmsHubPage({ searchParams }: { searchParams: Promi
     .filter((c) => c.coursesCount > 0)
     .sort((a, b) => b.coursesCount - a.coursesCount)
     .slice(0, 4)
-    .map((node) => ({ node, href: lmsHref({ category: node.slug, page: 1 }) }));
+    // هیرو → کاتالوگ: انتخابِ مسیر، مستقیم روی گرید فرود می‌آید.
+    .map((node) => ({ node, href: lmsHref({ category: node.slug, page: 1 }) + '#courses' }));
   const featured =
     !emptyCatalog && stats.featuredCount > 0
-      ? { count: stats.featuredCount, href: lmsHref({ featured: true, page: 1 }) }
+      ? { count: stats.featuredCount, href: lmsHref({ featured: true, page: 1 }) + '#courses' }
       : null;
 
   const hasFilter = Boolean(query.category || query.level || query.q || query.featured);
-  const buildPageHref = (p: number) => lmsHref({ page: p }, query);
+  // تعویضِ صفحه: برگشت به بالای کاتالوگ (نه بالای هیرو) تا دک همیشه در دید بماند.
+  const buildPageHref = (p: number) => lmsHref({ page: p }, query) + '#courses';
 
   return (
     <main className="bg-white">
@@ -148,8 +150,8 @@ export default async function LmsHubPage({ searchParams }: { searchParams: Promi
         </div>
       </section>
 
-      {/* ══════════ راستی‌آزمایی گواهی — عملیاتی‌کردنِ قابلیتِ عمومیِ backend ══════════ */}
-      <section id="certificate-verify" className="section-y scroll-mt-24">
+      {/* ══════════ راستی‌آزمایی گواهی — گذرِ مذاب از باندِ کاتالوگ ══════════ */}
+      <section id="certificate-verify" className="section-melt section-y scroll-mt-24">
         <div className="container-edge">
           <div className="mx-auto max-w-3xl">
             <LmsCertificateVerify />
@@ -217,6 +219,7 @@ function CatalogOffline() {
         <Link
           href="/lms"
           prefetch={false}
+          scroll={false}
           className="inline-flex h-11 items-center gap-2 rounded-full border-2 border-brand-500 bg-white px-6 text-[13px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
         >
           تلاشِ دوباره
@@ -238,6 +241,7 @@ function InvalidPageState() {
         <Link
           href="/lms"
           prefetch={false}
+          scroll={false}
           className="inline-flex h-11 items-center gap-2 rounded-full border-2 border-brand-500 bg-white px-6 text-[13px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
         >
           برگشت به صفحه‌ی اول
@@ -264,6 +268,7 @@ function NoResultsState({ hasFilter }: { hasFilter: boolean }) {
           <Link
             href="/lms"
             prefetch={false}
+            scroll={false}
             className="inline-flex h-11 items-center gap-2 rounded-full border-2 border-brand-500 bg-white px-6 text-[13px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
           >
             پاک‌سازی همه‌ی فیلترها
