@@ -2,7 +2,16 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SmartImage } from '@/components/ui/SmartImage';
 import { Icon, type IconName } from '@/components/icons/Icon';
@@ -276,6 +285,175 @@ function PagerArrows({
 }
 
 /* ───────────────────────────────────────────────────────────────────────── */
+/*  ریلِ دسته‌بندی — پیلِ فیلترِ اسکرول‌خور با ناوبریِ دوطرفه                  */
+/* ───────────────────────────────────────────────────────────────────────── */
+
+/** نوتیسِ لایه‌ی‌بندیِ مهم:
+ *  ریل در یک قاب `mx-auto w-fit max-w-full` می‌نشیند — نه در flex-wrapِ
+ *  justify-center. چرا؟ وقتی آیتم‌ِ center شده‌ی یک flex-row از والدش پهن‌تر
+ *  می‌شود، سرریزِ آن از «دوطرف» سر می‌زند و چون خودِ والد هم از viewport
+ *  پهن‌تر شده، محتوایِ شروعِ ریل (در RTL: سمت راست، همان تب «همه») به‌طور
+ *  فیزیکی از کادر بیرون می‌افتد و با اسکرولِ داخلی هم قابل دسترسی نیست.
+ *  با الگوی `w-fit + mx-auto + max-w-full`: وقتی ریل کوچک است وسط می‌نشیند
+ *  و وقتی بزرگ است دقیقاً برابرِ عرضِ والد می‌ماند و هرگز از کادر بیرون
+ *  نمی‌زند. فلش‌ها هم «در جریانِ» همان ردیف‌اند، پس ریل هرگز نمی‌تواند
+ *  صفحه را عرضی اسکرول کند — چرخه‌ی اسکرول فقط داخلِ خودِ ریل اتفاق می‌افتد.
+ */
+
+type RailEdge = {
+  /** ریل بیشتر از قاب جا نمی‌شود → فلش‌ها اصلاً رندر نمی‌شوند. */
+  overflowing: boolean;
+  /** در ابتدای RTL (راست‌ترین نقطه، pos≈0) ایستاده‌ایم → فلشِ سمت راست غیرفعال. */
+  atStart: boolean;
+  /** به انتهای ریل رسیده‌ایم → فلشِ سمت چِپ («بیشتر ببین») غیرفعال. */
+  atEnd: boolean;
+};
+
+/** فلشِ دایره‌ایِ ریل — هم‌خانواده با پیلِ CTA: خطِ برند + چِپرون،
+ *  با حالتِ غیرفعالِ خاکستری روی لبه‌ها. */
+function RailArrow({
+  direction,
+  disabled,
+  onClick,
+}: {
+  /** physical: فلشِ راست = بازگشت به ابتدای RTL؛ فلشِ چپ = رفتن به انتها. */
+  direction: 'left' | 'right';
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={direction === 'left' ? 'دیدن دسته‌های بعدی' : 'بازگشت به دسته‌های اول'}
+      onClick={onClick}
+      disabled={disabled}
+      className="grid h-9 w-9 shrink-0 select-none place-items-center rounded-full border-2 border-brand-500 bg-white text-brand-700 shadow-[0_4px_12px_-4px_rgba(13,128,116,.35)] transition-all duration-200 hover:bg-brand-50 hover:shadow-[0_8px_18px_-6px_rgba(13,128,116,.45)] active:scale-95 disabled:cursor-not-allowed disabled:border-ink-200 disabled:text-ink-300 disabled:shadow-none disabled:hover:bg-white"
+    >
+      <Icon name={direction === 'left' ? 'chevron-left' : 'chevron-right'} className="h-4 w-4" />
+    </button>
+  );
+}
+
+/** پیلِ فیلترِ دسته‌بندی با فلش‌های دوطرفه — الگوی تبیین + چرخه‌ی ریل. */
+function CategoryRail({
+  tabs,
+  active,
+  onChoose,
+}: {
+  tabs: Array<{ slug: string; title: string; count: number }>;
+  active: string;
+  onChoose: (slug: string, event: MouseEvent<HTMLButtonElement>) => void;
+}) {
+  const railRef = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState<RailEdge>({
+    overflowing: false,
+    atStart: true,
+    atEnd: true,
+  });
+
+  /* ریاضیاتِ RTLِ مطمئن: در Chromium/Firefox مدرنِ RTL، scrollLeft از 0
+     شروع می‌شود و به‌سمت مقادیرِ منفی می‌رود؛ با Math.abs به «فاصله‌ی
+     فیزیکی از ابتدا» نرمال می‌شود و روی هر دو مدلِ علامت‌دار درست است. */
+  const measure = useCallback(() => {
+    const el = railRef.current;
+    if (!el) return;
+    const max = Math.max(0, el.scrollWidth - el.clientWidth);
+    const pos = Math.abs(el.scrollLeft);
+    setEdge({
+      overflowing: max > 2,
+      atStart: pos <= 1,
+      atEnd: pos >= max - 1,
+    });
+  }, []);
+
+  useEffect(() => {
+    measure();
+    const el = railRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    el.addEventListener('scroll', measure, { passive: true });
+    window.addEventListener('resize', measure);
+    document.fonts?.ready.then(measure).catch(() => undefined);
+    return () => {
+      ro.disconnect();
+      el.removeEventListener('scroll', measure);
+      window.removeEventListener('resize', measure);
+    };
+  }, [measure, tabs.length]);
+
+  /* scrollBy روی مختصاتِ «فیزیکی» کار می‌کند (مستقل از RTL):
+     +delta → حرکت به‌سمت راست (بازگشت به ابتدا)، −delta → رفتن به انتها. */
+  const scrollRail = useCallback((dir: 1 | -1) => {
+    const el = railRef.current;
+    if (!el) return;
+    const delta = Math.max(120, Math.round(el.clientWidth * 0.7)) * dir;
+    el.scrollBy({ left: delta, behavior: 'smooth' });
+  }, []);
+
+  return (
+    <div className="mx-auto mb-8 w-fit max-w-full px-2 sm:px-0">
+      <div className="flex items-center justify-center gap-1.5">
+        {edge.overflowing && (
+          <RailArrow direction="right" disabled={edge.atStart} onClick={() => scrollRail(1)} />
+        )}
+
+        <div
+          ref={railRef}
+          role="tablist"
+          aria-label="دسته‌بندی دوره‌ها"
+          className="min-w-0 max-w-full overflow-x-auto rounded-full bg-ink-50 p-1 shadow-inner ring-1 ring-ink-100 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <div className="flex w-max items-center gap-1">
+            {tabs.map((t) => {
+              const isActive = active === t.slug;
+              return (
+                <button
+                  key={t.slug}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={(e) => {
+                    onChoose(t.slug, e);
+                    /* تبِ تازه‌انتخاب‌شده اگر نیمه‌پنهان در لبه بود، نرم
+                       داخلِ قاب می‌آید — block:'nearest' تا اسکرولِ
+                       عمودیِ صفحه جابه‌جا نشود. */
+                    e.currentTarget.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'nearest',
+                      inline: 'nearest',
+                    });
+                  }}
+                  className={`inline-flex h-10 shrink-0 select-none items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[12px] font-extrabold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-50 active:scale-[.97] sm:px-4 sm:text-[12.5px] ${
+                    isActive
+                      ? 'bg-gradient-to-l from-brand-500 to-brand-700 text-white shadow-[0_8px_20px_-6px_rgba(13,128,116,.55)]'
+                      : 'text-ink-600 hover:bg-white/60 hover:text-ink-900'
+                  }`}
+                >
+                  {t.slug === ALL_SLUG && <Icon name="grid" className="h-3.5 w-3.5 shrink-0" />}
+                  <span className="truncate">{t.title}</span>
+                  <span
+                    className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-extrabold tabular-nums ${
+                      isActive ? 'bg-white/25 text-white' : 'bg-ink-100 text-ink-500'
+                    }`}
+                  >
+                    {t.count.toLocaleString('fa-IR')}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {edge.overflowing && (
+          <RailArrow direction="left" disabled={edge.atEnd} onClick={() => scrollRail(-1)} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────────────────────────────────────────────────────── */
 /*  کارت دوره — خواهرِ کارت مددکار: همان اسکلت، همان سایه، متادیتای LMS      */
 /* ───────────────────────────────────────────────────────────────────────── */
 
@@ -342,12 +520,28 @@ function CourseTile({
 
       {/* ── بدنه ───────────────────────────────────────────────── */}
       <div className="p-4 md:p-5">
-        <h3 className="line-clamp-2 min-h-[3.5em] text-[15px] font-extrabold leading-7 text-ink-900 md:text-[15.5px]">
+        {/* line‌clamp روی <span>ِ داخلی است، نه <h3> — اگر کلمپ (و در
+            نتیجه overflow:hidden) روی ظرفِ بیرونیِ لینک باشد، حلقه‌ی
+            فوکوسِ افست‌دار از بیرونِ ظرف رد می‌شود و بریده می‌نماید.
+            ساختارِ جدید:
+              • لینک inline-block + max-w-full → جعبه‌ای مستطیلِ تمیز
+                که دورِ متن می‌نشیند (یک‌خطی: هم‌اندازه‌ی متن؛ دولاینی:
+                تمام‌عرضِ h3) — بدون هیچ overflow:hidden روی خودِ لینک،
+                پس حلقه‌ی فوکوس هرگز کلیپ نمی‌شود (حاشیه‌ی ۱۶px بدنه‌ی
+                کارت برای bleedِ رینگِ ۴px کافی است).
+              • هاله‌ی px-1/-mx-1 → کپسولِ فوکوس کمی بزرگ‌تر از خودِ متن
+                به‌لحاظِ بصری می‌ایستد و به فاصله‌ها دست نمی‌زند.
+              • select-none → با نگه‌داشتنِ موس و فشارِ Shift دیگر کرکره‌ی
+                انتخابِ متن (کاره‌ی عمودی) روی تیتر ظاهر نمی‌شود.
+              • focus-visible (به‌جای focus) → کپسول فقط برای ناوبریِ
+                کیبورد دیده می‌شود؛ کلیک+نگه‌داشتنِ موس هیچ حلقه‌ای
+                فلش نمی‌زند و تجربه‌ی لمسی/ماوسی تمیز می‌ماند. */}
+        <h3 className="min-h-[3.5em] text-[15px] font-extrabold leading-7 text-ink-900 md:text-[15.5px]">
           <Link
             href={`/lms/courses/${encodeURIComponent(c.slug)}`}
-            className="transition-colors after:absolute after:inset-0 hover:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
+            className="-mx-1 -my-0.5 inline-block max-w-full select-none rounded-[10px] px-1 py-0.5 align-top transition-colors after:absolute after:inset-0 hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:text-brand-800"
           >
-            {c.title}
+            <span className="line-clamp-2">{c.title}</span>
           </Link>
         </h3>
         {c.shortDescription && (
@@ -651,7 +845,7 @@ export function EducationSection({
     [filtered, safePage],
   );
 
-  const choose = (slug: string) => {
+  const choose = (slug: string, _event?: MouseEvent<HTMLButtonElement>) => {
     setFilter(slug);
     setPage(0);
   };
@@ -689,47 +883,9 @@ export function EducationSection({
 
         {isCatalog ? (
           <>
-            {/* ── پیلِ فیلترِ دسته‌بندی — الگوی تبیین، تب‌های پویا ── */}
+            {/* ── ریلِ فیلترِ دسته‌بندی — الگوی تبیین + ناوبریِ دوطرفه ── */}
             {categories.length > 0 && (
-              <div className="mb-8 flex w-full justify-center px-2 sm:px-0">
-                <div
-                  role="tablist"
-                  aria-label="دسته‌بندی دوره‌ها"
-                  className="max-w-full overflow-x-auto rounded-full bg-ink-50 p-1 shadow-inner ring-1 ring-ink-100 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                >
-                  <div className="flex items-center gap-1">
-                    {tabs.map((t) => {
-                      const isActive = filter === t.slug;
-                      return (
-                        <button
-                          key={t.slug}
-                          type="button"
-                          role="tab"
-                          aria-selected={isActive}
-                          onClick={() => choose(t.slug)}
-                          className={`inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[12px] font-extrabold transition-all duration-200 sm:px-4 sm:text-[12.5px] ${
-                            isActive
-                              ? 'bg-gradient-to-l from-brand-500 to-brand-700 text-white shadow-[0_8px_20px_-6px_rgba(13,128,116,.55)]'
-                              : 'text-ink-600 hover:bg-white/60 hover:text-ink-900'
-                          }`}
-                        >
-                          {t.slug === ALL_SLUG && (
-                            <Icon name="grid" className="h-3.5 w-3.5 shrink-0" />
-                          )}
-                          <span className="truncate">{t.title}</span>
-                          <span
-                            className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-extrabold tabular-nums ${
-                              isActive ? 'bg-white/25 text-white' : 'bg-ink-100 text-ink-500'
-                            }`}
-                          >
-                            {t.count.toLocaleString('fa-IR')}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+              <CategoryRail tabs={tabs} active={filter} onChoose={choose} />
             )}
 
             {/* ── شبکه‌ی دوره‌ها │ حالتِ خالیِ فیلتر ── */}
