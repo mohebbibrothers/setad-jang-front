@@ -1,0 +1,171 @@
+/**
+ * قراردادِ مشترکِ صفحه‌ی هاب «قرارگاه آموزشی» (/lms) — خالص و بدون
+ * وابستگیِ fetch، تا هم سمتِ سرور (loaderها) و هم کلاینت (نوار ابزار)
+ * ایمن import شود.
+ *
+ * منبع حقیقت (خوانده‌شده از apps/lms در بک‌اند — مطالعه‌ی فاز صفر):
+ *
+ *   GET /api/v1/lms/categories/   → LMSCategorySerializer (بدون صفحه‌بندی؛
+ *       مرتب‌شده با order,title) — فیلد count ندارد؛ شمار‌ه‌ها در فرانت
+ *       از فهرستِ دوره‌ها مشتق می‌شوند.
+ *   GET /api/v1/lms/courses/      → CourseSummarySerializer + StandardPagination
+ *       ترتیب: -published_at,-created_at (جدیدترین نخست)
+ *       فیلترها (apps/lms/filters.py::CoursePublicFilter):
+ *         • category=<slug>      — iexact روی category__slug
+ *         • level=<beginner|intermediate|advanced|professional>
+ *         • search=<term>        — PostgreSQL FTS + trigram روی
+ *           title(A) / subtitle(B) / short_description(B) /
+ *           description(C) / instructor_name(C)
+ *       صفحه‌بندی: page + page_size (پیش‌فرض ۲۰، حداکثر ۱۰۰)
+ *   اسلاگ‌ها می‌توانند فارسی باشند (پروداکشن: «تست»، «نظامی») — هر بار
+ *   ساخت URL باید با encodeURIComponent امن شود.
+ */
+
+/* ── سطوح — آینه‌ی apps.lms.choices.CourseLevel ─────────────────────── */
+export const LMS_LEVELS = ['beginner', 'intermediate', 'advanced', 'professional'] as const;
+export type LmsLevel = (typeof LMS_LEVELS)[number];
+
+export const LMS_LEVEL_LABEL: Record<LmsLevel, string> = {
+  beginner: 'مقدماتی',
+  intermediate: 'متوسط',
+  advanced: 'پیشرفته',
+  professional: 'حرفه‌ای',
+};
+
+export function normalizeLevel(raw: string | undefined | null): LmsLevel | null {
+  return LMS_LEVELS.includes(raw as LmsLevel) ? (raw as LmsLevel) : null;
+}
+
+/* ── مدل‌های نمایشی ─────────────────────────────────────────────────── */
+export type LmsCategoryNode = {
+  slug: string;
+  title: string;
+  description?: string;
+  coverUrl?: string;
+  /** مشتق‌شده از خودِ فهرستِ دوره‌ها (بک‌اند count نمی‌دهد). */
+  coursesCount: number;
+};
+
+export type LmsCourse = {
+  slug: string;
+  title: string;
+  subtitle?: string;
+  shortDescription?: string;
+  instructor: string;
+  instructorAvatarUrl?: string;
+  level?: LmsLevel | null;
+  coverUrl?: string;
+  lessonsCount: number;
+  durationSeconds: number;
+  enrollmentsCount: number;
+  graduatesCount: number;
+  isFeatured: boolean;
+  isNew: boolean;
+  publishedAt?: string;
+  categorySlug?: string;
+  categoryTitle?: string;
+};
+
+/* ── آمارِ جمعیِ کاتالوگ — از همان صفحه‌ی ۱۰۰تاییِ بدون فیلتر ─────────── */
+export type LmsCatalogStats = {
+  courseCount: number;
+  totalLessons: number;
+  totalLearners: number;
+  totalGraduates: number;
+  totalDurationSeconds: number;
+  /** تعدادِ دوره‌یِ هر دسته (برای نشانِ ریل). */
+  countByCategory: Map<string, number>;
+  /** اگر count > page_size بود، جمع‌ها تقریبی‌اند و با «+» صادقانه نشان می‌دهیم. */
+  truncated: boolean;
+};
+
+export function buildStats(courses: LmsCourse[], totalCount: number): LmsCatalogStats {
+  const countByCategory = new Map<string, number>();
+  let totalLessons = 0,
+    totalLearners = 0,
+    totalGraduates = 0,
+    totalDurationSeconds = 0;
+  for (const c of courses) {
+    if (c.categorySlug)
+      countByCategory.set(c.categorySlug, (countByCategory.get(c.categorySlug) ?? 0) + 1);
+    totalLessons += c.lessonsCount;
+    totalLearners += c.enrollmentsCount;
+    totalGraduates += c.graduatesCount;
+    totalDurationSeconds += c.durationSeconds;
+  }
+  return {
+    courseCount: totalCount,
+    totalLessons,
+    totalLearners,
+    totalGraduates,
+    totalDurationSeconds,
+    countByCategory,
+    truncated: totalCount > courses.length,
+  };
+}
+
+/* ── کوئریِ هاب و سازنده‌ی آدرس — قراردادِ قابل‌اشتراک، بدون ضعف تزریق ── */
+export type LmsHubQuery = {
+  category?: string;
+  level?: LmsLevel | null;
+  q?: string;
+  page?: number;
+};
+
+export const LMS_HUB_PAGE_SIZE = 12;
+
+/** پارسِ دفاعیِ searchParams: فقط کلیدهای شناخته‌شده عبور می‌کنند و
+ *  level تنها وقتی وارد URL می‌شود که عضوِ LMS_LEVELS باشد — صفحه با
+ *  هر ورودیِ دست‌کاری‌شده هم پاک و قابل‌پیش‌بینی می‌ماند. */
+export function parseLmsHubQuery(sp: Record<string, string | string[] | undefined>): LmsHubQuery {
+  const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const category = first(sp.category)?.trim() || undefined;
+  const q = first(sp.q)?.trim().slice(0, 120) || undefined;
+  const level = normalizeLevel(first(sp.level));
+  const pageRaw = Number(first(sp.page) ?? '1');
+  const page = Number.isFinite(pageRaw) && pageRaw > 1 ? Math.min(Math.floor(pageRaw), 100) : 1;
+  return { category, level, q, page };
+}
+
+/** سازنده‌ی آدرسِ هاب: فقط کلیدهایِ غیرخالی‌اند و نظمِ خواندنی دارند. */
+export function lmsHref(patch: LmsHubQuery = {}, base: LmsHubQuery = {}): string {
+  const merged: LmsHubQuery = { ...base, ...patch };
+  const p = new URLSearchParams();
+  if (merged.q) p.set('q', merged.q);
+  if (merged.category) p.set('category', merged.category);
+  if (merged.level) p.set('level', merged.level);
+  if (merged.page && merged.page > 1) p.set('page', String(merged.page));
+  const s = p.toString();
+  return s ? `/lms?${s}` : '/lms';
+}
+
+/** قالب‌بندیِ کوتاهِ مدت — ۹۰د → «۴۵د»، ۲س+۳۰د → «۲س ۳۰د». */
+export function formatLmsDuration(seconds: number): string {
+  if (!seconds || seconds <= 0) return '';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.round((seconds % 3600) / 60);
+  if (h > 0 && m > 0) return `${h.toLocaleString('fa-IR')}س ${m.toLocaleString('fa-IR')}د`;
+  if (h > 0) return `${h.toLocaleString('fa-IR')} ساعت`;
+  return `${m.toLocaleString('fa-IR')} دقیقه`;
+}
+
+/** ساعتِ آموزشِ جمعی — نمایشِ صادقانه‌ی «تا این لحظه». */
+export function formatLmsHours(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  return h.toLocaleString('fa-IR');
+}
+
+/** مدلِ پنجره‌ی شماره‌ی صفحه‌ها — حداکثر ۷ نشان با حذفِ هوشمندانه‌ی لبه‌ها. */
+export function pageWindow(current: number, total: number): Array<number | 'gap'> {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const inner = new Set<number>([1, total, current - 1, current, current + 1]);
+  const sorted = [...inner].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+  const out: Array<number | 'gap'> = [];
+  let prev = 0;
+  for (const n of sorted) {
+    if (n - prev > 1) out.push('gap');
+    out.push(n);
+    prev = n;
+  }
+  return out;
+}

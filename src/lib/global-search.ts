@@ -510,8 +510,9 @@ async function fetchLms(
         title: clean(c.title),
         subtitle: parts.length ? parts.join(' · ') : clean(c.short_description),
         thumb: absoluteMediaUrl(c.cover_image),
-        // See note above — LMS course detail route TBD.
-        href: `/#education`,
+        // هاب /lms اکنون زنده است؛ هیتِ LMS به آن می‌رسد. مقصدِ نهایی
+        // (صفحه‌ی جزئیاتِ هر دوره) به‌محض ساخته‌شدن لینک‌سوزی دوباره می‌شود.
+        href: `/lms`,
         badge: c.enrollments_count ? `${fa(c.enrollments_count)} یادگیرنده` : undefined,
         pill: c.level ? (LEVEL_LABEL[c.level] ?? c.level) : undefined,
       };
