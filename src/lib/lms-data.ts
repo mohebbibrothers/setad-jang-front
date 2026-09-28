@@ -1,4 +1,5 @@
 import { apiFetch, isApiError, safeApiFetch, type Paginated } from '@/lib/api';
+import { courseCoverArt, DEFAULT_INSTRUCTOR_AVATAR } from '@/lib/course-art';
 import { absoluteMediaUrl } from '@/lib/utils';
 import {
   LMS_HUB_PAGE_SIZE,
@@ -66,9 +67,9 @@ function mapCourse(c: ApiCourse): LmsCourse {
     subtitle: c.subtitle || undefined,
     shortDescription: c.short_description || undefined,
     instructor: c.instructor_name?.trim() || 'مدرس قرارگاه',
-    instructorAvatarUrl: absoluteMediaUrl(c.instructor_avatar),
+    instructorAvatarUrl: absoluteMediaUrl(c.instructor_avatar) ?? DEFAULT_INSTRUCTOR_AVATAR,
     level: normalizeLevel(c.level),
-    coverUrl: absoluteMediaUrl(c.cover_image),
+    coverUrl: absoluteMediaUrl(c.cover_image) ?? courseCoverArt(c.slug),
     lessonsCount: c.lessons_count ?? 0,
     durationSeconds: c.estimated_duration_seconds ?? 0,
     enrollmentsCount: c.enrollments_count ?? 0,

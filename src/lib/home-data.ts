@@ -20,6 +20,7 @@
 
 import { safeApiFetch } from '@/lib/api';
 import { absoluteMediaUrl } from '@/lib/utils';
+import { courseCoverArt, DEFAULT_INSTRUCTOR_AVATAR } from '@/lib/course-art';
 import { buildFeedQuery, dedupeFeedContent, type FeedFilters } from '@/lib/revayat';
 import { visibleContents } from '@/lib/tabyin-visibility';
 import type { CampaignCard } from '@/components/home/WarFundSection';
@@ -185,9 +186,9 @@ export async function loadCourses(): Promise<CourseCard[]> {
     subtitle: c.subtitle,
     shortDescription: c.short_description,
     instructor: c.instructor_name,
-    instructorAvatarUrl: absoluteMediaUrl(c.instructor_avatar),
+    instructorAvatarUrl: absoluteMediaUrl(c.instructor_avatar) ?? DEFAULT_INSTRUCTOR_AVATAR,
     level: c.level,
-    coverUrl: absoluteMediaUrl(c.cover_image),
+    coverUrl: absoluteMediaUrl(c.cover_image) ?? courseCoverArt(c.slug),
     lessonsCount: c.lessons_count,
     durationSeconds: c.estimated_duration_seconds,
     enrollmentsCount: c.enrollments_count,
