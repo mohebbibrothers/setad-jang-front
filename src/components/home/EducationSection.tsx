@@ -29,9 +29,9 @@ import { formatPersianNumber } from '@/lib/utils';
  *        {id,title,slug,description,icon,cover_image,order,is_active}
  *    GET /api/v1/lms/courses/     → CourseSummarySerializer (لیست)
  *        {id,category,title,slug,subtitle,short_description,instructor_name,
- *         level,status,is_featured,cover_image,lessons_count,
- *         estimated_duration_seconds,enrollments_count,graduates_count,
- *         published_at}
+ *         instructor_avatar,level,status,is_featured,cover_image,
+ *         lessons_count,estimated_duration_seconds,enrollments_count,
+ *         graduates_count,published_at}
  *    سطوح: beginner | intermediate | advanced | professional
  *    فیچر تازه: Lesson.content_type = video|audio|document|article
  *        (رسانه با ۹۰٪ تماشا، سند/متن با علامتِ «خواندم» تکمیل می‌شود)
@@ -64,9 +64,10 @@ export type CourseCard = {
   /** apps.lms.serializers.CourseSummarySerializer.short_description */
   shortDescription?: string;
   instructor?: string;
-  /** ONLY present when the source was CourseDetailSerializer. Homepage
-   *  cards read from CourseSummarySerializer and will always leave this
-   *  undefined — the card gracefully falls back to an initial glyph. */
+  /** apps.lms.serializers.CourseSummarySerializer.instructor_avatar —
+   *  از وقتی بک‌اند تصویرِ مدرس را به سریالایزرِ لیست افزود، روی کارت‌های
+   *  صفحه‌ی اصلی هم نمایش داده می‌شود؛ در نبودِ فایل، SmartImage پلیس‌هولدرِ
+   *  یکدستِ «avatar» را می‌نشاند. */
   instructorAvatarUrl?: string;
   level?: 'beginner' | 'intermediate' | 'advanced' | 'professional' | string;
   coverUrl?: string;
@@ -166,17 +167,6 @@ function ArticleGlyph({ className = 'h-3.5 w-3.5' }: GlyphProps) {
       <path d="M4 10h16" />
       <path d="M4 14h10" />
       <path d="M4 18h7" />
-    </Glyph>
-  );
-}
-
-/** کلیپ‌بورد+تیک — آزمون و سنجش */
-function QuizGlyph({ className = 'h-3.5 w-3.5' }: GlyphProps) {
-  return (
-    <Glyph className={className}>
-      <rect x="8" y="2" width="8" height="4" rx="1" />
-      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-      <path d="m9 14 2 2 4-4" />
     </Glyph>
   );
 }
@@ -286,49 +276,6 @@ function PagerArrows({
 }
 
 /* ───────────────────────────────────────────────────────────────────────── */
-/*  شمارنده‌های واقعیِ کاتالوگ — فقط از داده‌ی API، بدون عدد ساختگی          */
-/* ───────────────────────────────────────────────────────────────────────── */
-
-function StatsRow({ courses, categories }: { courses: CourseCard[]; categories: EduCategory[] }) {
-  // مجموع یادگیرندگان و ساعت محتوا مستقیماً از فیلدهای سریالایزر جمع می‌شود.
-  const learners = courses.reduce((a, c) => a + (c.enrollmentsCount ?? 0), 0);
-  const totalSeconds = courses.reduce((a, c) => a + (c.durationSeconds ?? 0), 0);
-  const hours = Math.round(totalSeconds / 3600);
-
-  const items: Array<{ value: number; label: string }> = [
-    { value: courses.length, label: 'کلاس تخصصی' },
-    { value: categories.length, label: 'دسته‌بندی' },
-    { value: learners, label: 'یادگیرنده' },
-    { value: hours, label: 'ساعت آموزش' },
-  ];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.45, delay: 0.1 }}
-      className="mb-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 md:mb-10 md:gap-x-8"
-      aria-label="آمار قرارگاه آموزشی"
-    >
-      {items.map((s, i) => (
-        <span key={s.label} className="flex items-center gap-x-6 md:gap-x-8">
-          {i > 0 && <span className="h-4 w-px bg-ink-200" aria-hidden="true" />}
-          <span className="flex items-baseline gap-1.5">
-            <span className="text-[20px] font-extrabold tabular-nums text-brand-600 md:text-[22px]">
-              {formatPersianNumber(s.value)}
-            </span>
-            <span className="text-[11.5px] font-medium text-ink-500 md:text-[12.5px]">
-              {s.label}
-            </span>
-          </span>
-        </span>
-      ))}
-    </motion.div>
-  );
-}
-
-/* ───────────────────────────────────────────────────────────────────────── */
 /*  کارت دوره — خواهرِ کارت مددکار: همان اسکلت، همان سایه، متادیتای LMS      */
 /* ───────────────────────────────────────────────────────────────────────── */
 
@@ -419,19 +366,19 @@ function CourseTile({
         {/* پاصفحه: مدرس + آمارِ ثبت‌نام/فارغ‌التحصیل */}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-ink-100 pt-3">
           <span className="inline-flex min-w-0 items-center gap-2">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-600 ring-1 ring-brand-100">
-              {c.instructorAvatarUrl ? (
-                /* در مسیرِ لیست هرگز ست نمی‌شود — گاردِ احتیاطی */
-                <Image
-                  src={c.instructorAvatarUrl}
-                  alt=""
-                  width={32}
-                  height={32}
-                  className="h-full w-full rounded-full object-cover"
-                />
-              ) : (
-                <Icon name="user" className="h-3.5 w-3.5" />
-              )}
+            {/* آواتارِ مدرس — از CourseSummarySerializer (پس از افزودنِ
+                instructor_avatar به سریالایزرِ لیست). SmartImage با
+                variant="avatar" در نبودِ تصویر همان پلیس‌هولدرِ یکدستِ
+                سایت (گرادیانتِ برند + گلیفِ کاربر) را می‌گذارد. */}
+            <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-brand-50 ring-2 ring-brand-100">
+              <SmartImage
+                src={c.instructorAvatarUrl}
+                alt={c.instructor ? `تصویر ${c.instructor}` : 'مدرس دوره'}
+                variant="avatar"
+                fill
+                sizes="36px"
+                className="object-cover"
+              />
             </span>
             <span className="truncate text-[12px] font-bold text-ink-700">
               {c.instructor || 'مدرس قرارگاه'}
@@ -623,95 +570,33 @@ function LaunchConsole() {
 }
 
 /* ───────────────────────────────────────────────────────────────────────── */
-/*  پنلِ «مسیر یادگیری در قرارگاه» — ثابت در هر دو حالت؛ روایتِ قابلیت‌ها     */
+/*  CTA — دقیقاً الگوی سکشن‌های خواهر: پیلِ خط‌دارِ برند + پیکان             */
 /* ───────────────────────────────────────────────────────────────────────── */
 
-const JOURNEY: Array<{
-  n: number;
-  title: string;
-  desc: string;
-  icon: IconName | 'quiz' | 'seal';
-}> = [
-  {
-    n: 1,
-    title: 'انتخاب مسیر',
-    desc: 'دسته‌بندی‌های تخصصی با چهار سطح — از مقدماتی تا حرفه‌ای، هر مهارت یک مسیرِ روشن دارد.',
-    icon: 'category-pick',
-  },
-  {
-    n: 2,
-    title: 'جلسات چندنوعی',
-    desc: 'هر جلسه ویدئو، صوت، سند PDF یا متنِ غنی است؛ پیشرفتِ هر جلسه خودکار ثبت می‌شود.',
-    icon: 'play',
-  },
-  {
-    n: 3,
-    title: 'آزمون و سنجش',
-    desc: 'آزمونِ پایانِ دوره با آستانهٔ قبولیِ شفاف؛ تمام تلاش‌ها ثبت و بهترین نتیجه دیده می‌شود.',
-    icon: 'quiz',
-  },
-  {
-    n: 4,
-    title: 'گواهی راستی‌آزما',
-    desc: 'گواهی پایانِ دوره با کدِ یکتا صادر می‌شود و اعتبارش از یک نشانیِ عمومی بررسی می‌شود.',
-    icon: 'seal',
-  },
-];
-
-function JourneyPanel({ className = '' }: { className?: string }) {
+function CoursesHubCTA() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-40px' }}
-      transition={{ duration: 0.5, delay: 0.05 }}
-      className={`rounded-[24px] border border-ink-100 bg-white p-5 shadow-card md:p-7 ${className}`}
-    >
-      {/* سرصفحه‌ی داخلِ پنل — همان زبانِ دیسکِ آیکونِ EmptyState */}
-      <div className="mb-6 flex items-center gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100 text-brand-600 shadow-[inset_0_0_0_1px_rgba(13,128,116,.08)]">
-          <Icon name="graduation" className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <h3 className="text-[14.5px] font-extrabold text-ink-900 md:text-[15px]">
-            مسیر یادگیری در قرارگاه
-          </h3>
-          <p className="mt-1 text-[11.5px] font-medium leading-5 text-ink-500 md:text-[12px]">
-            از انتخاب مسیر تا گواهیِ قابل‌استعلام — چهار گامِ روشن و ثبت‌شده.
-          </p>
-        </div>
-      </div>
-
-      {/* ۴ گام — مرکزچین (هم‌خانواده با EmptyState) + خطِ رابطِ دسکتاپ */}
-      <div className="relative">
-        <span
+    <div className="mt-6 flex justify-center">
+      <Link
+        href="/lms"
+        className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-brand-500 bg-white px-7 text-[14px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
+      >
+        <span>مشاهده همه آموزش‌ها</span>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           aria-hidden="true"
-          className="absolute left-[12.5%] right-[12.5%] top-5 hidden h-px bg-gradient-to-l from-transparent via-brand-200 to-transparent lg:block"
-        />
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
-          {JOURNEY.map((s) => (
-            <div key={s.n} className="relative flex flex-col items-center px-2 text-center">
-              <span className="relative z-10 grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100 text-[14px] font-extrabold text-brand-700 shadow-[inset_0_0_0_1px_rgba(13,128,116,.08)] ring-4 ring-white">
-                {s.n.toLocaleString('fa-IR')}
-              </span>
-              <span className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-extrabold text-ink-800">
-                {s.icon === 'quiz' ? (
-                  <QuizGlyph className="h-3.5 w-3.5 text-brand-600" />
-                ) : s.icon === 'seal' ? (
-                  <SealGlyph className="h-3.5 w-3.5 text-brand-600" />
-                ) : (
-                  <Icon name={s.icon} className="h-3.5 w-3.5 text-brand-600" />
-                )}
-                {s.title}
-              </span>
-              <p className="mt-1.5 max-w-[240px] text-[11.5px] leading-5 text-ink-500 md:leading-6">
-                {s.desc}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </motion.div>
+        >
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="12 19 5 12 12 5" />
+        </svg>
+      </Link>
+    </div>
   );
 }
 
@@ -804,8 +689,6 @@ export function EducationSection({
 
         {isCatalog ? (
           <>
-            <StatsRow courses={courses} categories={categories} />
-
             {/* ── پیلِ فیلترِ دسته‌بندی — الگوی تبیین، تب‌های پویا ── */}
             {categories.length > 0 && (
               <div className="mb-8 flex w-full justify-center px-2 sm:px-0">
@@ -888,12 +771,12 @@ export function EducationSection({
 
             <PagerArrows onPrev={prev} onNext={next} disabled={totalPages <= 1} />
 
-            <JourneyPanel className="mt-10 md:mt-12" />
+            <CoursesHubCTA />
           </>
         ) : (
           <>
             <LaunchConsole />
-            <JourneyPanel className="mt-6 md:mt-8" />
+            <CoursesHubCTA />
           </>
         )}
       </div>

@@ -140,10 +140,10 @@ export async function loadCriminals(): Promise<CriminalCard[]> {
 /* ─── LMS ────────────────────────────────────────────────────────────── */
 type ApiLmsCategory = { slug: string; title: string; courses_count?: number };
 /** Mirrors apps.lms.serializers.CourseSummarySerializer (LIST endpoint).
- *  IMPORTANT: `instructor_avatar` / `description` / `instructor_bio` /
- *  `intro_video_url` / `lessons` live ONLY on the DETAIL serializer.
- *  Requesting them from the list endpoint used to yield `undefined`
- *  every time — we no longer pretend they're available here. */
+ *  `instructor_avatar` is exposed on the LIST serializer too (added
+ *  backend-side so homepage cards can render real instructor photos).
+ *  `description` / `instructor_bio` / `intro_video_url` / `lessons` still
+ *  live ONLY on the DETAIL serializer. */
 type ApiCourse = {
   id?: number;
   slug: string;
@@ -151,6 +151,7 @@ type ApiCourse = {
   subtitle?: string;
   short_description?: string;
   instructor_name?: string;
+  instructor_avatar?: string | null;
   level?: 'beginner' | 'intermediate' | 'advanced' | 'professional' | string;
   status?: string;
   is_featured?: boolean;
@@ -184,9 +185,7 @@ export async function loadCourses(): Promise<CourseCard[]> {
     subtitle: c.subtitle,
     shortDescription: c.short_description,
     instructor: c.instructor_name,
-    // instructorAvatarUrl is DELIBERATELY not set here — the backend
-    // only exposes instructor_avatar on the CourseDetail serializer.
-    // The card falls back to its own initial-avatar glyph.
+    instructorAvatarUrl: absoluteMediaUrl(c.instructor_avatar),
     level: c.level,
     coverUrl: absoluteMediaUrl(c.cover_image),
     lessonsCount: c.lessons_count,
