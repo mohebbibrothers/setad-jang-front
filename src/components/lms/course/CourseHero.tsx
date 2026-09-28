@@ -196,8 +196,10 @@ export function CourseHero({ course }: { course: LmsCourseDetail }) {
                 courseTitle={course.title}
                 description={course.shortDescription}
               />
+              {/* در عرض‌های باریک با چیپِ «تماشای ویدئوی معرفی» هم‌مسر می‌شود؛
+                  فقط از sm به بالا نمایش داده می‌شود (اطلاعاتِ تکراری نیست — ردیفِ اعتماد هست) */}
               {course.lessonsCount > 0 && (
-                <span className="absolute bottom-3 right-3 inline-flex h-7 items-center gap-1.5 rounded-full bg-black/55 px-3 text-[11px] font-bold text-white ring-1 ring-white/20 backdrop-blur-sm">
+                <span className="absolute bottom-3 right-3 hidden h-7 items-center gap-1.5 rounded-full bg-black/55 px-3 text-[11px] font-bold text-white ring-1 ring-white/20 backdrop-blur-sm sm:inline-flex">
                   <ListVideo className="h-3.5 w-3.5" aria-hidden="true" />
                   {fa(course.lessonsCount)} جلسه‌ی ساخت‌یافته
                 </span>
