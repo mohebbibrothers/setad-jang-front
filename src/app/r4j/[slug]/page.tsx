@@ -38,6 +38,7 @@ import { SmartImage } from '@/components/ui/SmartImage';
 import { absoluteMediaUrl, toPersianDigits } from '@/lib/utils';
 import { CasefileGallery } from './CasefileGallery';
 import { JusticeActionBar, ShareCaseButton } from './JusticeActionBar';
+import { normalizeRouteSlug } from '@/lib/route-slug';
 
 /**
  * ═══════════════════════════════════════════════════════════════════
@@ -64,7 +65,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const slug = normalizeRouteSlug((await params).slug);
   const d = await fetchCriminalDetail(slug);
   if (!d) return { title: 'پرونده یافت نشد' };
   const name = criminalFullName(d) || d.slug;
@@ -193,7 +194,7 @@ export default async function CriminalCasefilePage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
+  const slug = normalizeRouteSlug((await params).slug);
   const d = await fetchCriminalDetail(slug);
   if (!d) notFound();
 

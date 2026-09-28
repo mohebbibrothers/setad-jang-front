@@ -13,6 +13,7 @@ import { RelatedCourses } from '@/components/lms/course/RelatedCourses';
 import { CourseEnrollCta } from '@/components/lms/course/CourseEnrollCta';
 import { EmptyState } from '@/components/home/EmptyState';
 import type { LmsCourseDetail } from '@/lib/lms-shared';
+import { normalizeRouteSlug } from '@/lib/route-slug';
 
 /**
  * ═══════════════════════════════════════════════════════════════════
@@ -52,7 +53,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const slug = normalizeRouteSlug((await params).slug);
   const result = await fetchLmsCourseDetail(slug);
   if (result.kind !== 'ok') return { title: 'کلاس یافت نشد' };
   const c = result.course;
@@ -78,7 +79,7 @@ export default async function LmsCourseDetailPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
+  const slug = normalizeRouteSlug((await params).slug);
   const result = await fetchLmsCourseDetail(slug);
 
   if (result.kind === 'not-found') notFound();

@@ -29,6 +29,7 @@ import {
   normalizeCampaignAlbum,
   type PaymentSheetCampaignBridge,
 } from '@/lib/madadkar';
+import { normalizeRouteSlug } from '@/lib/route-slug';
 
 /**
  * ═══════════════════════════════════════════════════════════════════
@@ -52,7 +53,7 @@ export const revalidate = 300;
 type PageProps = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const slug = normalizeRouteSlug((await params).slug);
   const c = await fetchCampaignDetail(slug);
   if (!c) return { title: 'مدد به حرکت' };
   const desc =
@@ -67,7 +68,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function CampaignDetailPage({ params }: PageProps) {
-  const { slug } = await params;
+  const slug = normalizeRouteSlug((await params).slug);
   const [campaign, transparency] = await Promise.all([
     fetchCampaignDetail(slug),
     fetchTransparency(slug),

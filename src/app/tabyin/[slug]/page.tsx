@@ -26,6 +26,7 @@ import {
 import { cn, canonicalApiLookup, formatPersianNumber } from '@/lib/utils';
 import { asText, normalizeTabyinAttachments } from '@/lib/tabyin-attachments';
 import { TabyinStage, type TabyinStageAttachment } from '@/components/tabyin/TabyinStage';
+import { normalizeRouteSlug } from '@/lib/route-slug';
 
 /**
  * ═══════════════════════════════════════════════════════════════════
@@ -89,7 +90,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const slug = normalizeRouteSlug((await params).slug);
   const item = await fetchContent(slug);
   const safeTitle = asText(item?.title);
   const title = safeTitle ? `${safeTitle} | جهاد تبیین` : 'جهاد تبیین | بعثت مردم';
@@ -141,7 +142,7 @@ function buildJsonLd(item: TabyinContent, hero: TabyinStageAttachment | undefine
 }
 
 export default async function TabyinDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+  const slug = normalizeRouteSlug((await params).slug);
   const item = await fetchContent(slug);
   if (!item) notFound();
 
