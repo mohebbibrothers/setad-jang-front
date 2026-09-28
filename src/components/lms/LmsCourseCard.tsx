@@ -95,7 +95,9 @@ export function LmsCourseCard({ c }: { c: LmsCourse }) {
           </p>
         )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        {/* چیپ‌های متا — ناحیه‌ی مستقل با فاصله‌ی پایینیِ تضمین‌شده؛
+            دیگر هرگز به خطِ جداکننده‌ی پاصفحه نمی‌چسبد (بازطراحیِ موج دوم). */}
+        <div className="mt-3.5 flex flex-wrap items-center gap-1.5 pb-1">
           {levelLabel && (
             <span
               className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-bold ring-1 ${LEVEL_CHIP[c.level ?? ''] ?? 'bg-ink-50 text-ink-600 ring-ink-100'}`}
@@ -114,40 +116,43 @@ export function LmsCourseCard({ c }: { c: LmsCourse }) {
           )}
         </div>
 
-        {/* پاصفحه */}
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-ink-100 pt-3">
-          <span className="inline-flex min-w-0 items-center gap-2">
-            <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-brand-50 ring-2 ring-brand-100">
-              <SmartImage
-                src={c.instructorAvatarUrl}
-                alt={`تصویر ${c.instructor}`}
-                variant="avatar"
-                fill
-                sizes="36px"
-                className="object-cover"
-              />
+        {/* پاصفحه — اسپیسرِ mt-auto + فاصله‌ی حداقلیِ ۱۶px بالای خط، سپس
+            ۱۴px زیرِ خط؛ ریتمِ عمودیِ تضمینی در هر ارتفاعِ ردیف. */}
+        <div className="mt-auto pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-ink-100 pt-3.5">
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-brand-50 ring-2 ring-brand-100">
+                <SmartImage
+                  src={c.instructorAvatarUrl}
+                  alt={`تصویر ${c.instructor}`}
+                  variant="avatar"
+                  fill
+                  sizes="36px"
+                  className="object-cover"
+                />
+              </span>
+              <span className="truncate text-[12px] font-bold text-ink-700">{c.instructor}</span>
             </span>
-            <span className="truncate text-[12px] font-bold text-ink-700">{c.instructor}</span>
-          </span>
 
-          <span className="flex items-center gap-3 text-[11.5px] font-bold text-ink-500">
-            {c.enrollmentsCount > 0 && (
-              <span className="inline-flex items-center gap-1">
-                <Users className="h-3 w-3 text-brand-600" aria-hidden="true" />
-                <span className="tabular-nums">{c.enrollmentsCount.toLocaleString('fa-IR')}</span>
-              </span>
-            )}
-            {c.graduatesCount > 0 && (
-              <span className="inline-flex items-center gap-1">
-                <GraduationCap className="h-3 w-3 text-brand-600" aria-hidden="true" />
-                <span className="tabular-nums">{c.graduatesCount.toLocaleString('fa-IR')}</span>
-              </span>
-            )}
-          </span>
+            <span className="flex items-center gap-3 text-[11.5px] font-bold text-ink-500">
+              {c.enrollmentsCount > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <Users className="h-3 w-3 text-brand-600" aria-hidden="true" />
+                  <span className="tabular-nums">{c.enrollmentsCount.toLocaleString('fa-IR')}</span>
+                </span>
+              )}
+              {c.graduatesCount > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <GraduationCap className="h-3 w-3 text-brand-600" aria-hidden="true" />
+                  <span className="tabular-nums">{c.graduatesCount.toLocaleString('fa-IR')}</span>
+                </span>
+              )}
+            </span>
+          </div>
         </div>
 
         {/* CTAی شروع — گرادیانتِ برند، پایینِ کارت */}
-        <span className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-brand-500 to-brand-700 text-[13px] font-extrabold text-white shadow-[0_10px_24px_-12px_rgba(13,128,116,.75)] transition-all duration-200 group-hover:from-brand-600 group-hover:to-brand-800">
+        <span className="mt-3.5 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-brand-500 to-brand-700 text-[13px] font-extrabold text-white shadow-[0_10px_24px_-12px_rgba(13,128,116,.75)] transition-all duration-200 group-hover:from-brand-600 group-hover:to-brand-800">
           <GraduationCap className="h-4 w-4" aria-hidden="true" />
           شروع یادگیری
         </span>

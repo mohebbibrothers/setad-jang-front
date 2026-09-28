@@ -2,23 +2,28 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { Loader2, Search, X } from 'lucide-react';
 
 /**
- * جعبه‌ی جست‌وجوی هاب — در هیرو (مشتاقانه) و در نوار ابزار (زنده و
- * دیبانس‌شده) هر دو استفاده می‌شود. خروجی به URL می‌رود، نه به استیت —
- * یعنی هر عبارت قابل‌اشتراک، قابل‌بک-زدن و سازگار با کشِ سرور است.
+ * جعبه‌ی جست‌وجوی هاب — تک‌نمونه. (بازطراحی: دو باکسِ جست‌وجو در یک
+ * صفحه دیگر وجود ندارد؛ هیرو فقط مسیرهای آماده‌ی معتبر می‌دهد.)
+ *
+ * قرارداد:
+ *  • خروجی به URL می‌رود، نه به استیت — هر عبارت قابل‌اشتراک،
+ *    قابل‌بک-زدن و سازگار با کشِ سرور است؛
+ *  • تایپ با مکثِ ۳۵۰ms نتیجه را زنده باریک می‌کند (بدون ناوبریِ
+ *    اسکرول‌دار) و Enter/دکمه بلافاصله اعمال می‌کند؛
+ *  • دسته/سطح/ویژه‌ی فعال از مسیرِ preserveQuery حفظ می‌شوند و هر
+ *    جست‌وجوی تازه به صفحه‌ی ۱ برمی‌گردد.
  */
 export function LmsSearchBox({
   initial = '',
   preserveQuery,
-  variant,
-  placeholder = 'دنبال چه مهارتی می‌گردی؟',
+  placeholder = 'نام کلاس، مدرس یا موضوع…',
 }: {
   initial?: string;
-  /** کوئریِ فعلی (دسته/سطح) که هنگام جست‌وجو حفظ می‌شود. */
+  /** کوئریِ فعلی (دسته/سطح/ویژه) که هنگام جست‌وجو حفظ می‌شود. */
   preserveQuery?: string;
-  variant: 'hero' | 'toolbar';
   placeholder?: string;
 }) {
   const router = useRouter();
@@ -29,10 +34,8 @@ export function LmsSearchBox({
   /* همگام‌سازی با URL بعد از ناوبری‌های بیرونی (برگردانِ فیلتر، Back/Forward). */
   useEffect(() => setValue(initial), [initial]);
 
-  /* حالتِ toolbar: با توقفِ تایپ، بعد از ۳۵۰ms کوئری عوض می‌شود — بدون
-     Enter هم زندگی می‌کند؛ حالتِ hero فقط با Enter/دکمه. */
+  /* دیبانسِ زنده: تایپ می‌کنی، نتیجه همان‌جا باریک می‌شود. */
   useEffect(() => {
-    if (variant !== 'toolbar') return;
     if (firstRun.current) {
       firstRun.current = false;
       return;
@@ -55,7 +58,6 @@ export function LmsSearchBox({
     });
   };
 
-  const isHero = variant === 'hero';
   return (
     <form
       role="search"
@@ -63,21 +65,12 @@ export function LmsSearchBox({
         e.preventDefault();
         submit();
       }}
-      className={
-        isHero
-          ? 'flex w-full items-center gap-2 rounded-2xl bg-white/[.97] p-2 shadow-[0_18px_48px_-18px_rgba(0,0,0,.55)] ring-1 ring-white/15 focus-within:ring-2 focus-within:ring-mint-300'
-          : 'flex w-full items-center gap-2 rounded-full bg-white p-1.5 ring-1 ring-ink-200 transition-shadow focus-within:ring-2 focus-within:ring-brand-400'
-      }
+      className="flex h-12 w-full items-center gap-2 rounded-xl bg-ink-50/80 p-1.5 ps-3.5 ring-1 ring-ink-200/80 transition-all duration-200 focus-within:bg-white focus-within:shadow-[0_10px_28px_-16px_rgba(13,128,116,.45)] focus-within:ring-2 focus-within:ring-brand-500"
     >
-      <span
-        className={`grid shrink-0 place-items-center rounded-xl ${
-          isHero
-            ? 'h-11 w-11 bg-gradient-to-br from-brand-500 to-brand-700 text-white'
-            : 'h-9 w-9 text-brand-600'
-        }`}
-      >
-        <Search className={isHero ? 'h-5 w-5' : 'h-4 w-4'} aria-hidden="true" />
-      </span>
+      <Search
+        className={`h-[18px] w-[18px] shrink-0 transition-colors ${pending ? 'animate-pulse text-brand-500' : 'text-ink-400'}`}
+        aria-hidden="true"
+      />
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -92,9 +85,7 @@ export function LmsSearchBox({
         autoComplete="off"
         inputMode="search"
         maxLength={120}
-        className={`w-full bg-transparent font-bold text-ink-900 placeholder:font-medium placeholder:text-ink-400 focus:outline-none ${
-          isHero ? 'min-h-11 text-[14.5px] md:text-[15px]' : 'min-h-9 text-[13px]'
-        }`}
+        className="h-full w-full min-w-0 bg-transparent text-[13.5px] font-bold text-ink-900 placeholder:font-medium placeholder:text-ink-400 focus:outline-none"
       />
       {value.trim() !== '' && (
         <button
@@ -102,28 +93,19 @@ export function LmsSearchBox({
           aria-label="پاک کردن عبارت جست‌وجو"
           onClick={() => {
             setValue('');
-            if (variant === 'toolbar') {
-              startTransition(() =>
-                router.replace(buildHref('', preserveQuery), { scroll: false }),
-              );
-            }
+            startTransition(() => router.replace(buildHref('', preserveQuery), { scroll: false }));
           }}
-          className={`grid shrink-0 place-items-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700 ${
-            isHero ? 'h-9 w-9' : 'h-8 w-8'
-          }`}
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"
         >
-          ×
+          <X className="h-4 w-4" aria-hidden="true" />
         </button>
       )}
       <button
         type="submit"
         disabled={pending}
-        className={`shrink-0 transition-all disabled:opacity-60 ${
-          isHero
-            ? 'h-11 rounded-xl bg-gradient-to-l from-mint-500 to-mint-600 px-5 text-[13.5px] font-extrabold text-ink-950 shadow-[0_10px_26px_-10px_rgba(37,197,186,.9)] hover:from-mint-400 hover:to-mint-500 active:text-ink-900'
-            : 'h-9 rounded-full bg-gradient-to-l from-brand-500 to-brand-700 px-4 text-[12px] font-extrabold text-white shadow-[0_8px_20px_-8px_rgba(13,128,116,.7)] hover:brightness-105'
-        }`}
+        className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-gradient-to-l from-brand-500 to-brand-700 px-5 text-[12.5px] font-extrabold text-white shadow-[0_8px_20px_-8px_rgba(13,128,116,.75)] transition-all hover:from-brand-600 hover:to-brand-800 active:scale-[.98] disabled:opacity-60"
       >
+        {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
         جست‌وجو
       </button>
     </form>

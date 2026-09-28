@@ -17,21 +17,30 @@ import { LmsToolsBar } from '@/components/lms/LmsToolsBar';
 import { LmsCourseCard } from '@/components/lms/LmsCourseCard';
 import { LmsPager } from '@/components/lms/LmsPager';
 import { LmsLaunchConsole } from '@/components/lms/LmsLaunchConsole';
+import { LmsCertificateVerify } from '@/components/lms/LmsCertificateVerify';
 import { EmptyState } from '@/components/home/EmptyState';
 
 /**
  * ═══════════════════════════════════════════════════════════════════
  * /lms — هابِ «قرارگاه آموزشی»
  *
- *   معماری: تماماً سرور-رندر؛ هر کنترل (ریل دسته‌ها، چیپ سطح، سرچ) یک
- *   URLِ سالمِ قابل‌اشتراک می‌سازد و backend با (category, level, search,
- *   page, page_size) فیلتر می‌کند. تبِ «همه»، ریستِ کوئری است، نه استیت.
+ *   معماری: تماماً سرور-رندر؛ هر کنترل (ریل دسته‌ها، سگمنت سطح، چیپِ
+ *   ویژه، سرچِ واحد) یک URLِ سالمِ قابل‌اشتراک می‌سازد و backend با
+ *   (category, level, is_featured, search, page, page_size) فیلتر
+ *   می‌کند. تبِ «همه»، ریستِ کوئری است، نه استیت.
+ *
+ *   قاعده‌ی «یک صفحه، یک جست‌وجو»: ورودیِ جست‌وجو فقط در دکِ فرمانِ
+ *   بالای گرید زندگی می‌کند؛ هیرو مسیرهای تضمین‌شده (دسته + ویژه)
+ *   می‌دهد — دیگر هیچ چیپِ «شروعِ سریع» به بن‌بستِ صفرنتیجه نمی‌رسد.
  *
  *   حالت‌ها:
  *     • کاتالوگِ کاملاً خالی → کنسولِ راه‌اندازی (روایتِ صادقانه).
  *     • فیلترِ بدون نتیجه → EmptyState + پاک‌سازی فیلترها.
  *     • صفحه‌ی فراتر از محدوده (DRF 404) → EmptyState + برگشت به صفحه‌ی ۱.
  *     • قطعِ ارتباط → EmptyState‌ی آفلاین (بدون کلاه‌سرهم‌کردنِ بالغ‌تر).
+ *
+ *   انتهای صفحه، ادعای «گواهی راستی‌آزما» با ویجتِ استعلامِ عمومیِ
+ *   واقعی (پروکسیِ /api/lms/certificate-verify) عملیاتی می‌شود.
  * ═══════════════════════════════════════════════════════════════════
  */
 
@@ -68,23 +77,19 @@ export default async function LmsHubPage({ searchParams }: { searchParams: Promi
   const topCategories = categories
     .filter((c) => c.coursesCount > 0)
     .sort((a, b) => b.coursesCount - a.coursesCount)
-    .slice(0, 3)
+    .slice(0, 4)
     .map((node) => ({ node, href: lmsHref({ category: node.slug, page: 1 }) }));
-  const suggestedSearches = topCategories.slice(0, 2).map(({ node }) => ({
-    label: `جست‌وجوی «${node.title}»`,
-    href: lmsHref({ q: node.title }),
-  }));
+  const featured =
+    !emptyCatalog && stats.featuredCount > 0
+      ? { count: stats.featuredCount, href: lmsHref({ featured: true, page: 1 }) }
+      : null;
 
-  const hasFilter = Boolean(query.category || query.level || query.q);
+  const hasFilter = Boolean(query.category || query.level || query.q || query.featured);
   const buildPageHref = (p: number) => lmsHref({ page: p }, query);
 
   return (
     <main className="bg-white">
-      <LmsHero
-        stats={stats}
-        topCategories={topCategories}
-        suggestedSearches={emptyCatalog ? [] : suggestedSearches}
-      />
+      <LmsHero stats={stats} topCategories={topCategories} featured={featured} />
       <LmsAssuranceStrip />
 
       {/* ══════════ کاتالوگ ══════════ */}
@@ -143,6 +148,15 @@ export default async function LmsHubPage({ searchParams }: { searchParams: Promi
         </div>
       </section>
 
+      {/* ══════════ راستی‌آزمایی گواهی — عملیاتی‌کردنِ قابلیتِ عمومیِ backend ══════════ */}
+      <section id="certificate-verify" className="section-y scroll-mt-24">
+        <div className="container-edge">
+          <div className="mx-auto max-w-3xl">
+            <LmsCertificateVerify />
+          </div>
+        </div>
+      </section>
+
       {/* Structured data — ItemListِ صفحه‌ی جاری */}
       {page.items.length > 0 && (
         <script
@@ -184,7 +198,9 @@ function catalogSummary(
       ? `${fa(filtered)} نتیجه برای «${query.q}» در دسته‌ی انتخاب‌شده؛ با فیلترها باریک‌ترش کن یا همه را ببین.`
       : `${fa(filtered)} نتیجه برای «${query.q}»؛ با دسته و سطح، هدف را بگیر.`;
   }
-  if (query.category || query.level)
+  if (query.featured && !query.category && !query.level)
+    return `${fa(filtered)} کلاسِ دست‌چینِ سردبیر؛ جست‌وجو را هم به همین مجموعه‌ی ویژه اضافه کن.`;
+  if (query.category || query.level || query.featured)
     return `${fa(filtered)} کلاس با این ترکیبِ فیلتر؛ جست‌وجو را هم به این مجموعه اضافه کن.`;
   return `${fa(total)} کلاسِ رایگان و سطح‌بندی‌شده — جست‌وجو کن، دسته را بگیر و مستقیم وارد مسیر شو.`;
 }

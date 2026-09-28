@@ -121,6 +121,8 @@ export async function fetchLmsCoursesPage(query: LmsHubQuery): Promise<LmsCourse
   if (query.category) params.set('category', query.category);
   if (query.level) params.set('level', query.level);
   if (query.q) params.set('search', query.q);
+  // ترجمه‌ی کلیدِ کوتاهِ عمومی به قراردادِ CoursePublicFilter
+  if (query.featured) params.set('is_featured', 'true');
   params.set('page', String(Math.max(1, query.page ?? 1)));
 
   try {

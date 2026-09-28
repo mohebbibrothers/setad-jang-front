@@ -13,10 +13,15 @@
  *       فیلترها (apps/lms/filters.py::CoursePublicFilter):
  *         • category=<slug>      — iexact روی category__slug
  *         • level=<beginner|intermediate|advanced|professional>
+ *         • is_featured=<bool>   — فقط ویژه / فقط غیرویژه
  *         • search=<term>        — PostgreSQL FTS + trigram روی
  *           title(A) / subtitle(B) / short_description(B) /
  *           description(C) / instructor_name(C)
  *       صفحه‌بندی: page + page_size (پیش‌فرض ۲۰، حداکثر ۱۰۰)
+ *   در URLِ عمومیِ سایت به‌جای is_featured از کلیدِ کوتاهِ featured=1
+ *   استفاده می‌کنیم و لودر آن را به قراردادِ backend ترجمه می‌کند
+ *   (آدرس‌های کوتاه‌تر، قابل‌خواندن‌تر و پایدارتر در برابر rename شدن
+ *   نامِ فیلدِ داخلی).
  *   اسلاگ‌ها می‌توانند فارسی باشند (پروداکشن: «تست»، «نظامی») — هر بار
  *   ساخت URL باید با encodeURIComponent امن شود.
  */
@@ -69,6 +74,8 @@ export type LmsCourse = {
 /* ── آمارِ جمعیِ کاتالوگ — از همان صفحه‌ی ۱۰۰تاییِ بدون فیلتر ─────────── */
 export type LmsCatalogStats = {
   courseCount: number;
+  /** تعدادِ دوره‌های ویژه — برای چیپِ طلاییِ «پیشنهاد سردبیر». */
+  featuredCount: number;
   totalLessons: number;
   totalLearners: number;
   totalGraduates: number;
@@ -81,13 +88,15 @@ export type LmsCatalogStats = {
 
 export function buildStats(courses: LmsCourse[], totalCount: number): LmsCatalogStats {
   const countByCategory = new Map<string, number>();
-  let totalLessons = 0,
+  let featuredCount = 0,
+    totalLessons = 0,
     totalLearners = 0,
     totalGraduates = 0,
     totalDurationSeconds = 0;
   for (const c of courses) {
     if (c.categorySlug)
       countByCategory.set(c.categorySlug, (countByCategory.get(c.categorySlug) ?? 0) + 1);
+    if (c.isFeatured) featuredCount += 1;
     totalLessons += c.lessonsCount;
     totalLearners += c.enrollmentsCount;
     totalGraduates += c.graduatesCount;
@@ -95,6 +104,7 @@ export function buildStats(courses: LmsCourse[], totalCount: number): LmsCatalog
   }
   return {
     courseCount: totalCount,
+    featuredCount,
     totalLessons,
     totalLearners,
     totalGraduates,
@@ -109,22 +119,27 @@ export type LmsHubQuery = {
   category?: string;
   level?: LmsLevel | null;
   q?: string;
+  /** featured=1 در URL ⇒ لودر is_featured=true را به backend می‌دهد. */
+  featured?: boolean;
   page?: number;
 };
 
 export const LMS_HUB_PAGE_SIZE = 12;
 
-/** پارسِ دفاعیِ searchParams: فقط کلیدهای شناخته‌شده عبور می‌کنند و
- *  level تنها وقتی وارد URL می‌شود که عضوِ LMS_LEVELS باشد — صفحه با
- *  هر ورودیِ دست‌کاری‌شده هم پاک و قابل‌پیش‌بینی می‌ماند. */
+/** پارسِ دفاعیِ searchParams: فقط کلیدهای شناخته‌شده عبور می‌کنند،
+ *  level تنها وقتی وارد URL می‌شود که عضوِ LMS_LEVELS باشد و featured
+ *  فقط با مقدارِ صریحِ ۱/true روشن می‌شود — صفحه با هر ورودیِ
+ *  دست‌کاری‌شده هم پاک و قابل‌پیش‌بینی می‌ماند. */
 export function parseLmsHubQuery(sp: Record<string, string | string[] | undefined>): LmsHubQuery {
   const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const category = first(sp.category)?.trim() || undefined;
   const q = first(sp.q)?.trim().slice(0, 120) || undefined;
   const level = normalizeLevel(first(sp.level));
+  const featuredRaw = first(sp.featured)?.trim().toLowerCase();
+  const featured = featuredRaw === '1' || featuredRaw === 'true' ? true : undefined;
   const pageRaw = Number(first(sp.page) ?? '1');
   const page = Number.isFinite(pageRaw) && pageRaw > 1 ? Math.min(Math.floor(pageRaw), 100) : 1;
-  return { category, level, q, page };
+  return { category, level, q, featured, page };
 }
 
 /** سازنده‌ی آدرسِ هاب: فقط کلیدهایِ غیرخالی‌اند و نظمِ خواندنی دارند. */
@@ -134,6 +149,7 @@ export function lmsHref(patch: LmsHubQuery = {}, base: LmsHubQuery = {}): string
   if (merged.q) p.set('q', merged.q);
   if (merged.category) p.set('category', merged.category);
   if (merged.level) p.set('level', merged.level);
+  if (merged.featured) p.set('featured', '1');
   if (merged.page && merged.page > 1) p.set('page', String(merged.page));
   const s = p.toString();
   return s ? `/lms?${s}` : '/lms';
