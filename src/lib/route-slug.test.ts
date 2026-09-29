@@ -30,6 +30,11 @@ describe('normalizeRouteSlug — ترمیمِ ۴۰۴ اسلاگ‌های فار�
     expect(normalizeRouteSlug('py%D8%AAhon')).toBe('pyتhon');
   });
 
+  it('لینکِ دوبارانکدشده (مسنجرها/واسط‌ها) هم خودترمیم می‌شود', () => {
+    const doubleEncoded = encodeURIComponent(FA_ENCODED); // %25D8%25AC…
+    expect(normalizeRouteSlug(doubleEncoded)).toBe(FA_DECODED);
+  });
+
   it('٪ِ ناقص یا نامعتبر → ورودیِ خام، بدون throw', () => {
     expect(normalizeRouteSlug('abc%')).toBe('abc%');
     expect(normalizeRouteSlug('abc%ZZdef')).toBe('abc%ZZdef');

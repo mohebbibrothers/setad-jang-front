@@ -26,12 +26,23 @@
  * decode‌کردن هیچ داده‌ی مشروعی را خراب نمی‌کند.
  */
 const ENCODED_BYTE = /%[0-9A-Fa-f]{2}/;
+const MAX_DECODE_PASSES = 3;
 
+/**
+ * decodeِ حلقه‌ای تا پایدارشدن — علاوه بر ترانزیتِ تک‌لایه‌ایِ Next، لینک‌هایی که
+ * مسنجرها/واسط‌ها یک لایه‌ی اضافه encode می‌کنند (٪۲۵D8…) هم خودترمیم می‌شوند.
+ */
 export function normalizeRouteSlug(raw: string): string {
-  if (typeof raw !== 'string' || !ENCODED_BYTE.test(raw)) return raw;
-  try {
-    return decodeURIComponent(raw);
-  } catch {
-    return raw;
+  if (typeof raw !== 'string') return raw;
+  let out = raw;
+  for (let i = 0; i < MAX_DECODE_PASSES && ENCODED_BYTE.test(out); i += 1) {
+    try {
+      const next = decodeURIComponent(out);
+      if (next === out) break;
+      out = next;
+    } catch {
+      break; // ٪ِ ناقص/نامعتبر — هر چه تا اینجا decode شده همان خروجی است
+    }
   }
+  return out;
 }
