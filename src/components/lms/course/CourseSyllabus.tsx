@@ -23,14 +23,14 @@ import { LessonPreviewButton } from './LessonPreviewButton';
  *    با دعوتِ ثبت‌نام، نه صفحه‌ی خالیِ خام.
  */
 
-const TYPE_ICON: Record<LmsLessonType, typeof MonitorPlay> = {
+export const TYPE_ICON: Record<LmsLessonType, typeof MonitorPlay> = {
   video: MonitorPlay,
   audio: Mic,
   document: FileText,
   article: Type,
 };
 
-const TYPE_TONE: Record<LmsLessonType, string> = {
+export const TYPE_TONE: Record<LmsLessonType, string> = {
   video: 'bg-brand-50 text-brand-700 ring-brand-100',
   audio: 'bg-mint-50 text-mint-800 ring-mint-200',
   document: 'bg-gold-50 text-gold-800 ring-gold-200',
