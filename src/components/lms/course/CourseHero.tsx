@@ -9,6 +9,8 @@ import {
 } from '@/lib/lms-shared';
 import { CourseEnrollCta } from './CourseEnrollCta';
 import { CourseHeroMedia } from './CourseHeroMedia';
+import { CourseAvatarAlbumButton, CourseCoverAlbumButton } from './LmsMediaAlbum';
+import { courseMediaSlides, instructorSlideIndex } from '@/lib/course-art';
 
 /**
  * هیروی صفحه‌ی دوره — همان خانواده‌ی تیره‌ی هاب/مددکار با چیدمانِ دو
@@ -20,6 +22,9 @@ import { CourseHeroMedia } from './CourseHeroMedia';
 export function CourseHero({ course }: { course: LmsCourseDetail }) {
   const fa = (n: number) => n.toLocaleString('fa-IR');
   const intro = classifyVideoUrl(course.introVideoUrl);
+  // گالریِ رسانه‌ای — کاور + فضای یادگیری + پرتره‌ی استاد (اسلایدآلبومِ سینمایی)
+  const mediaSlides = courseMediaSlides(course);
+  const avatarSlide = instructorSlideIndex(course);
   const levelLabel = course.level ? LMS_LEVEL_LABEL[course.level] : null;
   const crumbs: Array<{ label: string; href?: string }> = [
     { label: 'آموزش‌ها', href: '/lms' },
@@ -150,13 +155,17 @@ export function CourseHero({ course }: { course: LmsCourseDetail }) {
               </div>
               <div className="inline-flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm">
                 <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-brand-50 ring-2 ring-white/20">
-                  <SmartImage
-                    src={course.instructorAvatarUrl}
-                    alt={`تصویر ${course.instructor}`}
-                    variant="avatar"
-                    fill
-                    sizes="44px"
-                    className="object-cover"
+                  <CourseAvatarAlbumButton
+                    slides={mediaSlides}
+                    title={course.title}
+                    subtitle={{
+                      label: 'گالری کلاس',
+                      value: course.categoryTitle ?? 'قرارگاه آموزشی',
+                    }}
+                    startIndex={avatarSlide}
+                    avatarSrc={course.instructorAvatarUrl}
+                    avatarAlt={`تصویر ${course.instructor}`}
+                    size={44}
                   />
                 </span>
                 <span className="min-w-0">
@@ -195,6 +204,15 @@ export function CourseHero({ course }: { course: LmsCourseDetail }) {
                 source={intro}
                 courseTitle={course.title}
                 description={course.shortDescription}
+              />
+              {/* لانچرِ گالری — گوشه‌ی خلوتِ بالا-چپ، بالاتر از اورلیِ پخش (z-20) */}
+              <CourseCoverAlbumButton
+                slides={mediaSlides}
+                title={course.title}
+                subtitle={{
+                  label: 'گالری کلاس',
+                  value: course.categoryTitle ?? 'قرارگاه آموزشی',
+                }}
               />
               {/* در عرض‌های باریک با چیپِ «تماشای ویدئوی معرفی» هم‌مسر می‌شود؛
                   فقط از sm به بالا نمایش داده می‌شود (اطلاعاتِ تکراری نیست — ردیفِ اعتماد هست) */}

@@ -26,3 +26,46 @@ export const DEFAULT_INSTRUCTOR_AVATAR = '/lms/instructor-default.jpg';
 export function courseCoverArt(slug: string): string {
   return THEMED_COVERS[slug] ?? DEFAULT_COURSE_COVER;
 }
+
+/* ── گالری رسانه‌ای کلاس (آلبومِ سینماییِ CampaignAlbum در صفحه‌ی اسلاگ) ── */
+
+export type CourseMediaSlide = {
+  url: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+};
+
+/**
+ * اسلایدهای گالریِ صفحه‌ی کلاس — سه‌فریمِ روایی:
+ *   ۱) کاورِ کلاس (واقعی یا آرت‌ورکِ fallback)
+ *   ۲) «فضای یادگیری» — آرت‌ورکِ برندیشده‌ی مشترک (class-space)
+ *   ۳) پرتره‌ی استاد (واقعی یا آرت‌ورکِ fallback)
+ * ترتیب مهم است: لانچرِ کاور از اسلایدِ ۰ شروع می‌کند و لانچرهای آواتار با
+ * startIndex = slides.length - 1 مستقیم روی پرتره باز می‌شوند.
+ */
+export function courseMediaSlides(input: {
+  title: string;
+  coverUrl?: string;
+  instructor: string;
+  instructorAvatarUrl?: string;
+}): CourseMediaSlide[] {
+  const slides: CourseMediaSlide[] = [];
+  if (input.coverUrl) {
+    slides.push({ url: input.coverUrl, alt: `کاور کلاس ${input.title}` });
+  }
+  slides.push({ url: '/lms/class-space.jpg', alt: 'فضای یادگیری قرارگاه آموزشی' });
+  if (input.instructorAvatarUrl) {
+    slides.push({ url: input.instructorAvatarUrl, alt: `تصویر ${input.instructor}` });
+  }
+  return slides;
+}
+
+/** ایندکسِ اسلایدِ آواتار در خروجیِ courseMediaSlides (اگر آواتار دارد). */
+export function instructorSlideIndex(input: {
+  coverUrl?: string;
+  instructorAvatarUrl?: string;
+}): number {
+  if (!input.instructorAvatarUrl) return 0;
+  return (input.coverUrl ? 1 : 0) + 1;
+}

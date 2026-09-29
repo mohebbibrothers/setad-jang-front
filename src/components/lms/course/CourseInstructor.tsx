@@ -1,9 +1,11 @@
 import { Quote, UserRound } from 'lucide-react';
-import { SmartImage } from '@/components/ui/SmartImage';
 import type { LmsCourseDetail } from '@/lib/lms-shared';
+import { courseMediaSlides, instructorSlideIndex } from '@/lib/course-art';
+import { CourseAvatarAlbumButton } from './LmsMediaAlbum';
 
 /** کارتِ مدرس — چهره‌ی انسانیِ کلاس؛ بیو اگر هست، سندِ اعتبار است. */
 export function CourseInstructor({ course }: { course: LmsCourseDetail }) {
+  const mediaSlides = courseMediaSlides(course);
   return (
     <section id="instructor" className="scroll-mt-24">
       <div className="mx-auto max-w-3xl">
@@ -26,13 +28,17 @@ export function CourseInstructor({ course }: { course: LmsCourseDetail }) {
             <span className="relative shrink-0">
               <span className="absolute -inset-1.5 rounded-full bg-gradient-to-br from-brand-400 to-mint-400 opacity-70 blur-sm" />
               <span className="relative grid h-24 w-24 overflow-hidden rounded-full bg-brand-50 ring-4 ring-white">
-                <SmartImage
-                  src={course.instructorAvatarUrl}
-                  alt={`تصویر ${course.instructor}`}
-                  variant="avatar"
-                  fill
-                  sizes="96px"
-                  className="object-cover"
+                <CourseAvatarAlbumButton
+                  slides={mediaSlides}
+                  title={course.title}
+                  subtitle={{
+                    label: 'گالری کلاس',
+                    value: course.categoryTitle ?? 'قرارگاه آموزشی',
+                  }}
+                  startIndex={instructorSlideIndex(course)}
+                  avatarSrc={course.instructorAvatarUrl}
+                  avatarAlt={`تصویر ${course.instructor}`}
+                  size={96}
                 />
               </span>
             </span>
