@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { BadgeCheck, Layers, Lock, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { BadgeCheck, GraduationCap, History, Layers, Loader2, Lock, X } from 'lucide-react';
 
 import { lockBodyScroll } from '@/lib/scroll-lock';
 import type { LessonProgressEntry } from '@/lib/lms-lesson';
@@ -13,35 +13,47 @@ import {
   type LmsLesson,
 } from '@/lib/lms-shared';
 import { TYPE_ICON, TYPE_TONE } from '@/components/lms/course/CourseSyllabus';
+import { LessonProgressRing } from './LessonProgressRing';
+import { LessonSegBar } from './LessonSegBar';
 
 const fa = (n: number) => n.toLocaleString('fa-IR');
+
+type AccessKind = 'guest' | 'restricted' | 'enrolled';
 
 type Props = {
   course: LmsCourseDetail;
   orderedLessons: LmsLesson[];
   currentLessonId: number;
   progressMap: Map<number, LessonProgressEntry> | null;
+  progressPercent: number;
   lastAccessedLessonId?: number | null;
-  enrolled: boolean;
+  access: AccessKind;
+  enrollBusy: boolean;
+  onEnroll: () => void;
+  onLogin: () => void;
 };
 
 /**
- * ریلِ سیلابوس — «رادیوی کلاس»:
- * دسکتاپ: ستونِ چسبانِ کنار صحنه. موبایل: FAB شناور + کشو از کنار (scroll-lock).
- * هر ردیف وضعیتِ خودش را دارد: تکمیل‌شده ✓ / جاری (نبض) / قفل / شماره.
+ * ریلِ کلاس — «خانه‌ی سیلابوس»: کارتِ کلاس + حلقه‌ی پیشرفت + فهرستِ زنده‌ی جلسات.
+ * در گریدِ کنسول، ستونِ اول است (در RTL سمتِ راستِ صفحه — نخستین جایی که چشم می‌رود).
+ * دسکتاپ: چسبان و اسکرول‌پذیر؛ موبایل: FAB + کشو (scroll-lock + Esc + بستن با بیرون‌کلیک).
  */
 export function LessonRail({
   course,
   orderedLessons,
   currentLessonId,
   progressMap,
+  progressPercent,
   lastAccessedLessonId,
-  enrolled,
+  access,
+  enrollBusy,
+  onEnroll,
+  onLogin,
 }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const currentRowRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (!drawerOpen) return;
-    // lockBodyScroll خودش تابع unlock را برمی‌گرداند — مستقیم به‌عنوان cleanup
     return lockBodyScroll();
   }, [drawerOpen]);
   useEffect(() => {
@@ -51,62 +63,128 @@ export function LessonRail({
     if (drawerOpen) window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [drawerOpen]);
+  useEffect(() => {
+    currentRowRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [currentLessonId, drawerOpen]);
 
   const completedCount = progressMap
     ? [...progressMap.values()].filter((p) => p.isCompleted).length
     : 0;
+  const lastAccessed =
+    lastAccessedLessonId && lastAccessedLessonId !== currentLessonId
+      ? orderedLessons.find((l) => l.id === lastAccessedLessonId)
+      : null;
 
   const rail = (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[20px] border border-ink-100 bg-white shadow-[0_16px_40px_-30px_rgba(11,53,48,.3)]">
-      <div className="border-b border-ink-100 px-4 py-3.5">
-        <div className="flex items-center justify-between gap-2">
-          <p className="flex items-center gap-1.5 text-[13px] font-black text-ink-800">
-            <Layers className="h-4 w-4 text-brand-600" aria-hidden="true" />
-            سرفصل‌های کلاس
-          </p>
-          <span className="rounded-full bg-ink-50 px-2 py-0.5 text-[10px] font-extrabold tabular-nums text-ink-500">
-            {fa(orderedLessons.length)} جلسه
-          </span>
-        </div>
-        {enrolled && progressMap && (
-          <p className="mt-1.5 text-[10.5px] font-bold text-mint-700">
-            {fa(completedCount)} از {fa(orderedLessons.length)} تکمیل شده
-          </p>
-        )}
-        {enrolled &&
-          lastAccessedLessonId &&
-          lastAccessedLessonId !== currentLessonId &&
-          (() => {
-            const last = orderedLessons.find((l) => l.id === lastAccessedLessonId);
-            return last ? (
-              <Link
-                href={`/lms/courses/${encodeURIComponent(course.slug)}/lessons/${encodeURIComponent(last.slug)}`}
-                onClick={() => setDrawerOpen(false)}
-                className="mt-2 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-[10px] font-extrabold text-brand-700 transition hover:bg-brand-100"
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[20px] border border-ink-100 bg-white shadow-[0_18px_45px_-30px_rgba(11,53,48,.35)]">
+      {/* ── کارتِ کلاس ── */}
+      <div className="border-b border-ink-100 bg-gradient-to-b from-ink-50/70 to-white px-4 pb-3.5 pt-4">
+        <p className="flex items-center gap-1.5 text-[10px] font-extrabold tracking-wide text-brand-600">
+          <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
+          قرارگاه آموزشی
+        </p>
+        <Link
+          href={`/lms/courses/${encodeURIComponent(course.slug)}`}
+          className="mt-1.5 line-clamp-2 block text-[13.5px] font-black leading-6 text-ink-800 transition hover:text-brand-700"
+          onClick={() => setDrawerOpen(false)}
+        >
+          {course.title}
+        </Link>
+        <p className="mt-1 text-[10.5px] font-bold text-ink-400">استاد {course.instructor}</p>
+
+        {access === 'enrolled' ? (
+          <div className="mt-3.5 flex items-center gap-3">
+            <LessonProgressRing percent={progressPercent} size={76} stroke={7} label="مسیر" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[11.5px] font-black text-ink-800">پیشرفت تو در کلاس</p>
+              <p className="mt-1 text-[10.5px] font-bold leading-5 text-ink-500">
+                {fa(completedCount)} از {fa(orderedLessons.length)} جلسه تکمیل شده
+              </p>
+              <LessonSegBar
+                lessons={orderedLessons}
+                currentLessonId={currentLessonId}
+                progressMap={progressMap}
+                className="mt-2"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="mt-3.5 rounded-2xl bg-gradient-to-l from-mint-500 to-mint-400 p-[1px]">
+            <div className="rounded-[15px] bg-white px-3.5 py-3">
+              <p className="text-[11.5px] font-black text-ink-800">
+                {access === 'guest' ? 'برای شروع مسیر وارد شو' : 'ثبت‌نام رایگان؛ مسیر باز می‌شود'}
+              </p>
+              <p className="mt-0.5 text-[10px] font-bold leading-5 text-ink-400">
+                پیشرفت، گواهی و پرسش‌وپاسخ برای اعضا فعال است.
+              </p>
+              <button
+                type="button"
+                onClick={access === 'guest' ? onLogin : onEnroll}
+                disabled={enrollBusy}
+                className="mt-2.5 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-mint-500 text-[11.5px] font-black text-ink-950 shadow-[0_10px_22px_-10px_rgba(20,184,166,.6)] transition hover:bg-mint-400 disabled:opacity-60"
               >
-                ادامه از «{last.title.length > 26 ? last.title.slice(0, 26) + '…' : last.title}»
-              </Link>
-            ) : null;
-          })()}
+                {enrollBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+                {access === 'guest'
+                  ? 'ورود | ثبت‌نام'
+                  : enrollBusy
+                    ? 'در حال ثبت‌نام…'
+                    : 'شروع مسیر — رایگان'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {lastAccessed && (
+          <Link
+            href={`/lms/courses/${encodeURIComponent(course.slug)}/lessons/${encodeURIComponent(lastAccessed.slug)}`}
+            onClick={() => setDrawerOpen(false)}
+            className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-[10.5px] font-extrabold text-brand-700 ring-1 ring-brand-100 transition hover:bg-brand-100"
+          >
+            <History className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span className="truncate">
+              ادامه از «
+              {lastAccessed.title.length > 24
+                ? lastAccessed.title.slice(0, 24) + '…'
+                : lastAccessed.title}
+              »
+            </span>
+          </Link>
+        )}
       </div>
 
-      <ol className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2.5">
+      {/* ── سرستونِ فهرست ── */}
+      <div className="flex items-center justify-between border-b border-ink-100 px-4 py-2.5">
+        <p className="flex items-center gap-1.5 text-[12px] font-black text-ink-700">
+          <Layers className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />
+          سرفصل‌های کلاس
+        </p>
+        <span className="rounded-full bg-ink-50 px-2 py-0.5 text-[9.5px] font-extrabold tabular-nums text-ink-500">
+          {fa(orderedLessons.length)} جلسه
+        </span>
+      </div>
+
+      {/* ── فهرست ── */}
+      <ol className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5">
         {orderedLessons.map((l, i) => {
           const entry = progressMap?.get(l.id);
           const isCurrent = l.id === currentLessonId;
-          const locked = !enrolled && !l.isPreview;
+          const locked = access !== 'enrolled' && !l.isPreview;
           const Icon = TYPE_ICON[l.contentType];
           const tone = TYPE_TONE[l.contentType];
           const body = (
             <>
               <span
-                className={`relative grid h-8 w-8 shrink-0 place-items-center rounded-full text-[11px] font-black tabular-nums transition ${
+                className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-xl text-[11.5px] font-black tabular-nums transition ${
                   entry?.isCompleted
-                    ? 'bg-mint-500 text-ink-950'
+                    ? 'bg-mint-500 text-ink-950 shadow-[0_6px_14px_-6px_rgba(20,184,166,.7)]'
                     : isCurrent
-                      ? 'bg-brand-600 text-white ring-4 ring-brand-100'
+                      ? 'bg-brand-600 text-white shadow-[0_8px_18px_-8px_rgba(11,53,48,.6)]'
                       : locked
-                        ? 'bg-ink-100 text-ink-300'
+                        ? 'bg-ink-50 text-ink-300'
                         : 'bg-ink-50 text-ink-500'
                 }`}
               >
@@ -125,18 +203,18 @@ export function LessonRail({
               </span>
               <span className="min-w-0 flex-1">
                 <span
-                  className={`block truncate text-[12.5px] font-extrabold ${
+                  className={`block truncate text-[12.5px] font-extrabold leading-5 ${
                     isCurrent ? 'text-brand-800' : locked ? 'text-ink-400' : 'text-ink-700'
                   }`}
                 >
                   {l.title}
                 </span>
-                <span className="mt-0.5 flex items-center gap-1.5 text-[10px] font-bold text-ink-400">
+                <span className="mt-0.5 flex items-center gap-1.5 text-[9.5px] font-bold text-ink-400">
                   {Icon && <Icon className={`h-3 w-3 ${tone}`} aria-hidden="true" />}
                   {LESSON_TYPE_LABEL[l.contentType]}
                   {l.durationSeconds > 0 && ` • ${formatLmsDuration(l.durationSeconds)}`}
                   {l.isPreview && (
-                    <span className="rounded bg-mint-50 px-1 py-px text-[9px] font-extrabold text-mint-700">
+                    <span className="rounded bg-mint-50 px-1 py-px text-[8.5px] font-extrabold text-mint-700">
                       رایگان
                     </span>
                   )}
@@ -147,19 +225,31 @@ export function LessonRail({
                   )}
                 </span>
               </span>
+              {isCurrent && (
+                <span
+                  className="h-7 w-1 shrink-0 rounded-full bg-gradient-to-b from-brand-500 to-mint-400"
+                  aria-hidden="true"
+                />
+              )}
             </>
           );
           const cls = `flex items-center gap-2.5 rounded-xl px-2.5 py-2.5 transition ${
             isCurrent
-              ? 'bg-gradient-to-l from-brand-50 to-mint-50/70 ring-1 ring-brand-100'
+              ? 'bg-gradient-to-l from-brand-50 to-mint-50/70 shadow-[inset_0_0_0_1px_var(--color-brand-100,rgba(11,53,48,.08))]'
               : locked
-                ? 'opacity-70'
-                : 'hover:bg-ink-50'
+                ? 'opacity-60'
+                : 'hover:bg-ink-50 hover:-translate-x-0.5'
           }`;
           return (
             <li key={l.id}>
               {isCurrent ? (
-                <div className={cls} aria-current="true">
+                <div
+                  className={cls}
+                  aria-current="true"
+                  ref={(el) => {
+                    currentRowRef.current = el;
+                  }}
+                >
                   {body}
                 </div>
               ) : (
@@ -181,7 +271,12 @@ export function LessonRail({
   return (
     <>
       {/* دسکتاپ */}
-      <aside className="sticky top-24 hidden max-h-[calc(100vh-7rem)] lg:block">{rail}</aside>
+      <aside
+        className="sticky top-24 hidden max-h-[calc(100vh-7rem)] lg:block"
+        aria-label="ریل کلاس"
+      >
+        {rail}
+      </aside>
 
       {/* FAB موبایل */}
       <button
@@ -192,7 +287,7 @@ export function LessonRail({
       >
         <Layers className="h-4 w-4 text-mint-300" aria-hidden="true" />
         سرفصل‌ها
-        {enrolled && progressMap && (
+        {access === 'enrolled' && progressMap && (
           <span className="rounded-full bg-mint-500 px-2 py-0.5 text-[10px] font-black tabular-nums text-ink-950">
             {fa(completedCount)}/{fa(orderedLessons.length)}
           </span>
