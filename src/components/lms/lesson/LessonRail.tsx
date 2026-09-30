@@ -12,7 +12,7 @@ import {
   type LmsCourseDetail,
   type LmsLesson,
 } from '@/lib/lms-shared';
-import { TYPE_ICON, TYPE_TONE } from '@/components/lms/course/CourseSyllabus';
+import { TYPE_ICON, TYPE_TONE } from '@/lib/lms-shared';
 import { LessonProgressRing } from './LessonProgressRing';
 import { LessonSegBar } from './LessonSegBar';
 

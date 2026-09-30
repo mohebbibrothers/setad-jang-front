@@ -1,3 +1,5 @@
+import { FileText, Mic, MonitorPlay, Type } from 'lucide-react';
+
 /**
  * قراردادِ مشترکِ صفحه‌ی هاب «قرارگاه آموزشی» (/lms) — خالص و بدون
  * وابستگیِ fetch، تا هم سمتِ سرور (loaderها) و هم کلاینت (نوار ابزار)
@@ -77,6 +79,22 @@ export const LESSON_TYPE_LABEL: Record<LmsLessonType, string> = {
   audio: 'صوت',
   document: 'سند',
   article: 'متن',
+};
+
+/* نقشه‌ی آیکون + تُنِ رنگیِ نوعِ جلسه — منبعِ واحد برای ریلِ جلسه و نقشه‌ی
+ * مسیرِ کلاس؛ مرجعِ ارجاع به مقادیر (بدونِ JSX) تا در فایلِ .ts بماند. */
+export const TYPE_ICON: Record<LmsLessonType, typeof MonitorPlay> = {
+  video: MonitorPlay,
+  audio: Mic,
+  document: FileText,
+  article: Type,
+};
+
+export const TYPE_TONE: Record<LmsLessonType, string> = {
+  video: 'bg-brand-50 text-brand-700 ring-brand-100',
+  audio: 'bg-mint-50 text-mint-800 ring-mint-200',
+  document: 'bg-gold-50 text-gold-800 ring-gold-200',
+  article: 'bg-ink-50 text-ink-700 ring-ink-100',
 };
 
 export function normalizeLessonType(raw: string | undefined | null): LmsLessonType {
