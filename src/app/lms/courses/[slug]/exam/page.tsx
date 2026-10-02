@@ -15,7 +15,7 @@ const canonicalOf = (courseSlug: string) => `/lms/courses/${encodeURIComponent(c
 type Params = Promise<{ slug: string }>;
 
 /**
- * /lms/courses/<slug>/exam — «جلسه‌ی پایانی»: آرنای مستقلِ آزمونِ پایان‌دوره.
+ * /lms/courses/<slug>/exam — «جلسه‌ی پایانی»: صفحه‌ی مستقلِ آزمونِ پایان‌دوره.
  *
  * آزمون دیگر مهمانِ صفحه‌ی آخرین جلسه نیست؛ مثل یک جلسه‌ی جدا، آدرسِ خودش،
  * دروازه‌های خودش (مهمان ← ورود، عضونشده ← رزرو، جلسه‌مانده ← نقشه‌ی بازگشت)

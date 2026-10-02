@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type TextareaHTMLAttributes } from 'react';
 import {
   BadgeCheck,
   Check,
@@ -66,6 +66,61 @@ function timeAgoFa(iso: string): string {
 function initialOf(name: string): string {
   const ch = name.trim().charAt(0);
   return ch || '؟';
+}
+
+/* ───── کمپوزرِ خودرشد + پرشِ نقل‌قول ───── */
+
+const COMPOSER_MAX_H = 190;
+
+/**
+ * textareaی خودرشد: با تایپ بلند می‌شود و پس از سقف، اسکرولِ نرمِ qa-scroll
+ * می‌گیرد؛ دستگیره‌ی resize پیش‌فرضِ مرورگر (سه‌خطِ زنخدانِ بدقواره که با
+ * استایلِ برند نمی‌خواند) کاملاً حذف شده است.
+ */
+function AutoTextarea({
+  value,
+  onChange,
+  className = '',
+  minRows = 2,
+  autoFocus = false,
+  ...rest
+}: Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'onChange' | 'value'> & {
+  value: string;
+  onChange: (v: string) => void;
+  minRows?: number;
+}) {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const next = Math.min(el.scrollHeight, COMPOSER_MAX_H);
+    el.style.height = `${next}px`;
+    el.style.overflowY = el.scrollHeight > COMPOSER_MAX_H ? 'auto' : 'hidden';
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      rows={minRows}
+      autoFocus={autoFocus}
+      className={`qa-scroll resize-none ${className}`}
+      {...rest}
+    />
+  );
+}
+
+/** پرش به پیامِ هدفِ یک رد + برقِ مینتی روی کارتش. */
+function jumpToAnswer(id: number | null) {
+  if (id == null) return;
+  const el = document.getElementById(`qa-answer-${id}`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.remove('qa-flash');
+  void el.offsetWidth; // ری‌استارتِ انیمیشن برای کلیک‌های پشت‌سرهم
+  el.classList.add('qa-flash');
+  window.setTimeout(() => el.classList.remove('qa-flash'), 1700);
 }
 
 /**
@@ -199,49 +254,51 @@ export function LessonQaPanel({ lessonId, enrolled, isGuest, onLogin, onEnroll }
 
   return (
     <div className="space-y-5">
-      {/* فرم پرسیدن */}
-      <div className="rounded-2xl border border-ink-100 bg-white p-4 sm:p-5">
-        <p className="flex items-center gap-1.5 text-[13px] font-black text-ink-800">
-          <MessageCircleQuestion className="h-4 w-4 text-brand-600" aria-hidden="true" />
-          پرسش جدید درباره‌ی این جلسه
-        </p>
-        <input
-          value={askTitle}
-          onChange={(e) => setAskTitle(e.target.value)}
-          placeholder="عنوان کوتاه پرسش (حداقل ۵ حرف)…"
-          maxLength={255}
-          className="mt-3 h-11 w-full rounded-xl border border-ink-100 bg-ink-50/50 px-3.5 text-[13px] font-bold text-ink-800 outline-none transition placeholder:text-ink-300 focus:border-brand-300 focus:bg-white focus:ring-2 focus:ring-brand-100"
-        />
-        <textarea
-          value={askBody}
-          onChange={(e) => setAskBody(e.target.value)}
-          placeholder="متن پرسش…"
-          rows={3}
-          className="mt-2 w-full rounded-xl border border-ink-100 bg-ink-50/50 px-3.5 py-2.5 text-[13px] font-bold leading-7 text-ink-800 outline-none transition placeholder:text-ink-300 focus:border-brand-300 focus:bg-white focus:ring-2 focus:ring-brand-100"
-        />
-        {askErr && <p className="mt-1.5 text-[11.5px] font-bold text-red-600">{askErr}</p>}
-        {askDone && (
-          <p className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-bold text-mint-700">
-            <Check className="h-3.5 w-3.5" aria-hidden="true" />
-            پرسشت ثبت شد ✓
+      {/* فرم پرسیدن — در حالتِ قفلِ زنجیره، فرم و فهرست هر دو پنهان می‌مانند */}
+      {state.kind !== 'locked' && (
+        <div className="rounded-2xl border border-ink-100 bg-white p-4 sm:p-5">
+          <p className="flex items-center gap-1.5 text-[13px] font-black text-ink-800">
+            <MessageCircleQuestion className="h-4 w-4 text-brand-600" aria-hidden="true" />
+            پرسش جدید درباره‌ی این جلسه
           </p>
-        )}
-        <div className="mt-3 flex justify-end">
-          <button
-            type="button"
-            onClick={() => void ask()}
-            disabled={askBusy}
-            className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand-600 px-5 text-[12.5px] font-extrabold text-white transition hover:bg-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 disabled:opacity-60"
-          >
-            {askBusy ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Send className="h-4 w-4" aria-hidden="true" />
-            )}
-            ثبت پرسش
-          </button>
+          <input
+            value={askTitle}
+            onChange={(e) => setAskTitle(e.target.value)}
+            placeholder="عنوان کوتاه پرسش (حداقل ۵ حرف)…"
+            maxLength={255}
+            className="mt-3 h-11 w-full rounded-xl border border-ink-100 bg-ink-50/50 px-3.5 text-[13px] font-bold text-ink-800 outline-none transition placeholder:text-ink-300 focus:border-brand-300 focus:bg-white focus:ring-2 focus:ring-brand-100"
+          />
+          <AutoTextarea
+            value={askBody}
+            onChange={setAskBody}
+            placeholder="متن پرسش…"
+            minRows={3}
+            className="mt-2 w-full rounded-xl border border-ink-100 bg-ink-50/50 px-3.5 py-2.5 text-[13px] font-bold leading-7 text-ink-800 outline-none transition placeholder:text-ink-300 focus:border-brand-300 focus:bg-white focus:ring-2 focus:ring-brand-100"
+          />
+          {askErr && <p className="mt-1.5 text-[11.5px] font-bold text-red-600">{askErr}</p>}
+          {askDone && (
+            <p className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-bold text-mint-700">
+              <Check className="h-3.5 w-3.5" aria-hidden="true" />
+              پرسشت ثبت شد ✓
+            </p>
+          )}
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => void ask()}
+              disabled={askBusy}
+              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand-600 px-5 text-[12.5px] font-extrabold text-white transition hover:bg-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 disabled:opacity-60"
+            >
+              {askBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Send className="h-4 w-4" aria-hidden="true" />
+              )}
+              ثبت پرسش
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* فهرست */}
       {state.kind === 'boot' && (
@@ -258,6 +315,19 @@ export function LessonQaPanel({ lessonId, enrolled, isGuest, onLogin, onEnroll }
         <p className="py-6 text-center text-[12.5px] font-bold text-ink-400">
           در دریافت پرسش‌ها مشکلی پیش آمد.
         </p>
+      )}
+      {state.kind === 'locked' && (
+        <div className="flex flex-col items-center rounded-2xl border border-dashed border-gold-200 bg-gold-50/50 px-6 py-8 text-center">
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gold-100 text-gold-700">
+            <Lock className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <p className="mt-3 text-[13px] font-black text-ink-700">
+            گفتگوی این جلسه هم مثل خودِ جلسه، به‌ترتیب باز می‌شود
+          </p>
+          <p className="mt-1 max-w-sm text-[11.5px] leading-6 text-ink-400">
+            وقتی این جلسه در زنجیره‌ی تماشا برایت باز شود، پرسش‌وپاسخش هم فعال می‌شود.
+          </p>
+        </div>
       )}
       {state.kind === 'questions' && questions.length === 0 && (
         <div className="flex flex-col items-center rounded-2xl border border-dashed border-ink-200 bg-white/60 px-6 py-8 text-center">
@@ -377,7 +447,9 @@ function QuestionCard({
           {/* متنِ پرسش + اکشن‌ها */}
           <div className="rounded-xl bg-white px-3.5 py-3 ring-1 ring-ink-100/70">
             <div className="flex items-start justify-between gap-2">
-              <p className="text-[13px] font-bold leading-7 text-ink-700">{q.body}</p>
+              <p className="break-words text-[13px] font-bold leading-7 text-ink-700 [overflow-wrap:anywhere]">
+                {q.body}
+              </p>
               {!isMine && (
                 <ReportMenu target={{ kind: 'question', id: q.id }} className="shrink-0" />
               )}
@@ -405,21 +477,21 @@ function QuestionCard({
           </div>
 
           {/* پاسخ به خودِ پرسش — برای همه‌ی اعضای کلاس (از جمله صاحبِ پرسش) */}
-          <div className="mt-4 flex items-start gap-2">
-            <textarea
+          <div className="mt-4 flex flex-col items-stretch gap-2 min-[430px]:flex-row min-[430px]:items-start">
+            <AutoTextarea
               value={askDraft}
-              onChange={(e) => setAskDraft(e.target.value)}
+              onChange={setAskDraft}
               placeholder={
                 isMine ? 'توضیح/پاسخ تکمیلی درباره‌ی پرسشت…' : 'تو هم می‌توانی پاسخ بدهی…'
               }
-              rows={2}
+              minRows={2}
               className="min-w-0 flex-1 rounded-xl border border-ink-100 bg-white px-3 py-2 text-[12px] font-bold leading-6 outline-none transition focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
             />
             <button
               type="button"
               disabled={askBusy || askDraft.trim().length < 5}
               onClick={() => void submitAnswer()}
-              className="inline-flex h-9 shrink-0 items-center gap-1 rounded-xl bg-brand-600 px-4 text-[11.5px] font-extrabold text-white transition hover:bg-brand-500 disabled:opacity-50"
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-xl bg-brand-600 px-4 text-[11.5px] font-extrabold text-white transition hover:bg-brand-500 disabled:opacity-50"
             >
               {askBusy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -489,6 +561,7 @@ function AnswerNode({
         />
       )}
       <div
+        id={`qa-answer-${answer.id}`}
         className={`rounded-xl border p-3.5 ${
           answer.is_instructor_answer
             ? 'border-brand-200 bg-brand-50/60'
@@ -511,7 +584,10 @@ function AnswerNode({
             {answer.user_display}
           </span>
           {answer.is_instructor_answer && (
-            <span className="rounded-full bg-brand-600 px-2 py-0.5 text-[9px] font-extrabold text-white">
+            <span
+              className="rounded-full bg-brand-600 px-2 py-0.5 text-[9px] font-extrabold text-white"
+              title="این پاسخ را استادِ دوره یا تیمِ آموزشی بعثت نوشته است"
+            >
               پاسخ استاد
             </span>
           )}
@@ -529,13 +605,30 @@ function AnswerNode({
         </div>
 
         {answer.reply_to_display && (
-          <p className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-mint-50 px-2 py-0.5 text-[9.5px] font-extrabold text-mint-800 ring-1 ring-mint-100">
-            <CornerDownLeft className="h-2.5 w-2.5" aria-hidden="true" />
-            در پاسخ به {answer.reply_to_display}
-          </p>
+          <button
+            type="button"
+            onClick={() => jumpToAnswer(answer.reply_to_id)}
+            title={`پرش به پیامِ ${answer.reply_to_display}`}
+            className="mt-1.5 flex w-full items-center gap-1.5 rounded-lg bg-mint-50/80 px-2 py-1.5 text-right ring-1 ring-mint-100 transition hover:bg-mint-100/80 hover:ring-mint-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint-300"
+          >
+            <CornerDownLeft
+              className="h-3 w-3 shrink-0 text-mint-600 rtl:-scale-x-100"
+              aria-hidden="true"
+            />
+            <span className="shrink-0 text-[9.5px] font-extrabold text-mint-800">
+              در پاسخ به {answer.reply_to_display}
+            </span>
+            {answer.reply_to_excerpt && (
+              <span className="min-w-0 flex-1 truncate text-[9.5px] font-bold text-mint-700/60">
+                «{answer.reply_to_excerpt}»
+              </span>
+            )}
+          </button>
         )}
 
-        <p className="mt-1.5 text-[12.5px] font-bold leading-6 text-ink-700">{answer.body}</p>
+        <p className="mt-1.5 break-words text-[12.5px] font-bold leading-6 text-ink-700 [overflow-wrap:anywhere]">
+          {answer.body}
+        </p>
 
         {/* اکشن‌ها: پاسخ (رد) + قبول + گزارش */}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -548,7 +641,7 @@ function AnswerNode({
             <Reply className="h-3 w-3 rtl:-scale-x-100" aria-hidden="true" />
             {replyOpen ? 'بستن' : 'پاسخ'}
           </button>
-          {isQuestionMine && !answer.is_accepted && (
+          {isQuestionMine && !mine && !answer.is_accepted && (
             <button
               type="button"
               onClick={() => void accept()}
@@ -568,12 +661,12 @@ function AnswerNode({
 
         {/* کمپوزرِ رد */}
         {replyOpen && (
-          <div className="mt-3 flex items-start gap-2 rounded-xl bg-ink-50/70 p-2.5 ring-1 ring-ink-100/70">
-            <textarea
+          <div className="mt-3 flex flex-col items-stretch gap-2 rounded-xl bg-ink-50/70 p-2.5 ring-1 ring-ink-100/70 min-[430px]:flex-row min-[430px]:items-start">
+            <AutoTextarea
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={setDraft}
               placeholder={`رد تو به ${answer.user_display}…`}
-              rows={2}
+              minRows={2}
               autoFocus
               className="min-w-0 flex-1 rounded-lg border border-ink-100 bg-white px-3 py-2 text-[12px] font-bold leading-6 outline-none transition focus:border-mint-300 focus:ring-2 focus:ring-mint-100"
             />
@@ -581,14 +674,14 @@ function AnswerNode({
               type="button"
               disabled={busy || draft.trim().length < 5}
               onClick={() => void submitReply()}
-              className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg bg-mint-600 px-3.5 text-[11px] font-extrabold text-white transition hover:bg-mint-500 disabled:opacity-50"
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-lg bg-mint-600 px-3.5 text-[11px] font-extrabold text-white transition hover:bg-mint-500 disabled:opacity-50"
             >
               {busy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
               ) : (
                 <Send className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              رد
+              ارسال
             </button>
           </div>
         )}

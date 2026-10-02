@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { BadgeCheck, GraduationCap, History, Layers, Loader2, Lock, Trophy, X } from 'lucide-react';
 
 import { lockBodyScroll } from '@/lib/scroll-lock';
-import type { LessonProgressEntry } from '@/lib/lms-lesson';
+import type { LessonProgressEntry, LessonSequenceState } from '@/lib/lms-lesson';
 import {
   formatLmsDuration,
   LESSON_TYPE_LABEL,
@@ -28,6 +28,10 @@ type Props = {
   progressPercent: number;
   lastAccessedLessonId?: number | null;
   access: AccessKind;
+  /** زنجیره‌ی تماشا — فقط برای اعضا؛ جلسه‌ی غیرمجاز قفل و غیرقابل‌کلیک می‌شود. */
+  seqMap?: Map<number, LessonSequenceState> | null;
+  /** جلسه‌ای که همین لحظه با تکمیلِ قبلی باز شد (برقِ مینتی روی ردیفش). */
+  flashNextId?: number | null;
   enrollBusy: boolean;
   onEnroll: () => void;
   onLogin: () => void;
@@ -46,6 +50,8 @@ export function LessonRail({
   progressPercent,
   lastAccessedLessonId,
   access,
+  seqMap = null,
+  flashNextId = null,
   enrollBusy,
   onEnroll,
   onLogin,
@@ -172,7 +178,15 @@ export function LessonRail({
         {orderedLessons.map((l, i) => {
           const entry = progressMap?.get(l.id);
           const isCurrent = l.id === currentLessonId;
-          const locked = access !== 'enrolled' && !l.isPreview;
+          const seq = seqMap?.get(l.id);
+          const seqBlocking = seq?.unlocked === false && !l.isPreview ? seq.blocking : null;
+          const locked = (access !== 'enrolled' && !l.isPreview) || seqBlocking !== null;
+          const lockTitle =
+            seqBlocking !== null
+              ? `قفل — اول جلسه‌ی «${seqBlocking.title}» را کامل کن`
+              : access !== 'enrolled'
+                ? 'ویژه‌ی اعضای کلاس'
+                : '';
           const Icon = TYPE_ICON[l.contentType];
           const tone = TYPE_TONE[l.contentType];
           const body = (
@@ -181,22 +195,22 @@ export function LessonRail({
                 className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-xl text-[11.5px] font-black tabular-nums transition ${
                   entry?.isCompleted
                     ? 'bg-mint-500 text-ink-950 shadow-[0_6px_14px_-6px_rgba(20,184,166,.7)]'
-                    : isCurrent
-                      ? 'bg-brand-600 text-white shadow-[0_8px_18px_-8px_rgba(11,53,48,.6)]'
-                      : locked
-                        ? 'bg-ink-50 text-ink-300'
+                    : locked
+                      ? 'bg-ink-50 text-ink-300'
+                      : isCurrent
+                        ? 'bg-brand-600 text-white shadow-[0_8px_18px_-8px_rgba(11,53,48,.6)]'
                         : 'bg-ink-50 text-ink-500'
                 }`}
               >
                 {entry?.isCompleted ? (
                   <BadgeCheck className="h-4 w-4" aria-hidden="true" />
+                ) : locked ? (
+                  <Lock className="h-3 w-3" aria-hidden="true" />
                 ) : isCurrent ? (
                   <span className="relative flex h-2 w-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
                   </span>
-                ) : locked ? (
-                  <Lock className="h-3 w-3" aria-hidden="true" />
                 ) : (
                   fa(i + 1)
                 )}
@@ -204,7 +218,7 @@ export function LessonRail({
               <span className="min-w-0 flex-1">
                 <span
                   className={`block truncate text-[12.5px] font-extrabold leading-5 ${
-                    isCurrent ? 'text-brand-800' : locked ? 'text-ink-400' : 'text-ink-700'
+                    locked ? 'text-ink-400' : isCurrent ? 'text-brand-800' : 'text-ink-700'
                   }`}
                 >
                   {l.title}
@@ -240,15 +254,28 @@ export function LessonRail({
                 ? 'opacity-60'
                 : 'hover:bg-ink-50 hover:-translate-x-0.5'
           }`;
+          const flash = flashNextId === l.id && !entry?.isCompleted;
           return (
             <li key={l.id}>
               {isCurrent ? (
                 <div
                   className={cls}
                   aria-current="true"
+                  aria-disabled={locked || undefined}
+                  title={lockTitle || undefined}
+                  aria-label={locked ? `${l.title} — ${lockTitle}` : undefined}
                   ref={(el) => {
                     currentRowRef.current = el;
                   }}
+                >
+                  {body}
+                </div>
+              ) : seqBlocking !== null ? (
+                <div
+                  className={`${cls} cursor-not-allowed select-none ${flash ? 'qa-flash' : ''}`}
+                  title={lockTitle}
+                  aria-disabled="true"
+                  aria-label={`${l.title} — ${lockTitle}`}
                 >
                   {body}
                 </div>
@@ -256,7 +283,8 @@ export function LessonRail({
                 <Link
                   href={`/lms/courses/${encodeURIComponent(course.slug)}/lessons/${encodeURIComponent(l.slug)}`}
                   onClick={() => setDrawerOpen(false)}
-                  className={`${cls} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300`}
+                  title={lockTitle || undefined}
+                  className={`${cls} ${flash ? 'qa-flash' : ''} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300`}
                 >
                   {body}
                 </Link>

@@ -56,8 +56,12 @@ export interface LessonQuestionAnswer {
   user_display: string;
   /** لنگرِ رشته — برای پاسخ‌های سطح‌صفر null است. */
   parent_id: number | null;
+  /** شناسه‌ی دقیقِ پیامی که این پاسخ روی آن رد خورده (برای پرش/هایلایت). */
+  reply_to_id: number | null;
   /** نامِ نمایشیِ نویسنده‌ای که این پاسخ روی او رد خورده (زنجیره‌ی نمایشی). */
   reply_to_display: string | null;
+  /** گزیده‌ی متنِ پیامِ هدف (نقل‌قول زیرِ رد؛ ۱۴۰ نویسه با برشِ نرم). */
+  reply_to_excerpt: string | null;
   body: string;
   status: string;
   is_instructor_answer: boolean;
@@ -428,3 +432,37 @@ export async function submitQuizAttempt(
 }
 
 export type { LmsCourseDetail, LmsLesson };
+
+/* ───── زنجیره‌ی تماشای پشت‌سرهم ───── */
+
+/** وضعیتِ بازبودنِ یک جلسه در زنجیره؛ blocking = نخستین جلسه‌ی ناتمامِ قبلی. */
+export interface LessonSequenceState {
+  unlocked: boolean;
+  blocking: { id: number; slug: string; title: string } | null;
+}
+
+/**
+ * محاسبه‌ی قفلِ زنجیره برای اعضای ثبت‌نام‌کرده — نسخه‌ی کلاینتیِ همان قاعده‌ای
+ * که بک‌اند در ensure_lesson_sequence_open اجرا می‌کند (رسانه/پیشرفت/گفتگو).
+ * جلسه‌ی i باز است ⟺ همه‌ی جلساتِ j<i تکمیل شده‌اند. جلساتِ پیش‌نمایش از
+ * قاعده معاف‌اند (ویترینِ کلاس) — چه خودشان قفل شوند چه نه.
+ * مهمان/عضو‌نشده نیازی به این نگاشت ندارد (قفلِ ثبت‌نام جای خودش است).
+ */
+export function computeLessonSequence(
+  orderedLessons: Array<{ id: number; slug: string; title: string; isPreview: boolean }>,
+  progressMap: Map<number, LessonProgressEntry> | null,
+): Map<number, LessonSequenceState> {
+  const map = new Map<number, LessonSequenceState>();
+  let blocking: { id: number; slug: string; title: string } | null = null;
+  for (const lesson of orderedLessons) {
+    const isCompleted = progressMap?.get(lesson.id)?.isCompleted ?? false;
+    map.set(lesson.id, {
+      unlocked: lesson.isPreview || blocking === null,
+      blocking: lesson.isPreview ? null : blocking,
+    });
+    if (!isCompleted && blocking === null) {
+      blocking = { id: lesson.id, slug: lesson.slug, title: lesson.title };
+    }
+  }
+  return map;
+}

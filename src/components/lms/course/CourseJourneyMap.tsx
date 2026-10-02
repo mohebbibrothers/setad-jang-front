@@ -402,7 +402,7 @@ function JourneyFinale({
           </p>
           {ready && href && (
             <p className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-extrabold text-gold-800">
-              ورود به آرنای آزمون — جلسه‌ی پایانی
+              شرکت در آزمون دوره — جلسه‌ی پایانی
               <ChevronLeft
                 className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5"
                 aria-hidden="true"

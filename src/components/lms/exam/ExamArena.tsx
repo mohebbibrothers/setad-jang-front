@@ -57,7 +57,7 @@ type Props = {
 };
 
 /**
- * آرنای آزمونِ پایانی — «جلسه‌ی پایانی» به‌مثابه یک مقصدِ مستقل.
+ * صحنه‌ی آزمونِ پایانی — «جلسه‌ی پایانی» به‌مثابه یک مقصدِ مستقل.
  *
  * دروازه‌ها (هر سه با تجربه‌ی خودشان، نه بن‌بست):
  *   مهمان → ورود؛ ثبت‌نام‌نشده → مودالِ رزروی صندلی؛ جلسه‌ی‌مانده → نقشه‌ی
@@ -162,7 +162,7 @@ export function ExamArena({ course, orderedLessons, lastLesson }: Props) {
       <div className="grid min-h-[380px] place-items-center rounded-[24px] border border-ink-100 bg-white">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-mint-500" aria-hidden="true" />
-          <p className="text-[12px] font-bold text-ink-400">در حال آماده‌سازی آرنای آزمون…</p>
+          <p className="text-[12px] font-bold text-ink-400">در حال آماده‌سازی آزمون دوره…</p>
         </div>
       </div>
     );
@@ -173,9 +173,9 @@ export function ExamArena({ course, orderedLessons, lastLesson }: Props) {
     return (
       <>
         <FinaleShell tone="ink">
-          <ShellBadge icon={Lock} text="آرنای اعضای کلاس" tone="muted" />
+          <ShellBadge icon={Lock} text="آزمون ویژه‌ی اعضای کلاس" tone="muted" />
           <h2 className="mt-4 text-[22px] font-black leading-9 text-white sm:text-[26px]">
-            {isGuest ? 'ورود به آرنا فقط با حسابِ کاربری' : 'صندلی‌ات هنوز رزرو نشده'}
+            {isGuest ? 'شرکت در آزمون دوره فقط با حسابِ کاربری' : 'صندلی‌ات هنوز رزرو نشده'}
           </h2>
           <p className="mx-auto mt-2 max-w-md text-[12.5px] font-bold leading-7 text-white/60">
             {isGuest
@@ -223,7 +223,7 @@ export function ExamArena({ course, orderedLessons, lastLesson }: Props) {
           </span>
           <ShellBadge icon={Hourglass} text="دروازه‌ی آزمون هنوز بسته است" tone="gold-light" />
           <h2 className="mt-3 text-[20px] font-black leading-9 text-ink-900 sm:text-[23px]">
-            {fa(stage.remaining.length)} جلسه تا آرنا مانده
+            {fa(stage.remaining.length)} جلسه تا آزمون دوره مانده
           </h2>
           <p className="mx-auto mt-1.5 max-w-md text-[12.5px] font-bold leading-7 text-ink-500">
             آزمونِ پایانی مثلِ یک جلسه‌ی مستقل است؛ وقتی همه‌ی جلسات را تماشا کنی، دروازه‌اش همین‌جا
@@ -348,7 +348,7 @@ export function ExamArena({ course, orderedLessons, lastLesson }: Props) {
     );
   }
 
-  /* stage.kind === 'intro' — صحنه‌ی اصلیِ آرنا */
+  /* stage.kind === 'intro' — صحنه‌ی اصلیِ آزمون */
   const m = stage.meta;
   const rules = [
     {
@@ -430,7 +430,7 @@ export function ExamArena({ course, orderedLessons, lastLesson }: Props) {
         ) : (
           <Flame className="h-5 w-5" aria-hidden="true" />
         )}
-        {starting ? 'در حال ورود به آرنا…' : 'ورود به آزمون'}
+        {starting ? 'در حال ورود به آزمون…' : 'ورود به آزمون'}
       </button>
       <p className="mt-3 text-[10.5px] font-bold text-white/35">
         با شروع آزمون، تایمر راه می‌افتد؛ خروج از صفحه تلاش را نمی‌سوزاند.

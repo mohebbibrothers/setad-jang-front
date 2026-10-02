@@ -20,6 +20,7 @@ import { EnrollConfirmModal } from '@/components/lms/enroll/EnrollConfirmModal';
 import { apiFetch, isApiError } from '@/lib/api';
 import { hasSession, onAuthChange } from '@/lib/auth-tokens';
 import {
+  computeLessonSequence,
   fetchMyEnrollment,
   type LessonProgressEntry,
   type MyEnrollmentSummary,
@@ -30,6 +31,7 @@ import { LessonAttachmentCard } from './LessonAttachmentCard';
 import { LessonQaPanel } from './LessonQaPanel';
 import { LessonRail } from './LessonRail';
 import { LessonSegBar } from './LessonSegBar';
+import { LessonSeqLockedPanel } from './LessonSeqLockedPanel';
 import { LessonStrip } from './LessonStrip';
 import { LessonTextStage } from './LessonTextStage';
 import { LessonUnlockPanel } from './LessonUnlockPanel';
@@ -82,6 +84,7 @@ export function LessonConsole({
   const [enrollError, setEnrollError] = useState<string | null>(null);
   const [celebrating, setCelebrating] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
+  const [flashNextId, setFlashNextId] = useState<number | null>(null);
   const [tab, setTab] = useState<TabId>('about');
   const alive = useRef(true);
   useEffect(() => {
@@ -145,8 +148,15 @@ export function LessonConsole({
       patchProgress(lessonId, { isCompleted: true, progressPercent: 100 });
       setJustCompleted(true);
       void refreshSummary();
+      // زنجیره: تکمیلِ این جلسه، جلسه‌ی بعد را باز می‌کند — برقِ مینتی روی ردیفش
+      const idx = orderedLessons.findIndex((l) => l.id === lessonId);
+      const nextUnlocked = idx >= 0 ? orderedLessons[idx + 1] : undefined;
+      if (nextUnlocked) {
+        setFlashNextId(nextUnlocked.id);
+        window.setTimeout(() => alive.current && setFlashNextId(null), 2600);
+      }
     },
-    [patchProgress, refreshSummary],
+    [orderedLessons, patchProgress, refreshSummary],
   );
 
   /* ── ثبت‌نام: اولِ هر دکمه، پنجره‌ی تأیید؛ فقط بعد از تأیید POST می‌رود ── */
@@ -188,6 +198,15 @@ export function LessonConsole({
   const progressPercent = access.kind === 'enrolled' ? access.summary.progressPercent : 0;
   const accessKind = access.kind === 'boot' ? 'restricted' : access.kind;
   const progressMapForRender = access.kind === 'enrolled' ? access.progressMap : null;
+  // زنجیره‌ی تماشا — نسخه‌ی کلاینتیِ گاردِ سروری؛ جلسه‌ی i باز ⟺ همه‌ی قبلی‌ها کامل
+  const seqMap = useMemo(
+    () =>
+      access.kind === 'enrolled' ? computeLessonSequence(orderedLessons, access.progressMap) : null,
+    [access, orderedLessons],
+  );
+  const currentSeq = seqMap?.get(lesson.id);
+  const sequenceLocked =
+    access.kind === 'enrolled' && !!currentSeq && !currentSeq.unlocked && !lesson.isPreview;
 
   const tabs = useMemo(
     () => [
@@ -214,6 +233,8 @@ export function LessonConsole({
           access.kind === 'enrolled' ? access.summary.lastAccessedLessonId : null
         }
         access={accessKind}
+        seqMap={seqMap}
+        flashNextId={flashNextId}
         enrollBusy={enrollBusy}
         onEnroll={askEnroll}
         onLogin={() => setAuthOpen(true)}
@@ -322,7 +343,21 @@ export function LessonConsole({
             onEnroll={askEnroll}
           />
         )}
-        {stageAllowed &&
+        {sequenceLocked && currentSeq?.blocking && (
+          <LessonSeqLockedPanel
+            blocking={{ slug: currentSeq.blocking.slug, title: currentSeq.blocking.title }}
+            courseSlug={course.slug}
+            lessonTitle={lesson.title}
+            doneCount={
+              progressMapForRender
+                ? [...progressMapForRender.values()].filter((p) => p.isCompleted).length
+                : 0
+            }
+            totalLessons={totalLessons}
+          />
+        )}
+        {!sequenceLocked &&
+          stageAllowed &&
           (lesson.contentType === 'article' || lesson.contentType === 'document' ? (
             <LessonTextStage
               key={`${lesson.id}-text`}
@@ -476,7 +511,7 @@ export function LessonConsole({
                   </span>
                 </span>
                 <span className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-gold-400 px-5 text-[12.5px] font-black text-ink-950 shadow-[0_12px_26px_-10px_rgba(240,148,26,.8)] transition group-hover:bg-gold-300">
-                  ورود به آرنا
+                  شرکت در آزمون دوره
                   <ArrowLeft
                     className="h-4 w-4 transition group-hover:-translate-x-1"
                     aria-hidden="true"
