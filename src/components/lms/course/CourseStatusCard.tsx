@@ -7,6 +7,7 @@ import {
   BadgeCheck,
   ClipboardList,
   Gauge,
+  GraduationCap,
   Loader2,
   LogIn,
   Map as MapIcon,
@@ -197,27 +198,34 @@ export function CourseStatusCard({
             </div>
           ) : null}
 
-          {continueLesson && (
+          {complete ? (
             <Link
-              href={lessonHref(continueLesson)}
-              className="group mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-mint-500 px-5 text-[14px] font-extrabold text-ink-950 shadow-lg shadow-mint-900/40 transition-all hover:bg-mint-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint-200 active:scale-[.98]"
-              aria-label={
-                complete
-                  ? 'رفتن به جلسه‌ی پایانی و آزمون'
-                  : started
+              href={`/lms/courses/${encodeURIComponent(course.slug)}/exam`}
+              aria-label="رفتن به صفحه‌ی آزمون پایان دوره"
+              className="group mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-gold-400 to-gold-500 px-5 text-[14px] font-black text-ink-950 shadow-[0_16px_34px_-14px_rgba(240,148,26,.8)] transition-all hover:from-gold-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-300 active:scale-[.98]"
+            >
+              <GraduationCap className="h-4 w-4" aria-hidden="true" />
+              <span className="max-w-[78%] truncate">ورود به آرنای آزمون پایانی</span>
+            </Link>
+          ) : (
+            continueLesson && (
+              <Link
+                href={lessonHref(continueLesson)}
+                className="group mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-mint-500 px-5 text-[14px] font-extrabold text-ink-950 shadow-lg shadow-mint-900/40 transition-all hover:bg-mint-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint-200 active:scale-[.98]"
+                aria-label={
+                  started
                     ? `ادامه از جلسه‌ی ${fa(continueIndex)}: ${continueLesson.title}`
                     : `شروع از جلسه‌ی ${fa(continueIndex)}: ${continueLesson.title}`
-              }
-            >
-              <Play className="h-4 w-4" aria-hidden="true" />
-              <span className="max-w-[78%] truncate">
-                {complete
-                  ? 'برو به جلسه‌ی پایانی و آزمون'
-                  : started
+                }
+              >
+                <Play className="h-4 w-4" aria-hidden="true" />
+                <span className="max-w-[78%] truncate">
+                  {started
                     ? `ادامه: ${continueLesson.title}`
                     : `شروع مسیر: ${continueLesson.title}`}
-              </span>
-            </Link>
+                </span>
+              </Link>
+            )
           )}
           <a
             href="#journey"

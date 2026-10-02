@@ -356,15 +356,11 @@ function JourneyFinale({
   quizMeta: QuizMeta | null;
   journey: CourseJourney;
 }) {
-  const lastLesson = journey.lessons[journey.lessons.length - 1];
   const ready =
     enrolled && journey.doneCount >= journey.lessons.length && journey.lessons.length > 0;
-  // فقط وقتی همه‌ی جلسات کامل شده باشد گرهِ پایانی «کلیک‌پذیر» است؛ قبل از
-  // آن، مقصدِ مسیر را نشان می‌دهد ولی کاربر را وسطِ راه سردرگم نمی‌کند.
-  const href =
-    ready && lastLesson
-      ? `/lms/courses/${encodeURIComponent(course.slug)}/lessons/${encodeURIComponent(lastLesson.slug)}`
-      : null;
+  // فقط وقتی همه‌ی جلسات کامل شده باشد گرهِ پایانی «کلیک‌پذیر» است؛ مقصدش
+  // صفحه‌ی مستقلِ آزمون است — همان «جلسه‌ی پایانی» که جایگاه خودش را دارد.
+  const href = ready ? `/lms/courses/${encodeURIComponent(course.slug)}/exam` : null;
   const passing = quizMeta
     ? parseFloat(quizMeta.passing_score).toLocaleString('fa-IR', { maximumFractionDigits: 2 })
     : null;
@@ -406,7 +402,7 @@ function JourneyFinale({
           </p>
           {ready && href && (
             <p className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-extrabold text-gold-800">
-              برو به جلسه‌ی پایانی — میزبانِ آزمون
+              ورود به آرنای آزمون — جلسه‌ی پایانی
               <ChevronLeft
                 className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5"
                 aria-hidden="true"
@@ -433,7 +429,7 @@ function JourneyFinale({
       {href ? (
         <Link
           href={href}
-          aria-label="رفتن به جلسه‌ی پایانی و آزمون"
+          aria-label="رفتن به صفحه‌ی آزمون پایان دوره"
           className="min-w-0 flex-1 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
         >
           {card}

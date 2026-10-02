@@ -13,6 +13,7 @@ import {
 } from '@/lib/lms-lesson';
 import type { LmsCourseDetail, LmsLesson } from '@/lib/lms-shared';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { EnrollConfirmModal } from '@/components/lms/enroll/EnrollConfirmModal';
 import { CourseStatusCard } from './CourseStatusCard';
 import { CourseFactsCard } from './CourseFactsCard';
 import { CourseJourneyMap } from './CourseJourneyMap';
@@ -72,6 +73,8 @@ export function CourseClassroom({ course }: { course: LmsCourseDetail }) {
   const [posting, setPosting] = useState(false);
   const [justNow, setJustNow] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -112,12 +115,19 @@ export function CourseClassroom({ course }: { course: LmsCourseDetail }) {
   }, [refresh]);
   useEffect(() => onAuthChange(() => void refresh()), [refresh]);
 
-  const enroll = useCallback(async () => {
+  // هر دکمه‌ی «ثبت‌نام» اول پنجره‌ی تأیید را باز می‌کند؛ POST فقط پس از تأیید.
+  const askEnroll = useCallback(() => {
     if (!hasSession()) {
       setAuthOpen(true);
       return;
     }
+    setConfirmError(null);
+    setConfirmOpen(true);
+  }, []);
+
+  const enroll = useCallback(async () => {
     setPosting(true);
+    setConfirmError(null);
     try {
       await apiFetch(`/lms/courses/${encodeURIComponent(course.slug)}/enroll/`, {
         method: 'POST',
@@ -126,6 +136,7 @@ export function CourseClassroom({ course }: { course: LmsCourseDetail }) {
       const mine = await fetchMyEnrollment(course.slug);
       if (!alive.current) return;
       setPosting(false);
+      setConfirmOpen(false);
       setJustNow(true);
       if (mine) {
         const quizMeta = await fetchQuizMeta(course.slug);
@@ -152,7 +163,9 @@ export function CourseClassroom({ course }: { course: LmsCourseDetail }) {
       if (!alive.current) return;
       setPosting(false);
       const msg = isApiError(err) ? err.message : '';
+      setConfirmError(msg || 'ثبت‌نام برقرار نشد؛ چند لحظه‌ی دیگر دوباره تلاش کن.');
       if (isApiError(err) && err.status === 403 && msg.includes('پروفایل')) {
+        setConfirmOpen(false);
         setViewer({ kind: 'profile-incomplete', message: msg });
       } else {
         setViewer({
@@ -215,7 +228,7 @@ export function CourseClassroom({ course }: { course: LmsCourseDetail }) {
             continueLesson={continueLesson}
             posting={posting}
             justNow={justNow}
-            onEnroll={() => void enroll()}
+            onEnroll={askEnroll}
             onRetry={() => void refresh()}
           />
           <CourseFactsCard course={course} />
@@ -223,6 +236,14 @@ export function CourseClassroom({ course }: { course: LmsCourseDetail }) {
       </aside>
 
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} initialView="signup" />
+      <EnrollConfirmModal
+        open={confirmOpen}
+        course={course}
+        busy={posting}
+        error={confirmError}
+        onConfirm={() => void enroll()}
+        onClose={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

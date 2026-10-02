@@ -15,6 +15,7 @@ import {
   LMS_LEVEL_LABEL,
   classifyVideoUrl,
   formatLmsDuration,
+  lessonCountFact,
   type LmsCourseDetail,
 } from '@/lib/lms-shared';
 import { CourseHeroMedia } from './CourseHeroMedia';
@@ -235,7 +236,8 @@ export function CourseHero({ course }: { course: LmsCourseDetail }) {
               {course.lessonsCount > 0 && (
                 <span className="absolute bottom-3 right-3 hidden h-7 items-center gap-1.5 rounded-full bg-black/55 px-3 text-[11px] font-bold text-white ring-1 ring-white/20 backdrop-blur-sm sm:inline-flex">
                   <ListVideo className="h-3.5 w-3.5" aria-hidden="true" />
-                  {fa(course.lessonsCount)} جلسه‌ی ساخت‌یافته
+                  {lessonCountFact(course.lessonsCount).value}{' '}
+                  {lessonCountFact(course.lessonsCount).label}
                 </span>
               )}
             </div>

@@ -52,12 +52,19 @@ export interface LessonMediaPayload {
 
 export interface LessonQuestionAnswer {
   id: number;
+  user_id?: number;
   user_display: string;
+  /** لنگرِ رشته — برای پاسخ‌های سطح‌صفر null است. */
+  parent_id: number | null;
+  /** نامِ نمایشیِ نویسنده‌ای که این پاسخ روی او رد خورده (زنجیره‌ی نمایشی). */
+  reply_to_display: string | null;
   body: string;
   status: string;
   is_instructor_answer: boolean;
   is_accepted: boolean;
   created_at: string;
+  /** ردهای یک‌سطحی زیرِ این پاسخ. */
+  replies: LessonQuestionAnswer[];
 }
 
 export interface LessonQuestion {
@@ -287,10 +294,13 @@ export type LessonQuestionsResult =
   | { kind: 'forbidden' }
   | { kind: 'error' };
 
-export async function fetchLessonQuestions(lessonId: number): Promise<LessonQuestionsResult> {
+export async function fetchLessonQuestions(
+  lessonId: number,
+  page = 1,
+): Promise<LessonQuestionsResult> {
   try {
     const data = await apiFetch<Paginated<LessonQuestion>>(
-      `/lms/lessons/${lessonId}/questions/?page_size=30`,
+      `/lms/lessons/${lessonId}/questions/?page_size=20&page=${page}`,
       { cache: 'no-store' },
     );
     return { kind: 'ok', questions: data.results ?? [], total: data.count ?? 0 };
@@ -311,13 +321,18 @@ export async function postLessonQuestion(
   });
 }
 
+/**
+ * ثبتِ پاسخ — برای «رد» (reply) روی یک پاسخِ موجود، parent_id همان پاسخِ هدف
+ * ارسال می‌شود؛ بک‌اند خودش لنگرِ رشته را می‌سازد و عمق را یک‌سطحی نگه می‌دارد.
+ */
 export async function postQuestionAnswer(
   questionId: number,
   body: string,
+  parentId?: number | null,
 ): Promise<LessonQuestionAnswer | null> {
   return safeApiFetch<LessonQuestionAnswer>(`/lms/questions/${questionId}/answers/`, {
     method: 'POST',
-    body: JSON.stringify({ body }),
+    body: JSON.stringify(parentId ? { body, parent_id: parentId } : { body }),
     cache: 'no-store',
   });
 }
@@ -325,6 +340,34 @@ export async function postQuestionAnswer(
 export async function postAcceptAnswer(questionId: number, answerId: number): Promise<boolean> {
   const res = await safeApiFetch(`/lms/questions/${questionId}/answers/${answerId}/accept/`, {
     method: 'POST',
+    cache: 'no-store',
+  });
+  return res !== null;
+}
+
+/* ───── گزارشِ تخلفِ گفتگو (دکلِ موجودِ بک‌اند) ───── */
+
+export async function postQuestionReport(
+  questionId: number,
+  reason: string,
+  description = '',
+): Promise<boolean> {
+  const res = await safeApiFetch(`/lms/questions/${questionId}/report/`, {
+    method: 'POST',
+    body: JSON.stringify({ reason, description }),
+    cache: 'no-store',
+  });
+  return res !== null;
+}
+
+export async function postAnswerReport(
+  answerId: number,
+  reason: string,
+  description = '',
+): Promise<boolean> {
+  const res = await safeApiFetch(`/lms/answers/${answerId}/report/`, {
+    method: 'POST',
+    body: JSON.stringify({ reason, description }),
     cache: 'no-store',
   });
   return res !== null;

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { BadgeCheck, GraduationCap, History, Layers, Loader2, Lock, X } from 'lucide-react';
+import { BadgeCheck, GraduationCap, History, Layers, Loader2, Lock, Trophy, X } from 'lucide-react';
 
 import { lockBodyScroll } from '@/lib/scroll-lock';
 import type { LessonProgressEntry } from '@/lib/lms-lesson';
@@ -264,6 +264,72 @@ export function LessonRail({
             </li>
           );
         })}
+        {/* ── جلسه‌ی پایانی — مقصدی مستقل، مثلِ یک جلسه‌ی جدا ── */}
+        <li className="pt-1.5">
+          <div className="mb-1.5 flex items-center gap-2 px-2" aria-hidden="true">
+            <span className="h-px flex-1 bg-ink-100" />
+            <span className="text-[9px] font-black text-ink-300">پایانِ مسیر</span>
+            <span className="h-px flex-1 bg-ink-100" />
+          </div>
+          {(() => {
+            const gateOpen =
+              access === 'enrolled' &&
+              orderedLessons.length > 0 &&
+              orderedLessons.every((l) => progressMap?.get(l.id)?.isCompleted);
+            return (
+              <Link
+                href={`/lms/courses/${encodeURIComponent(course.slug)}/exam`}
+                onClick={() => setDrawerOpen(false)}
+                aria-label={
+                  gateOpen
+                    ? 'رفتن به جلسه‌ی پایانی: آزمون پایان دوره'
+                    : 'جلسه‌ی پایانی (آزمون) — پس از تکمیل همه‌ی جلسات باز می‌شود'
+                }
+                className={`group flex items-center gap-2.5 rounded-xl px-2.5 py-2.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
+                  gateOpen
+                    ? 'bg-gradient-to-l from-gold-50 to-white shadow-[inset_0_0_0_1px_rgba(240,148,26,.3)] hover:-translate-x-0.5'
+                    : 'opacity-75 hover:bg-ink-50'
+                }`}
+              >
+                <span
+                  className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-xl transition ${
+                    gateOpen
+                      ? 'bg-gradient-to-br from-gold-400 to-gold-600 text-white shadow-[0_8px_18px_-6px_rgba(240,148,26,.7)]'
+                      : 'bg-ink-50 text-ink-300'
+                  }`}
+                >
+                  {gateOpen ? (
+                    <Trophy className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Lock className="h-3 w-3" aria-hidden="true" />
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span
+                    className={`block truncate text-[12.5px] font-extrabold leading-5 ${
+                      gateOpen ? 'text-gold-800' : 'text-ink-400'
+                    }`}
+                  >
+                    جلسه‌ی پایانی
+                  </span>
+                  <span className="mt-0.5 block text-[9.5px] font-bold text-ink-400">
+                    {gateOpen
+                      ? 'دروازه‌ی آزمون باز است — برو گواهی را بگیر'
+                      : access === 'guest'
+                        ? 'آزمون و گواهی — پس از ورود و تکمیل مسیر'
+                        : 'آزمون و گواهی — پس از تکمیل همه‌ی جلسات'}
+                  </span>
+                </span>
+                {gateOpen && (
+                  <span
+                    className="h-7 w-1 shrink-0 rounded-full bg-gradient-to-b from-gold-400 to-gold-500"
+                    aria-hidden="true"
+                  />
+                )}
+              </Link>
+            );
+          })()}
+        </li>
       </ol>
     </div>
   );

@@ -307,3 +307,23 @@ export function pageWindow(current: number, total: number): Array<number | 'gap'
   }
   return out;
 }
+
+/** فارسی‌سازِ تعداد جلسه‌ها برای نمایشَک‌های «جلسه‌ی ساخت‌یافته». */
+const faCount = (n: number) => n.toLocaleString('fa-IR');
+
+/**
+ * واقعیتِ «تعداد جلسات» — عنوانِ این فکت باید با خودِ عدد نفس بکشد، نه این‌که
+ * یک برچسبِ ثابتِ بی‌معنا («جلسه‌ی ساخت‌یافته») کنارِ هر عددی بنشیند:
+ *   ۰: صادقانه «به‌زودی» + دعوت، نه «۰ جلسه»
+ *   ۱–۳: مسیرِ جمع‌وجور و هدفمند  ·  ۴–۷: مسیرِ کامل  ·  ۸+: کارگاهِ جامع
+ * در هیرو و کارتِ مشخصات از همین منبعِ واحد تغذیه می‌شود تا دو جا داور نکنیم.
+ */
+export function lessonCountFact(count: number): { value: string; label: string } {
+  if (!Number.isFinite(count) || count <= 0) {
+    return { value: 'به‌زودی', label: 'سیلابوس در راه است' };
+  }
+  if (count <= 3)
+    return { value: faCount(count), label: count === 1 ? 'جلسه‌ی هدفمند' : 'جلسه‌ی هدفمند' };
+  if (count <= 7) return { value: faCount(count), label: 'جلسه‌ی مسیرِ کامل' };
+  return { value: faCount(count), label: 'جلسه‌ی کارگاهِ جامع' };
+}

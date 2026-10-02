@@ -5,6 +5,7 @@ import {
   classifyVideoUrl,
   formatLmsDuration,
   formatLmsHours,
+  lessonCountFact,
   lmsHref,
   normalizeLessonType,
   normalizeLevel,
@@ -243,5 +244,25 @@ describe('teaserText', () => {
     const out = teaserText(long, 170);
     expect(out.endsWith('…')).toBe(true);
     expect(out.length).toBeLessThanOrEqual(170);
+  });
+});
+
+describe('lessonCountFact', () => {
+  it('صفر جلسه، وعده‌ی «به‌زودی» می‌دهد نه عددِ صفر', () => {
+    expect(lessonCountFact(0)).toEqual({ value: 'به‌زودی', label: 'سیلابوس در راه است' });
+    expect(lessonCountFact(-5).value).toBe('به‌زودی');
+  });
+
+  it('عنوان با تعداد جلسات پویا می‌شود', () => {
+    expect(lessonCountFact(1).label).toBe('جلسه‌ی هدفمند');
+    expect(lessonCountFact(3).label).toBe('جلسه‌ی هدفمند');
+    expect(lessonCountFact(4).label).toBe('جلسه‌ی مسیرِ کامل');
+    expect(lessonCountFact(7).label).toBe('جلسه‌ی مسیرِ کامل');
+    expect(lessonCountFact(8).label).toBe('جلسه‌ی کارگاهِ جامع');
+    expect(lessonCountFact(42).label).toBe('جلسه‌ی کارگاهِ جامع');
+  });
+
+  it('عددها فارسی و جداکننده‌دارند', () => {
+    expect(lessonCountFact(12).value).toBe((12).toLocaleString('fa-IR'));
   });
 });

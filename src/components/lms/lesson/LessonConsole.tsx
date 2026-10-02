@@ -6,14 +6,17 @@ import {
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
+  GraduationCap,
   Loader2,
   MessageCircleQuestion,
   NotebookText,
   Paperclip,
   PartyPopper,
+  Sparkles,
 } from 'lucide-react';
 
 import { AuthModal } from '@/components/auth/AuthModal';
+import { EnrollConfirmModal } from '@/components/lms/enroll/EnrollConfirmModal';
 import { apiFetch, isApiError } from '@/lib/api';
 import { hasSession, onAuthChange } from '@/lib/auth-tokens';
 import {
@@ -25,7 +28,6 @@ import type { LmsCourseDetail, LmsLesson } from '@/lib/lms-shared';
 import { formatLmsDuration } from '@/lib/lms-shared';
 import { LessonAttachmentCard } from './LessonAttachmentCard';
 import { LessonQaPanel } from './LessonQaPanel';
-import { LessonQuizStage } from './LessonQuizStage';
 import { LessonRail } from './LessonRail';
 import { LessonSegBar } from './LessonSegBar';
 import { LessonStrip } from './LessonStrip';
@@ -75,6 +77,7 @@ export function LessonConsole({
 }: Props) {
   const [access, setAccess] = useState<Access>({ kind: 'boot' });
   const [authOpen, setAuthOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [enrollBusy, setEnrollBusy] = useState(false);
   const [enrollError, setEnrollError] = useState<string | null>(null);
   const [celebrating, setCelebrating] = useState(false);
@@ -146,7 +149,16 @@ export function LessonConsole({
     [patchProgress, refreshSummary],
   );
 
-  /* ── ثبت‌نام + لحظه‌ی جشن ── */
+  /* ── ثبت‌نام: اولِ هر دکمه، پنجره‌ی تأیید؛ فقط بعد از تأیید POST می‌رود ── */
+  const askEnroll = useCallback(() => {
+    if (!hasSession()) {
+      setAuthOpen(true);
+      return;
+    }
+    setEnrollError(null);
+    setConfirmOpen(true);
+  }, []);
+
   const enroll = useCallback(async () => {
     setEnrollBusy(true);
     setEnrollError(null);
@@ -156,6 +168,7 @@ export function LessonConsole({
         cache: 'no-store',
       });
       if (!alive.current) return;
+      setConfirmOpen(false);
       setCelebrating(true);
       await loadAccess();
       window.setTimeout(() => alive.current && setCelebrating(false), 1900);
@@ -202,7 +215,7 @@ export function LessonConsole({
         }
         access={accessKind}
         enrollBusy={enrollBusy}
-        onEnroll={() => void enroll()}
+        onEnroll={askEnroll}
         onLogin={() => setAuthOpen(true)}
       />
 
@@ -306,7 +319,7 @@ export function LessonConsole({
             courseTitle={course.title}
             totalLessons={totalLessons}
             onLogin={() => setAuthOpen(true)}
-            onEnroll={() => void enroll()}
+            onEnroll={askEnroll}
           />
         )}
         {stageAllowed &&
@@ -348,7 +361,7 @@ export function LessonConsole({
             </p>
             <button
               type="button"
-              onClick={() => void enroll()}
+              onClick={askEnroll}
               disabled={enrollBusy}
               className="inline-flex h-9 items-center gap-1.5 rounded-full bg-mint-600 px-4 text-[12px] font-extrabold text-white transition hover:bg-mint-500 disabled:opacity-60"
             >
@@ -410,7 +423,7 @@ export function LessonConsole({
                 enrolled={access.kind === 'enrolled'}
                 isGuest={access.kind === 'guest'}
                 onLogin={() => setAuthOpen(true)}
-                onEnroll={() => void enroll()}
+                onEnroll={askEnroll}
               />
             )}
             {tab === 'attach' && lesson.attachmentUrl && (
@@ -424,22 +437,53 @@ export function LessonConsole({
           </div>
         </div>
 
-        {/* ═══ آزمونِ پایان‌دوره — فقط در آخرین جلسه ═══ */}
+        {/* ═══ جلسه‌ی پایانی — آزمون در صفحه‌ی مستقلِ خودش (نه مهمانِ جلسه) ═══ */}
         {nextLesson === null && (
-          <section className="mt-7" aria-label="آزمون پایان‌دوره">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="h-px flex-1 bg-ink-100" aria-hidden="true" />
-              <p className="text-[11px] font-extrabold text-ink-400">
-                قدمِ آخرِ مسیر — با قبولی در آزمون، گواهی صادر می‌شود
-              </p>
-              <span className="h-px flex-1 bg-ink-100" aria-hidden="true" />
-            </div>
-            <LessonQuizStage
-              courseSlug={course.slug}
-              courseTitle={course.title}
-              enrolled={access.kind === 'enrolled'}
-              onPassed={() => handleCompleted(lesson.id)}
-            />
+          <section className="mt-7" aria-label="جلسه‌ی پایانی">
+            <Link
+              href={`/lms/courses/${encodeURIComponent(course.slug)}/exam`}
+              className="group relative block overflow-hidden rounded-[22px] bg-ink-900 p-5 ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-26px_rgba(0,0,0,.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 sm:p-6"
+            >
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 opacity-[.5]"
+                style={{
+                  backgroundImage:
+                    'repeating-linear-gradient(-45deg, rgba(255,255,255,.035) 0 2px, transparent 2px 14px)',
+                }}
+              />
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -left-14 -top-16 h-44 w-44 rounded-full bg-gold-500/20 blur-3xl"
+              />
+              <div className="relative flex flex-wrap items-center gap-4">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 text-white shadow-[0_12px_26px_-10px_rgba(240,148,26,.8)]">
+                  <GraduationCap className="h-6 w-6" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-400/15 px-2.5 py-0.5 text-[10px] font-extrabold text-gold-200 ring-1 ring-gold-300/30">
+                    <Sparkles className="h-3 w-3" aria-hidden="true" />
+                    جلسه‌ی پایانی
+                  </span>
+                  <span className="mt-1.5 block text-[15px] font-black leading-7 text-white sm:text-[17px]">
+                    {isCompleted
+                      ? 'کلاس را تمام کردی — وقتِ سنجش و گواهی است'
+                      : 'تماشای این جلسه، دروازه‌ی آزمون را باز می‌کند'}
+                  </span>
+                  <span className="mt-0.5 block text-[11.5px] font-bold leading-6 text-white/55">
+                    آزمونِ پایان‌دوره در صفحه‌ی مستقلِ خودش، مثل یک جلسه‌ی جدا؛ با قبولی، گواهی
+                    خودکار صادر می‌شود.
+                  </span>
+                </span>
+                <span className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-gold-400 px-5 text-[12.5px] font-black text-ink-950 shadow-[0_12px_26px_-10px_rgba(240,148,26,.8)] transition group-hover:bg-gold-300">
+                  ورود به آرنا
+                  <ArrowLeft
+                    className="h-4 w-4 transition group-hover:-translate-x-1"
+                    aria-hidden="true"
+                  />
+                </span>
+              </div>
+            </Link>
           </section>
         )}
 
@@ -508,6 +552,14 @@ export function LessonConsole({
       )}
 
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} initialView="login" />
+      <EnrollConfirmModal
+        open={confirmOpen}
+        course={course}
+        busy={enrollBusy}
+        error={enrollError}
+        onConfirm={() => void enroll()}
+        onClose={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
