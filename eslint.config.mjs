@@ -31,6 +31,7 @@ export default tseslint.config(
       'coverage/**',
       'node_modules/**',
       'next-env.d.ts',
+      'public/vendor/**', // ورکرِ مینیفای‌شده‌ی pdf.js — خروجیِ وندور، لینت نمی‌شود
       'src/types/api.ts', // تولید خودکار از OpenAPI — لینت نمی‌شود
     ],
   },
