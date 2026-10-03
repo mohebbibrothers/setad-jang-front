@@ -343,7 +343,9 @@ export function ExamArena({ course, orderedLessons, lastLesson }: Props) {
         attempt={stage.attempt}
         courseSlug={course.slug}
         courseTitle={course.title}
-        onRetry={() => void start()}
+        // پس از هر نتیجه، وضعیتِ تازه‌ی سرور خوانده می‌شود تا در صورت کول‌داون،
+        // همان صحنه‌ی «تلاش بعدی کی باز می‌شود» با شمارشِ معکوسِ زنده بیاید.
+        onRetry={() => void evaluate()}
       />
     );
   }
@@ -419,23 +421,153 @@ export function ExamArena({ course, orderedLessons, lastLesson }: Props) {
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={() => void start()}
-        disabled={starting}
-        className="mt-7 inline-flex h-12 items-center gap-2.5 rounded-full bg-gradient-to-l from-mint-400 to-mint-500 px-9 text-[15px] font-black text-ink-950 shadow-[0_20px_44px_-16px_rgba(20,184,166,.8)] transition hover:-translate-y-0.5 hover:from-mint-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint-300 active:scale-[.98] disabled:opacity-60"
-      >
-        {starting ? (
-          <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-        ) : (
-          <Flame className="h-5 w-5" aria-hidden="true" />
-        )}
-        {starting ? 'در حال ورود به آزمون…' : 'ورود به آزمون'}
-      </button>
-      <p className="mt-3 text-[10.5px] font-bold text-white/35">
-        با شروع آزمون، تایمر راه می‌افتد؛ خروج از صفحه تلاش را نمی‌سوزاند.
-      </p>
+      {/* تصویرِ زنده‌ی سیاستِ قفل — آینه‌ی دقیقِ سرور:
+          کول‌داون → شمارشِ معکوسِ بازگشایی؛ قبول‌شده → جایزه؛ تمام‌شده → بن‌بست نیست، گفت‌وگو */}
+      {(() => {
+        const st = m.attempt_state;
+        if (st?.locked_reason === 'cooldown' && st.retry_at) {
+          return (
+            <RetryCountdown
+              retryAt={st.retry_at}
+              attemptsLeft={st.attempts_left}
+              allowedAttempts={st.allowed_attempts}
+              onUnlock={() => void evaluate()}
+            />
+          );
+        }
+        if (st?.locked_reason === 'passed') {
+          return (
+            <div className="mt-7 flex flex-col items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full bg-mint-500/15 px-5 py-2.5 text-[13px] font-extrabold text-mint-200 ring-1 ring-mint-400/30">
+                <Trophy className="h-4 w-4" aria-hidden="true" />
+                تو این آزمون را قبول شده‌ای — گواهیت صادر شده است 🎓
+              </span>
+              <p className="text-[11px] font-bold text-white/40">
+                هر وقت بخواهی می‌توانی برای تثبیت، دوباره رقابت کنی.
+              </p>
+            </div>
+          );
+        }
+        if (st && !st.can_attempt && st.locked_reason === 'out_of_attempts') {
+          return (
+            <p className="mt-7 max-w-md rounded-xl bg-gold-500/10 px-5 py-3 text-[12px] font-bold leading-6 text-gold-200 ring-1 ring-gold-400/25">
+              سهمیه‌ی تلاش‌های این آزمون تمام شده است؛ برای تلاشِ بیشتر با پشتیبانی در تماس باش.
+            </p>
+          );
+        }
+        const attemptsNote =
+          st && st.allowed_attempts > 0
+            ? `تلاشِ ${fa(Math.min(st.attempts_used + 1, st.allowed_attempts))} از ${fa(st.allowed_attempts)}`
+            : null;
+        return (
+          <>
+            <button
+              type="button"
+              onClick={() => void start()}
+              disabled={starting}
+              className="mt-7 inline-flex h-12 items-center gap-2.5 rounded-full bg-gradient-to-l from-mint-400 to-mint-500 px-9 text-[15px] font-black text-ink-950 shadow-[0_20px_44px_-16px_rgba(20,184,166,.8)] transition hover:-translate-y-0.5 hover:from-mint-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint-300 active:scale-[.98] disabled:opacity-60"
+            >
+              {starting ? (
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Flame className="h-5 w-5" aria-hidden="true" />
+              )}
+              {starting
+                ? 'در حال ورود به آزمون…'
+                : st?.has_in_progress
+                  ? 'ادامه‌ی تلاشِ ناتمام'
+                  : 'ورود به آزمون'}
+            </button>
+            <p className="mt-3 text-[10.5px] font-bold text-white/35">
+              با شروع آزمون، تایمر راه می‌افتد؛ خروج از صفحه تلاش را نمی‌سوزاند.
+              {attemptsNote && <span className="ms-1.5 text-gold-300/70">{attemptsNote}</span>}
+            </p>
+          </>
+        );
+      })()}
     </FinaleShell>
+  );
+}
+
+/* ── صحنه‌ی «تلاش بعدی کی باز می‌شود» — شمارشِ معکوسِ زنده‌ی کول‌داون ── */
+
+function RetryCountdown({
+  retryAt,
+  attemptsLeft,
+  allowedAttempts,
+  onUnlock,
+}: {
+  retryAt: string;
+  attemptsLeft: number;
+  allowedAttempts: number;
+  onUnlock: () => void;
+}) {
+  const target = new Date(retryAt).getTime();
+  const [now, setNow] = useState(() => Date.now());
+  const firedRef = useRef(false);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const remainMs = Math.max(0, target - now);
+  const remainSec = Math.ceil(remainMs / 1000);
+
+  useEffect(() => {
+    if (remainMs <= 0 && !firedRef.current) {
+      firedRef.current = true;
+      onUnlock();
+    }
+  }, [remainMs, onUnlock]);
+
+  const days = Math.floor(remainSec / 86400);
+  const hours = Math.floor((remainSec % 86400) / 3600);
+  const minutes = Math.floor((remainSec % 3600) / 60);
+  const seconds = remainSec % 60;
+  const cells = [
+    { v: days, l: 'روز' },
+    { v: hours, l: 'ساعت' },
+    { v: minutes, l: 'دقیقه' },
+    { v: seconds, l: 'ثانیه' },
+  ];
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      data-testid="retry-countdown"
+      className="mx-auto mt-7 w-full max-w-lg rounded-2xl border border-gold-300/25 bg-gold-400/[.07] px-5 py-5 backdrop-blur-sm"
+    >
+      <p className="flex items-center justify-center gap-2 text-[13px] font-black text-gold-200">
+        <Lock className="h-4 w-4" aria-hidden="true" />
+        دروازه‌ی تلاش بعدی فعلاً بسته است
+      </p>
+      <p className="mt-1 text-[11px] font-bold leading-6 text-white/50">
+        تلاشِ قبلی به حدِّ قبولی نرسید؛ صندلیِ تازه‌ات در حال آماده‌سازی است:
+      </p>
+      <div dir="rtl" className="mt-4 grid grid-cols-4 gap-2">
+        {cells.map((c) => (
+          <div
+            key={c.l}
+            className="rounded-xl border border-gold-300/25 bg-ink-950/50 px-2 py-2.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,.06)]"
+          >
+            <p
+              className={`text-[22px] font-black tabular-nums leading-7 ${c.v > 0 ? 'text-gold-300' : 'text-white/25'}`}
+            >
+              {fa(c.v)}
+            </p>
+            <p className="mt-0.5 text-[9.5px] font-bold text-white/45">{c.l}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3.5 text-[11px] font-extrabold text-mint-200/90">
+        {fa(attemptsLeft)} تلاش دیگر از مجموع {fa(allowedAttempts)} تلاش برایت محفوظ است
+      </p>
+      <p className="mt-1 text-[10px] font-bold text-white/35">
+        همین که شمارش به صفر برسد، دروازه خودش همین‌جا باز می‌شود — نیازی به رفرش نیست.
+      </p>
+    </div>
   );
 }
 

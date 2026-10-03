@@ -136,6 +136,7 @@ export function LessonConsole({
         progressPercent: 0,
         isCompleted: false,
         lastPositionSeconds: 0,
+        mediaOpened: false,
         ...prevEntry,
         ...entry,
       });
@@ -365,6 +366,7 @@ export function LessonConsole({
               enrolled={access.kind === 'enrolled'}
               progress={progressEntry}
               onCompleted={() => handleCompleted(lesson.id)}
+              onMediaOpened={() => patchProgress(lesson.id, { mediaOpened: true })}
             />
           ) : (
             <LessonVideoStage

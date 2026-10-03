@@ -18,7 +18,13 @@
  * (به‌جز quiz meta/start که اسلاگِ نرمال‌شده از page می‌رسد و اینجا یک‌بار
  * encodeURIComponent می‌شود) — هیچ مسیر دابل‌انکدی وجود ندارد.
  */
-import { apiFetch, isApiError, safeApiFetch, type Paginated } from '@/lib/api';
+import {
+  apiFetch,
+  isApiError,
+  resolveBrowserApiBaseUrl,
+  safeApiFetch,
+  type Paginated,
+} from '@/lib/api';
 import type { LmsCourseDetail, LmsLesson } from '@/lib/lms-shared';
 
 /* ───── تایپ‌ها ───── */
@@ -37,6 +43,8 @@ export interface LessonProgressEntry {
   progressPercent: number;
   isCompleted: boolean;
   lastPositionSeconds: number;
+  /** سند/رسانه‌ی جلسه دست‌کم یک‌بار باز شده (گیتِ دکمه‌ی تکمیلِ جلسات سندی). */
+  mediaOpened: boolean;
 }
 
 export interface LessonMediaPayload {
@@ -64,9 +72,13 @@ export interface LessonQuestionAnswer {
   reply_to_excerpt: string | null;
   body: string;
   status: string;
+  /** سنگ‌قبرِ «این پاسخ حذف شد» — متن در این حالت خالی می‌آید. */
+  is_deleted?: boolean;
   is_instructor_answer: boolean;
   is_accepted: boolean;
   created_at: string;
+  /** مهرِ «ویرایش‌شده» (بک‌اند)؛ null یعنی دست‌نخورده. */
+  edited_at?: string | null;
   /** ردهای یک‌سطحی زیرِ این پاسخ. */
   replies: LessonQuestionAnswer[];
 }
@@ -78,12 +90,29 @@ export interface LessonQuestion {
   title: string;
   body: string;
   status: string;
+  /** سنگ‌قبرِ «این پرسش حذف شد» — عنوان/متن در این حالت خالی می‌آیند. */
+  is_deleted?: boolean;
   is_pinned: boolean;
   is_answered: boolean;
   answer_count: number;
   last_activity_at: string;
   created_at: string;
+  edited_at?: string | null;
   answers: LessonQuestionAnswer[];
+}
+
+/** تصویرِ زنده‌ی سیاستِ قفلِ تلاش — آینه‌ی دقیقِ سرور برای صحنه‌ی کول‌داون. */
+export interface QuizAttemptState {
+  enrolled: boolean;
+  has_in_progress: boolean;
+  attempts_used: number;
+  attempts_left: number;
+  allowed_attempts: number;
+  passed_before: boolean;
+  /** لحظه‌ی بازشدنِ تلاشِ بعدی (ISO)؛ null یعنی همین حالا می‌توان تلاش کرد. */
+  retry_at: string | null;
+  locked_reason: 'passed' | 'out_of_attempts' | 'cooldown' | null;
+  can_attempt: boolean;
 }
 
 export interface QuizMeta {
@@ -96,6 +125,7 @@ export interface QuizMeta {
   max_attempts: number;
   retake_delay_days: number;
   questions_count: number;
+  attempt_state?: QuizAttemptState;
 }
 
 export interface QuizAttemptOption {
@@ -152,6 +182,7 @@ interface ApiEnrollmentDetail extends ApiEnrollmentRow {
     progress_percent: string | number;
     is_completed: boolean;
     last_position_seconds: number;
+    media_opened?: boolean;
   }>;
 }
 
@@ -234,6 +265,7 @@ export async function fetchMyEnrollment(
       progressPercent: toPercent(p.progress_percent),
       isCompleted: p.is_completed ?? false,
       lastPositionSeconds: p.last_position_seconds ?? 0,
+      mediaOpened: p.media_opened ?? false,
     });
   }
   summary.lastAccessedLessonId = detail?.last_accessed_lesson_id ?? null;
@@ -258,7 +290,7 @@ export async function fetchLessonMedia(
         cache: 'no-store',
       },
     );
-    return { kind: 'ok', media: data };
+    return { kind: 'ok', media: { ...data, url: resolveMediaUrl(data.url ?? '') } };
   } catch (err) {
     if (isApiError(err) && err.status === 403) return { kind: 'forbidden' };
     if (isApiError(err) && err.status === 404) {
@@ -268,11 +300,33 @@ export async function fetchLessonMedia(
   }
 }
 
+/**
+ * نشانیِ رسانه را برای مرورگر آماده می‌کند.
+ *
+ * بک‌اند برای فایل‌های بارگذاری‌شده دیگر «لینکِ خامِ /media/» نمی‌دهد؛ مسیرِ
+ * نسبیِ استریمِ امضاشده (شروع با «lms/») می‌دهد که باید زیر همان پراکسیِ
+ * قراردادیِ api.ts مصرف شود. نشانی‌های مطلق (CDN نمونه‌ای/مستقیم) دست‌نخورده
+ * می‌مانند.
+ */
+export function resolveMediaUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith('lms/')) {
+    return `${resolveBrowserApiBaseUrl()}/${url}`;
+  }
+  return url;
+}
+
 /* ───── پیشرفت ───── */
 
 export async function postLessonProgress(
   lessonId: number,
-  body: { watched_seconds?: number; last_position_seconds?: number; mark_completed?: boolean },
+  body: {
+    watched_seconds?: number;
+    last_position_seconds?: number;
+    mark_completed?: boolean;
+    /** سیگنالِ «سند/رسانه باز شد» — گیتِ دکمه‌ی تکمیلِ جلسات سندی روی سیم. */
+    media_opened?: boolean;
+  },
 ): Promise<{ isCompleted: boolean; progressPercent: number; lastPositionSeconds: number } | null> {
   const data = await safeApiFetch<{
     is_completed?: boolean;
@@ -347,6 +401,48 @@ export async function postAcceptAnswer(questionId: number, answerId: number): Pr
     cache: 'no-store',
   });
   return res !== null;
+}
+
+/* ───── ویرایش/حذفِ متنِ خودِ کاربر (با مهرِ «ویرایش‌شده»/سنگ‌قبرِ رشته) ───── */
+
+export async function patchLessonQuestion(
+  questionId: number,
+  input: { title: string; body: string },
+): Promise<LessonQuestion | null> {
+  return safeApiFetch<LessonQuestion>(`/lms/questions/${questionId}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+    cache: 'no-store',
+  });
+}
+
+export async function deleteLessonQuestion(
+  questionId: number,
+): Promise<{ mode: 'hard' | 'tombstone' | string } | null> {
+  return safeApiFetch<{ mode: 'hard' | 'tombstone' | string }>(`/lms/questions/${questionId}/`, {
+    method: 'DELETE',
+    cache: 'no-store',
+  });
+}
+
+export async function patchLessonAnswer(
+  answerId: number,
+  body: string,
+): Promise<LessonQuestionAnswer | null> {
+  return safeApiFetch<LessonQuestionAnswer>(`/lms/answers/${answerId}/`, {
+    method: 'PATCH',
+    body: JSON.stringify({ body }),
+    cache: 'no-store',
+  });
+}
+
+export async function deleteLessonAnswer(
+  answerId: number,
+): Promise<{ mode: 'hard' | 'tombstone' | string } | null> {
+  return safeApiFetch<{ mode: 'hard' | 'tombstone' | string }>(`/lms/answers/${answerId}/`, {
+    method: 'DELETE',
+    cache: 'no-store',
+  });
 }
 
 /* ───── گزارشِ تخلفِ گفتگو (دکلِ موجودِ بک‌اند) ───── */

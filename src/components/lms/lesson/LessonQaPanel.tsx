@@ -7,17 +7,24 @@ import {
   ChevronDown,
   CornerDownLeft,
   Flag,
+  Ghost,
   Loader2,
   Lock,
   MessageCircleQuestion,
+  Pencil,
   Pin,
   Reply,
   Send,
   ShieldAlert,
+  Trash2,
 } from 'lucide-react';
 
 import {
+  deleteLessonAnswer,
+  deleteLessonQuestion,
   fetchLessonQuestions,
+  patchLessonAnswer,
+  patchLessonQuestion,
   postAcceptAnswer,
   postAnswerReport,
   postLessonQuestion,
@@ -388,7 +395,15 @@ function QuestionCard({
 }) {
   const [askDraft, setAskDraft] = useState('');
   const [askBusy, setAskBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(q.title);
+  const [editBody, setEditBody] = useState(q.body);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editErr, setEditErr] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const isMine = currentUserId != null && q.user_id === currentUserId;
+  const isDeleted = q.is_deleted === true;
 
   const submitAnswer = useCallback(async () => {
     const text = askDraft.trim();
@@ -402,8 +417,38 @@ function QuestionCard({
     }
   }, [askDraft, onChanged, q.id]);
 
+  const saveEdit = useCallback(async () => {
+    if (editTitle.trim().length < 5 || editBody.trim().length < 10) {
+      setEditErr('عنوان حداقل ۵ و متن حداقل ۱۰ حرف لازم دارد.');
+      return;
+    }
+    setEditBusy(true);
+    setEditErr(null);
+    const updated = await patchLessonQuestion(q.id, {
+      title: editTitle.trim(),
+      body: editBody.trim(),
+    });
+    setEditBusy(false);
+    if (updated) {
+      setEditing(false);
+      onChanged();
+    } else {
+      setEditErr('ویرایش ثبت نشد؛ دوباره تلاش کن.');
+    }
+  }, [editBody, editTitle, onChanged, q.id]);
+
+  const doDelete = useCallback(async () => {
+    setDeleteBusy(true);
+    const res = await deleteLessonQuestion(q.id);
+    setDeleteBusy(false);
+    setConfirmDelete(false);
+    if (res) onChanged(); // hard → ناپدید؛ tombstone → کارتِ سنگ‌قبر
+  }, [onChanged, q.id]);
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-ink-100 bg-white">
+    <div
+      className={`overflow-hidden rounded-2xl border ${isDeleted ? 'border-dashed border-ink-200 bg-ink-50/50' : 'border-ink-100 bg-white'}`}
+    >
       <button
         type="button"
         onClick={onToggle}
@@ -411,23 +456,35 @@ function QuestionCard({
         className="flex w-full items-center gap-3 px-4 py-3.5 text-right transition hover:bg-ink-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-200"
       >
         <span
-          className={`grid h-9 w-9 shrink-0 select-none place-items-center rounded-full text-[13px] font-black ${isMine ? 'bg-mint-100 text-mint-800' : 'bg-ink-50 text-ink-500'}`}
+          className={`grid h-9 w-9 shrink-0 select-none place-items-center rounded-full text-[13px] font-black ${isDeleted ? 'bg-ink-100 text-ink-300' : isMine ? 'bg-mint-100 text-mint-800' : 'bg-ink-50 text-ink-500'}`}
         >
-          {initialOf(q.user_display)}
+          {isDeleted ? <Ghost className="h-4 w-4" aria-hidden="true" /> : initialOf(q.user_display)}
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-1.5">
-            <span className="truncate text-[13px] font-black text-ink-800">{q.title}</span>
-            {q.is_pinned && (
+            <span
+              className={`truncate text-[13px] font-black ${isDeleted ? 'italic text-ink-300' : 'text-ink-800'}`}
+            >
+              {isDeleted ? 'این پرسش توسط نویسنده‌اش حذف شد' : q.title}
+            </span>
+            {!isDeleted && q.is_pinned && (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-gold-50 px-2 py-0.5 text-[9.5px] font-extrabold text-gold-700">
                 <Pin className="h-2.5 w-2.5" aria-hidden="true" />
                 سنجاق
               </span>
             )}
-            {q.is_answered && (
+            {!isDeleted && q.is_answered && (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-mint-50 px-2 py-0.5 text-[9.5px] font-extrabold text-mint-700">
                 <BadgeCheck className="h-2.5 w-2.5" aria-hidden="true" />
                 پاسخ داده شد
+              </span>
+            )}
+            {!isDeleted && q.edited_at && (
+              <span
+                className="rounded-full bg-ink-50 px-2 py-0.5 text-[9px] font-extrabold text-ink-400"
+                title={`ویرایش‌شده در ${timeAgoFa(q.edited_at)}`}
+              >
+                ویرایش‌شده
               </span>
             )}
           </span>
@@ -444,17 +501,111 @@ function QuestionCard({
 
       {open && (
         <div className="border-t border-ink-100 bg-ink-50/40 px-3.5 py-4 sm:px-4">
-          {/* متنِ پرسش + اکشن‌ها */}
-          <div className="rounded-xl bg-white px-3.5 py-3 ring-1 ring-ink-100/70">
-            <div className="flex items-start justify-between gap-2">
-              <p className="break-words text-[13px] font-bold leading-7 text-ink-700 [overflow-wrap:anywhere]">
-                {q.body}
-              </p>
-              {!isMine && (
-                <ReportMenu target={{ kind: 'question', id: q.id }} className="shrink-0" />
+          {/* متنِ پرسش + اکشن‌ها: سنگ‌قبر بدنه ندارد؛ زنده با گزارش/ویرایش/حذف */}
+          {!isDeleted && (
+            <div className="rounded-xl bg-white px-3.5 py-3 ring-1 ring-ink-100/70">
+              {editing ? (
+                <div className="space-y-2">
+                  <input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    maxLength={255}
+                    placeholder="عنوان پرسش…"
+                    className="h-10 w-full rounded-lg border border-ink-100 bg-ink-50/50 px-3 text-[12.5px] font-bold outline-none transition focus:border-brand-300 focus:bg-white focus:ring-2 focus:ring-brand-100"
+                  />
+                  <AutoTextarea
+                    value={editBody}
+                    onChange={setEditBody}
+                    minRows={3}
+                    autoFocus
+                    className="w-full rounded-lg border border-ink-100 bg-ink-50/50 px-3 py-2 text-[12.5px] font-bold leading-6 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-2 focus:ring-brand-100"
+                  />
+                  {editErr && <p className="text-[11px] font-bold text-red-600">{editErr}</p>}
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditing(false);
+                        setEditTitle(q.title);
+                        setEditBody(q.body);
+                        setEditErr(null);
+                      }}
+                      className="h-8 rounded-full px-3.5 text-[11px] font-extrabold text-ink-400 transition hover:text-ink-600"
+                    >
+                      انصراف
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void saveEdit()}
+                      disabled={editBusy}
+                      className="inline-flex h-8 items-center gap-1 rounded-full bg-brand-600 px-4 text-[11px] font-extrabold text-white transition hover:bg-brand-500 disabled:opacity-60"
+                    >
+                      {editBusy ? (
+                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Check className="h-3 w-3" aria-hidden="true" />
+                      )}
+                      ذخیره‌ی ویرایش
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-2">
+                  <p className="break-words text-[13px] font-bold leading-7 text-ink-700 [overflow-wrap:anywhere]">
+                    {q.body}
+                  </p>
+                  <span className="flex shrink-0 items-center gap-1">
+                    {isMine && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setEditing(true)}
+                          className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9.5px] font-extrabold text-ink-300 transition hover:bg-brand-50 hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
+                        >
+                          <Pencil className="h-3 w-3" aria-hidden="true" />
+                          ویرایش
+                        </button>
+                        {confirmDelete ? (
+                          <span className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => void doDelete()}
+                              disabled={deleteBusy}
+                              className="inline-flex h-6 items-center gap-1 rounded-full bg-red-500 px-2.5 text-[9.5px] font-extrabold text-white transition hover:bg-red-400 disabled:opacity-60"
+                            >
+                              {deleteBusy && (
+                                <Loader2 className="h-2.5 w-2.5 animate-spin" aria-hidden="true" />
+                              )}
+                              بله، حذف کن
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDelete(false)}
+                              className="text-[9.5px] font-extrabold text-ink-400 transition hover:text-ink-600"
+                            >
+                              انصراف
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDelete(true)}
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9.5px] font-extrabold text-ink-300 transition hover:bg-red-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200"
+                          >
+                            <Trash2 className="h-3 w-3" aria-hidden="true" />
+                            حذف
+                          </button>
+                        )}
+                      </>
+                    )}
+                    {!isMine && (
+                      <ReportMenu target={{ kind: 'question', id: q.id }} className="shrink-0" />
+                    )}
+                  </span>
+                </div>
               )}
             </div>
-          </div>
+          )}
 
           {/* درختِ پاسخ‌ها */}
           <div className="mt-3.5 space-y-3">
@@ -476,31 +627,34 @@ function QuestionCard({
             ))}
           </div>
 
-          {/* پاسخ به خودِ پرسش — برای همه‌ی اعضای کلاس (از جمله صاحبِ پرسش) */}
-          <div className="mt-4 flex flex-col items-stretch gap-2 min-[430px]:flex-row min-[430px]:items-start">
-            <AutoTextarea
-              value={askDraft}
-              onChange={setAskDraft}
-              placeholder={
-                isMine ? 'توضیح/پاسخ تکمیلی درباره‌ی پرسشت…' : 'تو هم می‌توانی پاسخ بدهی…'
-              }
-              minRows={2}
-              className="min-w-0 flex-1 rounded-xl border border-ink-100 bg-white px-3 py-2 text-[12px] font-bold leading-6 outline-none transition focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
-            />
-            <button
-              type="button"
-              disabled={askBusy || askDraft.trim().length < 5}
-              onClick={() => void submitAnswer()}
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-xl bg-brand-600 px-4 text-[11.5px] font-extrabold text-white transition hover:bg-brand-500 disabled:opacity-50"
-            >
-              {askBusy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Send className="h-3.5 w-3.5" aria-hidden="true" />
-              )}
-              ارسال
-            </button>
-          </div>
+          {/* پاسخ به خودِ پرسش — برای همه‌ی اعضای کلاس (از جمله صاحبِ پرسش)؛
+              پاسخ‌دادن به سنگ‌قبر معنا ندارد، پس مخفی می‌ماند */}
+          {!isDeleted && (
+            <div className="mt-4 flex flex-col items-stretch gap-2 min-[430px]:flex-row min-[430px]:items-start">
+              <AutoTextarea
+                value={askDraft}
+                onChange={setAskDraft}
+                placeholder={
+                  isMine ? 'توضیح/پاسخ تکمیلی درباره‌ی پرسشت…' : 'تو هم می‌توانی پاسخ بدهی…'
+                }
+                minRows={2}
+                className="min-w-0 flex-1 rounded-xl border border-ink-100 bg-white px-3 py-2 text-[12px] font-bold leading-6 outline-none transition focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              />
+              <button
+                type="button"
+                disabled={askBusy || askDraft.trim().length < 5}
+                onClick={() => void submitAnswer()}
+                className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-xl bg-brand-600 px-4 text-[11.5px] font-extrabold text-white transition hover:bg-brand-500 disabled:opacity-50"
+              >
+                {askBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+                ارسال
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -528,8 +682,40 @@ function AnswerNode({
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editBody, setEditBody] = useState(answer.body);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editErr, setEditErr] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const isReply = answer.parent_id != null;
   const mine = currentUserId != null && answer.user_id === currentUserId;
+  const isDeleted = answer.is_deleted === true;
+
+  const saveEdit = useCallback(async () => {
+    if (editBody.trim().length < 5) {
+      setEditErr('متن پاسخ باید حداقل ۵ حرف باشد.');
+      return;
+    }
+    setEditBusy(true);
+    setEditErr(null);
+    const updated = await patchLessonAnswer(answer.id, editBody.trim());
+    setEditBusy(false);
+    if (updated) {
+      setEditing(false);
+      onChanged();
+    } else {
+      setEditErr('ویرایش ثبت نشد؛ دوباره تلاش کن.');
+    }
+  }, [answer.id, editBody, onChanged]);
+
+  const doDelete = useCallback(async () => {
+    setDeleteBusy(true);
+    const res = await deleteLessonAnswer(answer.id);
+    setDeleteBusy(false);
+    setConfirmDelete(false);
+    if (res) onChanged(); // hard → ناپدید؛ tombstone → گرهِ سنگ‌قبر با ردهای زنده
+  }, [answer.id, onChanged]);
 
   const submitReply = useCallback(async () => {
     const text = draft.trim();
@@ -563,27 +749,46 @@ function AnswerNode({
       <div
         id={`qa-answer-${answer.id}`}
         className={`rounded-xl border p-3.5 ${
-          answer.is_instructor_answer
-            ? 'border-brand-200 bg-brand-50/60'
-            : 'border-ink-100 bg-white'
+          isDeleted
+            ? 'border-dashed border-ink-200 bg-ink-50/50'
+            : answer.is_instructor_answer
+              ? 'border-brand-200 bg-brand-50/60'
+              : 'border-ink-100 bg-white'
         }`}
       >
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span
             className={`grid h-6 w-6 select-none place-items-center rounded-full text-[10px] font-black ${
-              answer.is_instructor_answer
-                ? 'bg-brand-600 text-white'
-                : 'bg-ink-50 text-ink-500 ring-1 ring-ink-100'
+              isDeleted
+                ? 'bg-ink-100 text-ink-300'
+                : answer.is_instructor_answer
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-ink-50 text-ink-500 ring-1 ring-ink-100'
             }`}
           >
-            {initialOf(answer.user_display)}
+            {isDeleted ? (
+              <Ghost className="h-3 w-3" aria-hidden="true" />
+            ) : (
+              initialOf(answer.user_display)
+            )}
           </span>
           <span
-            className={`text-[11px] font-black ${answer.is_instructor_answer ? 'text-brand-700' : 'text-ink-500'}`}
+            className={`text-[11px] font-black ${
+              isDeleted
+                ? 'text-ink-300'
+                : answer.is_instructor_answer
+                  ? 'text-brand-700'
+                  : 'text-ink-500'
+            }`}
           >
             {answer.user_display}
           </span>
-          {answer.is_instructor_answer && (
+          {isDeleted && (
+            <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[9px] font-extrabold text-ink-400">
+              حذف‌شده
+            </span>
+          )}
+          {!isDeleted && answer.is_instructor_answer && (
             <span
               className="rounded-full bg-brand-600 px-2 py-0.5 text-[9px] font-extrabold text-white"
               title="این پاسخ را استادِ دوره یا تیمِ آموزشی بعثت نوشته است"
@@ -591,10 +796,18 @@ function AnswerNode({
               پاسخ استاد
             </span>
           )}
-          {answer.is_accepted && (
+          {!isDeleted && answer.is_accepted && (
             <span className="inline-flex items-center gap-0.5 rounded-full bg-mint-100 px-2 py-0.5 text-[9px] font-extrabold text-mint-800">
               <BadgeCheck className="h-2.5 w-2.5" aria-hidden="true" />
               پاسخ پذیرفته‌شده
+            </span>
+          )}
+          {!isDeleted && answer.edited_at && (
+            <span
+              className="rounded-full bg-ink-50 px-2 py-0.5 text-[9px] font-extrabold text-ink-400"
+              title={`ویرایش‌شده در ${timeAgoFa(answer.edited_at)}`}
+            >
+              ویرایش‌شده
             </span>
           )}
           {timeAgoFa(answer.created_at) && (
@@ -604,7 +817,8 @@ function AnswerNode({
           )}
         </div>
 
-        {answer.reply_to_display && (
+        {/* نقل‌قولِ «در پاسخ به …» — برای سنگ‌قبر نمایش داده نمی‌شود (بک‌اند هم excerpt را صفر می‌کند) */}
+        {!isDeleted && answer.reply_to_display && (
           <button
             type="button"
             onClick={() => jumpToAnswer(answer.reply_to_id)}
@@ -626,38 +840,127 @@ function AnswerNode({
           </button>
         )}
 
-        <p className="mt-1.5 break-words text-[12.5px] font-bold leading-6 text-ink-700 [overflow-wrap:anywhere]">
-          {answer.body}
-        </p>
+        {isDeleted ? (
+          <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] font-bold italic leading-6 text-ink-300">
+            <Ghost className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            این پاسخ توسط نویسنده‌اش حذف شد؛ گفتگوی زیرش زنده است.
+          </p>
+        ) : editing ? (
+          <div className="mt-1.5 space-y-2">
+            <AutoTextarea
+              value={editBody}
+              onChange={setEditBody}
+              minRows={2}
+              autoFocus
+              className="w-full rounded-lg border border-ink-100 bg-ink-50/50 px-3 py-2 text-[12px] font-bold leading-6 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-2 focus:ring-brand-100"
+            />
+            {editErr && <p className="text-[11px] font-bold text-red-600">{editErr}</p>}
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(false);
+                  setEditBody(answer.body);
+                  setEditErr(null);
+                }}
+                className="h-8 rounded-full px-3.5 text-[11px] font-extrabold text-ink-400 transition hover:text-ink-600"
+              >
+                انصراف
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveEdit()}
+                disabled={editBusy}
+                className="inline-flex h-8 items-center gap-1 rounded-full bg-brand-600 px-4 text-[11px] font-extrabold text-white transition hover:bg-brand-500 disabled:opacity-60"
+              >
+                {editBusy ? (
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Check className="h-3 w-3" aria-hidden="true" />
+                )}
+                ذخیره‌ی ویرایش
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-1.5 break-words text-[12.5px] font-bold leading-6 text-ink-700 [overflow-wrap:anywhere]">
+            {answer.body}
+          </p>
+        )}
 
-        {/* اکشن‌ها: پاسخ (رد) + قبول + گزارش */}
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setReplyOpen((v) => !v)}
-            aria-expanded={replyOpen}
-            className="inline-flex items-center gap-1 rounded-full border border-ink-100 bg-white px-2.5 py-1 text-[10px] font-extrabold text-ink-500 transition hover:border-mint-300 hover:text-mint-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint-300"
-          >
-            <Reply className="h-3 w-3 rtl:-scale-x-100" aria-hidden="true" />
-            {replyOpen ? 'بستن' : 'پاسخ'}
-          </button>
-          {isQuestionMine && !mine && !answer.is_accepted && (
+        {/* اکشن‌ها: پاسخ (رد) + قبول + ویرایش/حذفِ متنِ خودم + گزارش (غیر از خودم) */}
+        {!isDeleted && !editing && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              onClick={() => void accept()}
-              disabled={accepting}
-              className="inline-flex items-center gap-1 rounded-full border border-mint-200 bg-mint-50 px-2.5 py-1 text-[10px] font-extrabold text-mint-800 transition hover:bg-mint-100 disabled:opacity-60"
+              onClick={() => setReplyOpen((v) => !v)}
+              aria-expanded={replyOpen}
+              className="inline-flex items-center gap-1 rounded-full border border-ink-100 bg-white px-2.5 py-1 text-[10px] font-extrabold text-ink-500 transition hover:border-mint-300 hover:text-mint-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint-300"
             >
-              {accepting ? (
-                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-              ) : (
-                <Check className="h-3 w-3" aria-hidden="true" />
-              )}
-              این پاسخ مشکل من را حل کرد
+              <Reply className="h-3 w-3 rtl:-scale-x-100" aria-hidden="true" />
+              {replyOpen ? 'بستن' : 'پاسخ'}
             </button>
-          )}
-          {!mine && <ReportMenu target={{ kind: 'answer', id: answer.id }} />}
-        </div>
+            {isQuestionMine && !mine && !answer.is_accepted && (
+              <button
+                type="button"
+                onClick={() => void accept()}
+                disabled={accepting}
+                className="inline-flex items-center gap-1 rounded-full border border-mint-200 bg-mint-50 px-2.5 py-1 text-[10px] font-extrabold text-mint-800 transition hover:bg-mint-100 disabled:opacity-60"
+              >
+                {accepting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Check className="h-3 w-3" aria-hidden="true" />
+                )}
+                این پاسخ مشکل من را حل کرد
+              </button>
+            )}
+            {mine && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-extrabold text-ink-300 transition hover:bg-brand-50 hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
+                >
+                  <Pencil className="h-3 w-3" aria-hidden="true" />
+                  ویرایش
+                </button>
+                {confirmDelete ? (
+                  <span className="inline-flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => void doDelete()}
+                      disabled={deleteBusy}
+                      className="inline-flex h-6 items-center gap-1 rounded-full bg-red-500 px-2.5 text-[10px] font-extrabold text-white transition hover:bg-red-400 disabled:opacity-60"
+                    >
+                      {deleteBusy && (
+                        <Loader2 className="h-2.5 w-2.5 animate-spin" aria-hidden="true" />
+                      )}
+                      بله، حذف کن
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className="text-[10px] font-extrabold text-ink-400 transition hover:text-ink-600"
+                    >
+                      انصراف
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-extrabold text-ink-300 transition hover:bg-red-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200"
+                  >
+                    <Trash2 className="h-3 w-3" aria-hidden="true" />
+                    حذف
+                  </button>
+                )}
+              </>
+            )}
+            {!mine && <ReportMenu target={{ kind: 'answer', id: answer.id }} />}
+          </div>
+        )}
 
         {/* کمپوزرِ رد */}
         {replyOpen && (
@@ -665,7 +968,7 @@ function AnswerNode({
             <AutoTextarea
               value={draft}
               onChange={setDraft}
-              placeholder={`رد تو به ${answer.user_display}…`}
+              placeholder={`پاسخ تو به ${answer.user_display}…`}
               minRows={2}
               autoFocus
               className="min-w-0 flex-1 rounded-lg border border-ink-100 bg-white px-3 py-2 text-[12px] font-bold leading-6 outline-none transition focus:border-mint-300 focus:ring-2 focus:ring-mint-100"

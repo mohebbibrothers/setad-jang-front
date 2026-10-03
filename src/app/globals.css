@@ -962,6 +962,23 @@
 .qa-scroll::-webkit-scrollbar-corner {
   background: transparent;
 }
+/* پیکان‌های استپرِ بالا/پایینِ اسکرول‌بارِ کلاسیک (ویندوز) که از گوشه‌های گِردِ
+ * باکس بیرون می‌زدند و کادر را زشت می‌کردند — نه فقط نامرئی، صفرِ واقعی: */
+.qa-scroll::-webkit-scrollbar-button,
+.qa-scroll::-webkit-scrollbar-button:single-button,
+.qa-scroll::-webkit-scrollbar-button:double-button,
+.qa-scroll::-webkit-scrollbar-button:start,
+.qa-scroll::-webkit-scrollbar-button:end {
+  display: none;
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: 0;
+}
+/* تراک هم کمی از لبه‌ها فاصله بگیرد تا روی شعاعِ گوشه سوار نشود: */
+.qa-scroll::-webkit-scrollbar-track-piece {
+  background: transparent;
+}
 
 @keyframes qaFlash {
   0% {

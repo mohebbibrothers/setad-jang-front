@@ -15,6 +15,7 @@ const progress = (completed: boolean): LessonProgressEntry => ({
   progressPercent: completed ? 100 : 0,
   isCompleted: completed,
   lastPositionSeconds: 0,
+  mediaOpened: false,
 });
 
 describe('computeLessonSequence — زنجیره‌ی تماشای پشت‌سرهم', () => {
@@ -69,5 +70,20 @@ describe('computeLessonSequence — زنجیره‌ی تماشای پشت‌سر
     const seq = computeLessonSequence(list, null);
     expect(seq.get(4)).toEqual({ unlocked: true, blocking: null });
     expect(seq.get(2)?.unlocked).toBe(false);
+  });
+});
+
+describe('مدلِ جدیدِ داده — گیتِ سند و استریمِ امضاشده', () => {
+  it('resolveMediaUrl مسیرِ نسبیِ استریمِ امضاشده را زیر پایه‌ی API می‌برد', async () => {
+    const { resolveMediaUrl } = await import('./lms-lesson');
+    const out = resolveMediaUrl('lms/lessons/7/media/document/stream/?t=sig');
+    expect(out.startsWith('lms/')).toBe(false);
+    expect(out.endsWith('/lms/lessons/7/media/document/stream/?t=sig')).toBe(true);
+  });
+
+  it('resolveMediaUrl نشانیِ مطلقِ بیرونی و رشته‌ی خالی را دست‌نخورده نگه می‌دارد', async () => {
+    const { resolveMediaUrl } = await import('./lms-lesson');
+    expect(resolveMediaUrl('https://cdn.example.com/v.mp4')).toBe('https://cdn.example.com/v.mp4');
+    expect(resolveMediaUrl('')).toBe('');
   });
 });

@@ -132,7 +132,7 @@ export function ExamRunner({
           <span className="text-[12px] font-black text-ink-600">
             سؤال {fa(qIdx + 1)} از {fa(questions.length)}
             <span className="ms-2 text-[10px] font-bold text-ink-400">
-              (وزن {faScore(q.weight)})
+              (نمره‌ی {faScore(q.weight)})
             </span>
           </span>
           <div className="flex items-center gap-2.5">

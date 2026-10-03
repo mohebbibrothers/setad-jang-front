@@ -182,8 +182,10 @@ export function LessonVideoStage({ lesson, enrolled, progress, onTick, onComplet
                 controls
                 playsInline
                 preload="metadata"
-                controlsList="nodownload"
+                controlsList="nodownload noremoteplayback"
+                disablePictureInPicture
                 src={media.url}
+                onContextMenu={(e) => e.preventDefault()}
                 onTimeUpdate={handleTimeUpdate}
                 onLoadedMetadata={handleLoadedMetadata}
                 onEnded={handleEnded}
@@ -206,8 +208,9 @@ export function LessonVideoStage({ lesson, enrolled, progress, onTick, onComplet
                   controls
                   playsInline
                   preload="metadata"
-                  controlsList="nodownload"
+                  controlsList="nodownload noremoteplayback"
                   src={embed.src}
+                  onContextMenu={(e) => e.preventDefault()}
                   onTimeUpdate={handleTimeUpdate}
                   onLoadedMetadata={handleLoadedMetadata}
                   onEnded={handleEnded}
@@ -254,6 +257,7 @@ export function LessonVideoStage({ lesson, enrolled, progress, onTick, onComplet
             )}
             <span className="text-[10.5px] font-bold text-ink-400">
               تکمیل خودکار در ۹۰٪ • پیشرفتت لحظه‌ای ذخیره می‌شود
+              {media?.provider === 'uploaded_file' && ' • پخش امن درون‌سایتی، بدون دانلود'}
             </span>
           </>
         ) : (
