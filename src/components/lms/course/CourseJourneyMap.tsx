@@ -175,18 +175,27 @@ export function CourseJourneyMap({ course, viewer, journey }: Props) {
             }
             style={edgeMask ? { WebkitMaskImage: edgeMask, maskImage: edgeMask } : undefined}
           >
-            {/* محورِ مسیر — ریل + پرشدگیِ گرادیانی بر اساس درصدِ واقعی */}
-            <span
-              aria-hidden="true"
-              className="absolute inset-y-6 start-[21px] w-[3px] rounded-full bg-ink-100"
-            />
-            <span
-              aria-hidden="true"
-              className="absolute inset-y-6 start-[21px] w-[3px] origin-top rounded-full bg-gradient-to-b from-brand-500 to-mint-400 transition-all duration-700"
-              style={{ height: `${fillPct}%` }}
-            />
-
-            <ol className="relative m-0 list-none space-y-3.5 p-0">
+            <ol className="relative m-0 list-none space-y-3.5 p-0 ps-5">
+              {/* محورِ مسیر — ریل + پرشدگیِ گرادیانی، داخلِ مختصاتِ خودِ لیست:
+                  نکته‌ی ظریفِ بدون‌نقص‌بودن — تا اینجا ریل absolute روی «کانتینرِ
+                  اسکرول» و حباب‌ها داخلِ «لیست» بودند (دو سیستمِ مختصاتِ جدا)؛
+                  با آمدنِ اسکرول‌بار، حبابِ ۴۴px به لبه‌ی راستِ پورت چسبیده و
+                  هاله‌ی سفید ۴px (ring-4) و افکتِ ping توسط overflow قیچی
+                  می‌شد — دایره «ناقص» دیده می‌شد. حالا ریل دقیقاً از مرکزِ
+                  حباب‌های خودِ لیست می‌گذرد (ps-5 ⇒ مرکزِ حباب = ۲۰+۲۲٫۵=۴۲٫۵px
+                  ⇒ start-[41px] ریل؛ ۴۱+۱٫۵=۴۲٫۵) و هاله‌ی ۴px و حتی افکتِ
+                  ping (۲۲px) هر دو درونِ پورت می‌مانند — هیچ‌چیز قیچی نمی‌شود.
+                  چون ps روی خودِ لیست است، چیدمان در هر دو حالتِ خطی/دالان
+                  یکی می‌ماند و هنگامِ عبور از آستانه پرشِ بصری نداریم. */}
+              <span
+                aria-hidden="true"
+                className="absolute inset-y-[34px] start-[41px] w-[3px] rounded-full bg-ink-100"
+              />
+              <span
+                aria-hidden="true"
+                className="absolute inset-y-[34px] start-[41px] w-[3px] origin-top rounded-full bg-gradient-to-b from-brand-500 to-mint-400 transition-all duration-700"
+                style={{ height: `${fillPct}%` }}
+              />
               {lessons.map((lesson, index) => (
                 <JourneyLessonRow
                   key={lesson.id}
