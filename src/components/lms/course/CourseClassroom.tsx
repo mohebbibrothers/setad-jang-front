@@ -17,6 +17,7 @@ import { EnrollConfirmModal } from '@/components/lms/enroll/EnrollConfirmModal';
 import { CourseStatusCard } from './CourseStatusCard';
 import { CourseFactsCard } from './CourseFactsCard';
 import { CourseJourneyMap } from './CourseJourneyMap';
+import { CourseAboutText } from './CourseAboutText';
 
 /**
  * ═══════════════════════════════════════════════════════════════════
@@ -203,15 +204,7 @@ export function CourseClassroom({ course }: { course: LmsCourseDetail }) {
               <BookOpenText className="h-3.5 w-3.5" aria-hidden="true" />
               این کلاس برای چیست؟
             </p>
-            <div className="relative mt-3 overflow-hidden rounded-2xl border border-ink-100 bg-white px-5 py-4 shadow-[0_10px_28px_-24px_rgba(11,53,48,.35)]">
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 right-0 w-1 bg-gradient-to-b from-brand-400 via-mint-400 to-brand-500"
-              />
-              <p className="whitespace-pre-line text-[13px] leading-7 text-ink-700 md:text-[13.5px] md:leading-8">
-                {course.description.trim()}
-              </p>
-            </div>
+            <CourseAboutText text={course.description.trim()} />
           </section>
         )}
 

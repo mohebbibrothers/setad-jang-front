@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 import { SmartImage } from '@/components/ui/SmartImage';
-import { lessonCountFact, type LmsCourseDetail } from '@/lib/lms-shared';
+import { effectiveLessonsCount, lessonCountFact, type LmsCourseDetail } from '@/lib/lms-shared';
 import { lockBodyScroll } from '@/lib/scroll-lock';
 import { usePresence } from '@/lib/use-presence';
 
@@ -79,7 +79,7 @@ export function EnrollConfirmModal({ open, course, busy, error, onConfirm, onClo
 
   if (!rendered) return null;
 
-  const lessons = lessonCountFact(course.lessonsCount);
+  const lessons = lessonCountFact(effectiveLessonsCount(course));
 
   return (
     <div

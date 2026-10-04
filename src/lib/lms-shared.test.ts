@@ -5,6 +5,8 @@ import {
   classifyVideoUrl,
   formatLmsDuration,
   formatLmsHours,
+  effectiveDurationSeconds,
+  effectiveLessonsCount,
   lessonCountFact,
   lmsHref,
   normalizeLessonType,
@@ -264,5 +266,36 @@ describe('lessonCountFact', () => {
 
   it('عددها فارسی و جداکننده‌دارند', () => {
     expect(lessonCountFact(12).value).toBe((12).toLocaleString('fa-IR'));
+  });
+});
+
+describe('effectiveLessonsCount — ضدِ چیپِ «۰ جلسه» کنارِ سیلابوسِ پر', () => {
+  it('وقتی لیستِ زنده‌ی جلسات پر است، طولِ لیست داور است نه اسکالرِ کهنه', () => {
+    // سناریوی باگِ «چریک سایبری»: سیلابوس سه‌جلسه‌ای ولی اسکالر ۰.
+    expect(
+      effectiveLessonsCount({ lessonsCount: 0, lessons: [{ id: 1 }, { id: 2 }, { id: 3 }] }),
+    ).toBe(3);
+  });
+
+  it('لیستِ خالی/غایب → fallback به اسکالرِ پی‌لود', () => {
+    expect(effectiveLessonsCount({ lessonsCount: 5, lessons: [] })).toBe(5);
+    expect(effectiveLessonsCount({ lessonsCount: 2 })).toBe(2);
+    expect(effectiveLessonsCount({ lessonsCount: 0, lessons: [] })).toBe(0);
+  });
+});
+
+describe('effectiveDurationSeconds — مدتِ یادگیری از منبعِ زنده', () => {
+  it('با لیستِ پر، جمعِ duration جلسات داور است', () => {
+    expect(
+      effectiveDurationSeconds({
+        durationSeconds: 0,
+        lessons: [{ durationSeconds: 600 }, { durationSeconds: 900 }, {}],
+      }),
+    ).toBe(1500);
+  });
+
+  it('با لیستِ خالی/غایب → همان اسکالرِ پی‌لود', () => {
+    expect(effectiveDurationSeconds({ durationSeconds: 7200, lessons: [] })).toBe(7200);
+    expect(effectiveDurationSeconds({ durationSeconds: 60 })).toBe(60);
   });
 });

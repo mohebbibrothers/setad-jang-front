@@ -202,7 +202,7 @@ export function LessonTextStage({ lesson, enrolled, progress, onCompleted, onMed
                 </p>
                 <p className="mt-1 flex items-center gap-1.5 text-[11.5px] font-bold text-ink-400">
                   <ScanEye className="h-3.5 w-3.5 text-mint-600" aria-hidden="true" />
-                  سندِ درس — فقط داخلِ همین صفحه مطالعه می‌شود (بدون دانلود)
+                  سندِ درس — فقط داخلِ همین صفحه مطالعه می‌شود
                 </p>
                 {docOpened && !completed && (
                   <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-mint-50 px-2 py-0.5 text-[10px] font-extrabold text-mint-700 ring-1 ring-mint-200">

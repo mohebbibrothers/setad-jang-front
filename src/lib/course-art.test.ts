@@ -17,7 +17,7 @@ describe('course-art — آرت‌ورکِ fallback و گالریِ رسانه�
     expect(courseCoverArt('هر-کلاس-جدیدی')).toBe(DEFAULT_COURSE_COVER);
   });
 
-  it('ترتیبِ سه‌فریم: کاور → فضای یادگیری → پرتره‌ی استاد', () => {
+  it('گالری دوفریمِ واقعی است: کاور → پرتره‌ی استاد (بدونِ اسلاید مشترک)', () => {
     const slides = courseMediaSlides({
       title: 'جاوا اسکریپت',
       coverUrl: '/lms/covers/javascript.jpg',
@@ -26,19 +26,33 @@ describe('course-art — آرت‌ورکِ fallback و گالریِ رسانه�
     });
     expect(slides.map((s) => s.url)).toEqual([
       '/lms/covers/javascript.jpg',
-      '/lms/class-space.jpg',
       DEFAULT_INSTRUCTOR_AVATAR,
     ]);
     expect(slides[0].alt).toContain('کاور کلاس');
-    expect(slides[2].alt).toContain('استاد محمدی');
+    expect(slides[1].alt).toContain('استاد محمدی');
+    // تصویرِ مشترکِ قدیمی («فضای یادگیری قرارگاه آموزشی») به درخواستِ مشتری
+    // برای همیشه از گالری حذف شده است.
+    expect(slides.some((s) => s.url.includes('class-space'))).toBe(false);
   });
 
-  it('بدون کاور/آواتارِ واقعی، fallback عبور می‌کند و ایندکسِ آواتار درست می‌ماند', () => {
-    const slides = courseMediaSlides({ title: 'تست', instructor: 'مدرس قرارگاه' });
-    expect(slides).toHaveLength(1); // فقط فضای یادگیری
-    expect(instructorSlideIndex({ coverUrl: 'x', instructorAvatarUrl: 'y' })).toBe(2);
-    expect(instructorSlideIndex({ instructorAvatarUrl: 'y' })).toBe(1);
+  it('تنظیمِ ایندکسِ آواتار با حضور/عدمِ کاور درست از آب درمی‌آید', () => {
+    expect(instructorSlideIndex({ coverUrl: 'x', instructorAvatarUrl: 'y' })).toBe(1);
+    expect(instructorSlideIndex({ instructorAvatarUrl: 'y' })).toBe(0);
     expect(instructorSlideIndex({ coverUrl: 'x' })).toBe(0);
+  });
+
+  it('بدون کاور/آواتارِ واقعی، گالری خالی است نه فریمِ قرضی', () => {
+    const slides = courseMediaSlides({ title: 'تست', instructor: 'مدرس قرارگاه' });
+    expect(slides).toHaveLength(0);
+  });
+
+  it('فقط کاور یا فقط آواتار → گالریِ تک‌فریمِ صادق', () => {
+    expect(
+      courseMediaSlides({ title: 'تست', coverUrl: '/c.jpg', instructor: 'مدرس' }),
+    ).toHaveLength(1);
+    expect(
+      courseMediaSlides({ title: 'تست', instructor: 'مدرس', instructorAvatarUrl: '/a.jpg' }),
+    ).toHaveLength(1);
   });
 
   it('لاگیکِ فیلد خالی: رشته‌ی خالی = فاقد تصویر محسوب می‌شود', () => {
@@ -49,6 +63,6 @@ describe('course-art — آرت‌ورکِ fallback و گالریِ رسانه�
       instructorAvatarUrl: '',
     });
     expect(slides.every((s) => s.url.length > 0 && !s.url.startsWith('blob:'))).toBe(true);
-    expect(slides).toHaveLength(1);
+    expect(slides).toHaveLength(0);
   });
 });

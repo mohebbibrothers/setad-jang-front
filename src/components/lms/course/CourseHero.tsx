@@ -16,6 +16,8 @@ import {
   classifyVideoUrl,
   formatLmsDuration,
   lessonCountFact,
+  effectiveDurationSeconds,
+  effectiveLessonsCount,
   type LmsCourseDetail,
 } from '@/lib/lms-shared';
 import { CourseHeroMedia } from './CourseHeroMedia';
@@ -35,7 +37,8 @@ export function CourseHero({ course }: { course: LmsCourseDetail }) {
   const mediaSlides = courseMediaSlides(course);
   const avatarSlide = instructorSlideIndex(course);
   const levelLabel = course.level ? LMS_LEVEL_LABEL[course.level] : null;
-  const duration = formatLmsDuration(course.durationSeconds);
+  const lessonsCount = effectiveLessonsCount(course);
+  const duration = formatLmsDuration(effectiveDurationSeconds(course));
   const crumbs: Array<{ label: string; href?: string }> = [
     { label: 'آموزش‌ها', href: '/lms' },
     ...(course.categoryTitle && course.categorySlug
@@ -49,7 +52,7 @@ export function CourseHero({ course }: { course: LmsCourseDetail }) {
     { label: course.title },
   ];
   const meta: Array<{ icon: typeof ListVideo; value: string; label: string }> = [
-    { icon: ListVideo, value: fa(course.lessonsCount), label: 'جلسه' },
+    { icon: ListVideo, value: fa(lessonsCount), label: 'جلسه' },
     ...(duration ? [{ icon: Clock3, value: duration, label: 'مدتِ مسیر' }] : []),
     { icon: Users, value: fa(course.enrollmentsCount), label: 'یادگیرنده' },
     { icon: GraduationCap, value: fa(course.graduatesCount), label: 'فارغ‌التحصیل' },
@@ -233,11 +236,10 @@ export function CourseHero({ course }: { course: LmsCourseDetail }) {
                   value: course.categoryTitle ?? 'قرارگاه آموزشی',
                 }}
               />
-              {course.lessonsCount > 0 && (
+              {lessonsCount > 0 && (
                 <span className="absolute bottom-3 right-3 hidden h-7 items-center gap-1.5 rounded-full bg-black/55 px-3 text-[11px] font-bold text-white ring-1 ring-white/20 backdrop-blur-sm sm:inline-flex">
                   <ListVideo className="h-3.5 w-3.5" aria-hidden="true" />
-                  {lessonCountFact(course.lessonsCount).value}{' '}
-                  {lessonCountFact(course.lessonsCount).label}
+                  {lessonCountFact(lessonsCount).value} {lessonCountFact(lessonsCount).label}
                 </span>
               )}
             </div>

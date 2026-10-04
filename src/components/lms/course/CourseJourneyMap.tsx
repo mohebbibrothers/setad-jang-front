@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   Award,
@@ -16,6 +17,7 @@ import {
   LESSON_TYPE_LABEL,
   TYPE_ICON,
   TYPE_TONE,
+  effectiveDurationSeconds,
   formatLmsDuration,
   teaserText,
   type LmsCourseDetail,
@@ -41,13 +43,88 @@ type Props = {
   journey: CourseJourney;
 };
 
+/** از این تعداد جلسه به بعد نقشه به «دالانِ اسکرول‌شونده» تبدیل می‌شود تا
+ * صفحه با سیلابوس‌های بلند (۱۲/۱۶/۲۰ جلسه) بی‌نهایت کش نیاید. */
+const JOURNEY_SCROLL_THRESHOLD = 8;
+
 export function CourseJourneyMap({ course, viewer, journey }: Props) {
   const enrolled = viewer.kind === 'enrolled';
   const quizMeta = enrolled ? viewer.quizMeta : null;
   const { lessons } = journey;
-  const totalDuration = formatLmsDuration(course.durationSeconds);
+  const totalDuration = formatLmsDuration(effectiveDurationSeconds(course));
   // پرشدنِ محور: درصدِ واقعیِ کلاس (همان عددِ حلقه) تا مسیر و عدد یکی باشند
   const fillPct = enrolled ? Math.max(0, Math.min(100, journey.percent)) : 0;
+
+  /* ── دالانِ مسیر: سقفِ ارتفاع + اسکرولِ داخلی برای سیلابوس‌های بلند ──
+     ماسکِ لبه‌ها (mask-image) محتوای نقشه را نزدیکِ لبه‌های برش نرم محو
+     می‌کند — مستقل از رنگِ پس‌زمینه‌ی صفحه و فقط برای سمتی که «ادامه» دارد.
+     برای اعضا، ردیفِ «از اینجا ادامه بده» اگر بیرون از دید باشد با اسکرول
+     خودکار + دکمه‌ی پرشِ شناور همیشه یک قدم فاصله دارد. */
+  const scrollable = lessons.length > JOURNEY_SCROLL_THRESHOLD;
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const [fades, setFades] = useState({ up: false, down: false });
+  const [continueOutOfView, setContinueOutOfView] = useState(false);
+
+  useEffect(() => {
+    if (!scrollable) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    const update = () => {
+      setFades({
+        up: el.scrollTop > 10,
+        down: el.scrollTop + el.clientHeight < el.scrollHeight - 10,
+      });
+      const row = el.querySelector('[data-journey-current="true"]');
+      if (row) {
+        const r = row.getBoundingClientRect();
+        const c = el.getBoundingClientRect();
+        setContinueOutOfView(r.bottom < c.top + 8 || r.top > c.bottom - 8);
+      } else {
+        setContinueOutOfView(false);
+      }
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    el.querySelectorAll('li').forEach((li) => ro.observe(li));
+    return () => {
+      el.removeEventListener('scroll', update);
+      ro.disconnect();
+    };
+  }, [scrollable, enrolled, journey.continueLessonId, lessons.length]);
+
+  // فرودِ نرم روی جایگاهِ کاربر: وقتی نقشه بلند است، دالان به‌جای ابتدای
+  // سیلابوس، از ردیفِ «ادامه بده» آغاز می‌شود (بدونِ انیمیشن — بی‌سروصدا).
+  useEffect(() => {
+    if (!scrollable || !enrolled || !journey.continueLessonId) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    const row = el.querySelector('[data-journey-current="true"]');
+    if (!row) return;
+    const r = row.getBoundingClientRect();
+    const c = el.getBoundingClientRect();
+    const fullyVisible = r.top >= c.top && r.bottom <= c.bottom;
+    if (!fullyVisible) {
+      el.scrollTo({ top: Math.max(0, el.scrollTop + (r.top - c.top) - 72), behavior: 'auto' });
+    }
+  }, [scrollable, enrolled, journey.continueLessonId]);
+
+  const jumpToContinue = () => {
+    const el = scrollerRef.current;
+    const row = el?.querySelector('[data-journey-current="true"]');
+    if (!el || !row) return;
+    const target =
+      el.scrollTop + (row.getBoundingClientRect().top - el.getBoundingClientRect().top) - 72;
+    el.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+  };
+
+  const edgeMask =
+    fades.up || fades.down
+      ? `linear-gradient(to bottom, ${
+          fades.up ? 'transparent 0, #000 26px' : '#000 0'
+        }, #000 calc(100% - 26px), ${fades.down ? 'transparent 100%' : '#000 100%'})`
+      : undefined;
 
   return (
     <section id="journey" aria-label="نقشه‌ی مسیر کلاس" className="scroll-mt-28">
@@ -86,37 +163,61 @@ export function CourseJourneyMap({ course, viewer, journey }: Props) {
         <JourneyPreparing />
       ) : (
         <div className="relative mt-6">
-          {/* محورِ مسیر — ریل + پرشدگیِ گرادیانی بر اساس درصدِ واقعی */}
-          <span
-            aria-hidden="true"
-            className="absolute inset-y-6 start-[21px] w-[3px] rounded-full bg-ink-100"
-          />
-          <span
-            aria-hidden="true"
-            className="absolute inset-y-6 start-[21px] w-[3px] origin-top rounded-full bg-gradient-to-b from-brand-500 to-mint-400 transition-all duration-700"
-            style={{ height: `${fillPct}%` }}
-          />
+          <div
+            ref={scrollerRef}
+            data-testid={scrollable ? 'journey-scroller' : undefined}
+            className={
+              scrollable
+                ? 'qa-scroll relative max-h-[440px] overflow-y-auto py-2 pe-2 sm:max-h-[520px] lg:max-h-[610px]'
+                : 'relative'
+            }
+            style={edgeMask ? { WebkitMaskImage: edgeMask, maskImage: edgeMask } : undefined}
+          >
+            {/* محورِ مسیر — ریل + پرشدگیِ گرادیانی بر اساس درصدِ واقعی */}
+            <span
+              aria-hidden="true"
+              className="absolute inset-y-6 start-[21px] w-[3px] rounded-full bg-ink-100"
+            />
+            <span
+              aria-hidden="true"
+              className="absolute inset-y-6 start-[21px] w-[3px] origin-top rounded-full bg-gradient-to-b from-brand-500 to-mint-400 transition-all duration-700"
+              style={{ height: `${fillPct}%` }}
+            />
 
-          <ol className="relative m-0 list-none space-y-3.5 p-0">
-            {lessons.map((lesson, index) => (
-              <JourneyLessonRow
-                key={lesson.id}
+            <ol className="relative m-0 list-none space-y-3.5 p-0">
+              {lessons.map((lesson, index) => (
+                <JourneyLessonRow
+                  key={lesson.id}
+                  course={course}
+                  lesson={lesson}
+                  index={index}
+                  viewer={viewer}
+                  journey={journey}
+                />
+              ))}
+
+              {/* گرهِ پایانی — آزمون و گواهی */}
+              <JourneyFinale
                 course={course}
-                lesson={lesson}
-                index={index}
-                viewer={viewer}
+                enrolled={enrolled}
+                quizMeta={quizMeta}
                 journey={journey}
               />
-            ))}
+            </ol>
+          </div>
 
-            {/* گرهِ پایانی — آزمون و گواهی */}
-            <JourneyFinale
-              course={course}
-              enrolled={enrolled}
-              quizMeta={quizMeta}
-              journey={journey}
-            />
-          </ol>
+          {/* پرشِ شناور به جایگاهِ کاربر — وقتی ردیفِ ادامه بیرون از دید است */}
+          {scrollable && enrolled && journey.continueLessonId != null && continueOutOfView && (
+            <button
+              type="button"
+              onClick={jumpToContinue}
+              data-testid="journey-jump-continue"
+              className="absolute bottom-4 left-1/2 z-20 inline-flex h-9 -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-gold-500 px-4 text-[11.5px] font-extrabold text-ink-950 shadow-[0_14px_30px_-10px_rgba(240,148,26,.75)] ring-1 ring-gold-300 transition hover:bg-gold-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-600"
+            >
+              <Flame className="h-3.5 w-3.5" aria-hidden="true" />
+              برو به «از اینجا ادامه بده»
+            </button>
+          )}
         </div>
       )}
     </section>
@@ -262,7 +363,7 @@ function JourneyLessonRow({
   );
 
   return (
-    <li className="relative flex gap-4">
+    <li className="relative flex gap-4" data-journey-current={isContinue ? 'true' : undefined}>
       <JourneyNode state={state} index={index} pct={pct} />
       {href ? (
         <Link

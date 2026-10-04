@@ -312,6 +312,31 @@ export function pageWindow(current: number, total: number): Array<number | 'gap'
 const faCount = (n: number) => n.toLocaleString('fa-IR');
 
 /**
+ * تعدادِ مؤثرِ جلسات برای نمایش — منبعِ حقیقتِ زنده مقدم است.
+ * پی‌لودِ جزئیات کلاس همان لیستِ زنده‌ی `lessons` را هم دارد که نقشه‌ی مسیر
+ * از روی آن رندر می‌شود؛ اگر برای لحظه‌ای اسکالرِ `lessonsCount` (کَش/نسخه‌ی
+ * قدیمی بک‌اند) کهنه باشد اما لیست جلسات پر باشد، نمایشِ «۰ جلسه» کنارِ
+ * سیلابوسِ پُر فاجعه است. پس وقتی لیست خالی نیست، طولِ خودِ لیست داور است.
+ */
+export function effectiveLessonsCount(course: {
+  lessonsCount: number;
+  lessons?: unknown[];
+}): number {
+  return course.lessons && course.lessons.length > 0 ? course.lessons.length : course.lessonsCount;
+}
+
+/** همان قانون برای «مدتِ یادگیری»: وقتی لیستِ جلسات زنده در دست است، جمعِ
+ * زنده‌ی duration جلسات داور است، نه اسکالرِ احتمالاً کهنه‌ی پی‌لود. */
+export function effectiveDurationSeconds(course: {
+  durationSeconds: number;
+  lessons?: Array<{ durationSeconds?: number }>;
+}): number {
+  return course.lessons && course.lessons.length > 0
+    ? course.lessons.reduce((sum, l) => sum + (l.durationSeconds ?? 0), 0)
+    : course.durationSeconds;
+}
+
+/**
  * واقعیتِ «تعداد جلسات» — عنوانِ این فکت باید با خودِ عدد نفس بکشد، نه این‌که
  * یک برچسبِ ثابتِ بی‌معنا («جلسه‌ی ساخت‌یافته») کنارِ هر عددی بنشیند:
  *   ۰: صادقانه «به‌زودی» + دعوت، نه «۰ جلسه»

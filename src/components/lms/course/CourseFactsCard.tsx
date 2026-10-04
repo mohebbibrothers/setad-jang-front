@@ -7,7 +7,13 @@ import {
   MessagesSquare,
   Users,
 } from 'lucide-react';
-import { formatLmsDuration, lessonCountFact, type LmsCourseDetail } from '@/lib/lms-shared';
+import {
+  effectiveDurationSeconds,
+  effectiveLessonsCount,
+  formatLmsDuration,
+  lessonCountFact,
+  type LmsCourseDetail,
+} from '@/lib/lms-shared';
 
 /**
  * کارتِ «مشخصات کلاس» — زیرِ کارتِ وضعیت در ریل می‌نشیند؛ مشخصاتِ کلیدی
@@ -19,8 +25,8 @@ import { formatLmsDuration, lessonCountFact, type LmsCourseDetail } from '@/lib/
 const fa = (n: number) => n.toLocaleString('fa-IR');
 
 export function CourseFactsCard({ course }: { course: LmsCourseDetail }) {
-  const duration = formatLmsDuration(course.durationSeconds);
-  const lessons = lessonCountFact(course.lessonsCount);
+  const duration = formatLmsDuration(effectiveDurationSeconds(course));
+  const lessons = lessonCountFact(effectiveLessonsCount(course));
   const facts: Array<{ icon: typeof ListVideo; value: string; label: string }> = [
     { icon: ListVideo, value: lessons.value, label: lessons.label },
     ...(duration ? [{ icon: Clock3, value: duration, label: 'مدتِ یادگیری' }] : []),

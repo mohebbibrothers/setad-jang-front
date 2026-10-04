@@ -37,10 +37,10 @@ export type CourseMediaSlide = {
 };
 
 /**
- * اسلایدهای گالریِ صفحه‌ی کلاس — سه‌فریمِ روایی:
+ * اسلایدهای گالریِ صفحه‌ی کلاس — دوفریمِ واقعی (به درخواستِ مشتری):
  *   ۱) کاورِ کلاس (واقعی یا آرت‌ورکِ fallback)
- *   ۲) «فضای یادگیری» — آرت‌ورکِ برندیشده‌ی مشترک (class-space)
- *   ۳) پرتره‌ی استاد (واقعی یا آرت‌ورکِ fallback)
+ *   ۲) پرتره‌ی استاد (واقعی یا آرت‌ورکِ fallback)
+ * اسلایدِ مشترکِ «فضای یادگیری» حذف شد — گالری فقط متعلق به خودِ کلاس است.
  * ترتیب مهم است: لانچرِ کاور از اسلایدِ ۰ شروع می‌کند و لانچرهای آواتار با
  * startIndex = slides.length - 1 مستقیم روی پرتره باز می‌شوند.
  */
@@ -54,7 +54,6 @@ export function courseMediaSlides(input: {
   if (input.coverUrl) {
     slides.push({ url: input.coverUrl, alt: `کاور کلاس ${input.title}` });
   }
-  slides.push({ url: '/lms/class-space.jpg', alt: 'فضای یادگیری قرارگاه آموزشی' });
   if (input.instructorAvatarUrl) {
     slides.push({ url: input.instructorAvatarUrl, alt: `تصویر ${input.instructor}` });
   }
@@ -67,5 +66,5 @@ export function instructorSlideIndex(input: {
   instructorAvatarUrl?: string;
 }): number {
   if (!input.instructorAvatarUrl) return 0;
-  return (input.coverUrl ? 1 : 0) + 1;
+  return input.coverUrl ? 1 : 0;
 }
