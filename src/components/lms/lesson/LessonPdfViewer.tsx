@@ -19,8 +19,11 @@ const fa = (n: number) => n.toLocaleString('fa-IR');
 /** مقیاس‌های بزرگ‌نماییِ نمایشگر (میلی‌مترِ قرارداد روی پایه‌ی fit-width). */
 const ZOOM_STEPS = [0.75, 0.9, 1, 1.15, 1.35, 1.6] as const;
 
-/** پیش‌رندرِ صفحه‌ها کمی پیش از رسیدنِ کاربر — مطالعه‌ی پیوسته بدونِ لگ. */
-const PRE_RENDER_MARGIN = '900px 0px';
+/** پیش‌رندرِ صفحه‌ها کمی پیش از رسیدنِ کاربر — مطالعه‌ی پیوسته بدونِ لگ.
+ *  ۱۶۰۰px: در ویوپورت‌های کوتاهِ دسکتاپ هم برگه‌ی بعدی قطعاً «نزدیک» شمرده
+ *  می‌شود (با ۹۰۰px اولین صفحه‌ی بلندِ A4 لبه را پر می‌کرد و صفحه‌ی ۲ هرگز
+ *  به آستانه نمی‌رسید — صفحه فریز می‌ماند). */
+const PRE_RENDER_MARGIN = '1600px 0px';
 
 type PdfDoc = {
   numPages: number;
@@ -36,10 +39,18 @@ type PdfPage = {
   }) => { promise: Promise<void>; cancel: () => void };
 };
 
+/** یک برگه‌ی سروررندرشده‌ی سند (PDFium → WebP در بک‌اند). */
+export type RenderedDocPage = { n: number; width: number; height: number; url: string };
+
 type Props = {
   title: string;
   /** نشانیِ استریمِ امضاشده‌ی سند (از fetchLessonMedia → resolveMediaUrl). */
   url: string;
+  /** موتورِ اصلیِ نمایش: صفحاتِ ازپیش‌رندرشده‌ی سمت سرور.
+   *  اگر بک‌اند آن‌ها را بدهد، مرورگر اصلاً pdf.js را لمس نمی‌کند — ریشه‌ی
+   *  رفعِ «حروفِ فارسی/لاتینِ به‌هم‌ریخته» در اسنادِ فونت‌خراب/غیراستاندارد.
+   *  نبود؟ همان مسیرِ pdf.js (fallback) بی‌نقص کار می‌کند. */
+  pages?: RenderedDocPage[] | null;
   onClose: () => void;
   /** اوّلین رندرِ موفقِ صفحه‌ی ۱ — سیگنالِ «سند واقعاً باز شد» برای گیتِ تکمیل. */
   onFirstRender?: () => void;
@@ -55,10 +66,13 @@ function isRenderCancel(err: unknown): boolean {
 /**
  * نمایشگرِ درون‌صفحه‌ایِ سند — «میز مطالعه‌ی بعثت مردم».
  *
- * سند به‌صورت canvas رندر می‌شود (pdf.js)؛ نه <iframe> نه <object> — پس
- * تولباری با دکمه‌ی دانلود در کار نیست و لینکِ خام هم در DOM نیست. کانتکست‌منو
- * بسته است و واترمارکِ برند روی هر صفحه می‌نشیند تا اسکرین-ریدیریبیوشن
- * کم‌جاذبه شود. داده با همان نشانیِ استریمِ امضاشده‌ی کوتاه‌عمر گرفته می‌شود.
+ * دو موتور دارد: (۱) موتورِ پیش‌فرضِ «تصویر» — برگه‌هایی که سرور با PDFium
+ * (موتورِ کروم) به WebP رندر کرده؛ پیکسل‌پرفکت برای هر PDF، فارسیِ چسبیده و
+ * لاتینِ تمیز حتی در اسنادِ فونت‌خراب، چون مرورگر اصلاً با فونتِ فایل سروکار
+ * ندارد. (۲) fallbackِ pdf.js روی canvas برای وقتی سرور رندر نکرده باشد.
+ * در هر دو: نه <iframe> نه <object> و نه لینکِ خام در DOM؛ کانتکست‌منو بسته
+ * است و واترمارکِ برند روی هر صفحه می‌نشیند تا اسکرین-ریدیریبیوشن کم‌جاذبه
+ * شود. داده با همان نشانیِ استریمِ امضاشده‌ی کوتاه‌عمر گرفته می‌شود.
  *
  * مطالعه «پیوسته» است: همه‌ی صفحه‌ها پشت‌سرِهم در یک ستونِ اسکرول‌شونده
  * رندر می‌شوند و کاربر با اسکرولِ طبیعی (لمس/چرخِ موس) بین صفحه‌ها حرکت
@@ -73,11 +87,14 @@ function isRenderCancel(err: unknown): boolean {
  * می‌شود تا اسنادی که فونت را embed نکرده‌اند با فونتِ استاندارد درست و
  * نگاشتِ یونیکدِ کامل رندر شوند، نه با fallbackِ سیستمیِ به‌هم‌ریخته.
  */
-export function LessonPdfViewer({ title, url, onClose, onFirstRender }: Props) {
+export function LessonPdfViewer({ title, url, pages, onClose, onFirstRender }: Props) {
+  // موتورِ تصویر (سروررندر) — پیش‌فرضِ محصول. داده‌ی صفحات همزمان با پی‌لودِ
+  // رسانه می‌آید؛ پس نه دانلودِ بایتِ PDF لازم است نه بوتِ pdf.js.
+  const imageMode = (pages?.length ?? 0) > 0;
   const [doc, setDoc] = useState<PdfDoc | null>(null);
   const [pageNo, setPageNo] = useState(1);
   const [zoomIdx, setZoomIdx] = useState(2); // ۱۰۰٪
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!imageMode);
   const [error, setError] = useState<string | null>(null);
   const [fitWidth, setFitWidth] = useState(0);
 
@@ -135,12 +152,13 @@ export function LessonPdfViewer({ title, url, onClose, onFirstRender }: Props) {
   }, [url]);
 
   useEffect(() => {
+    if (imageMode) return; // موتورِ تصویر: بایتی برای بوت کردن نیست.
     void boot();
     return () => {
       void docRef.current?.destroy();
       docRef.current = null;
     };
-  }, [boot]);
+  }, [boot, imageMode]);
 
   /* ── قفلِ اسکرولِ بدنه پشت اورلی ── */
   useEffect(() => {
@@ -160,9 +178,10 @@ export function LessonPdfViewer({ title, url, onClose, onFirstRender }: Props) {
     measure();
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
-  }, [doc]);
+  }, [doc, imageMode]);
 
-  const total = doc?.numPages ?? 0;
+  const total = imageMode ? (pages?.length ?? 0) : (doc?.numPages ?? 0);
+  const readyDocs = imageMode || doc !== null; // کرومِ نوارها کِی دیده شود
   const pageWidth = fitWidth * ZOOM_STEPS[zoomIdx];
 
   /* ── اسکرولِ روان به یک صفحه ── */
@@ -336,7 +355,7 @@ export function LessonPdfViewer({ title, url, onClose, onFirstRender }: Props) {
             </p>
           </div>
 
-          {doc && (
+          {readyDocs && (
             <div className="flex items-center gap-1 rounded-full bg-white/[.06] p-1 ring-1 ring-white/10">
               <CtlBtn
                 label="صفحه‌ی بعد"
@@ -420,7 +439,7 @@ export function LessonPdfViewer({ title, url, onClose, onFirstRender }: Props) {
           </div>
         )}
 
-        {!loading && !error && doc && fitWidth > 0 && (
+        {!loading && !error && doc && !imageMode && fitWidth > 0 && (
           <div className="relative mx-auto flex w-fit flex-col items-stretch gap-6">
             {Array.from({ length: total }, (_, i) => i + 1).map((n) => (
               <PdfPageView
@@ -436,10 +455,26 @@ export function LessonPdfViewer({ title, url, onClose, onFirstRender }: Props) {
             ))}
           </div>
         )}
+
+        {/* موتورِ تصویر: برگه‌های سروررندرشده — پیکسل‌پرفکت، بدونِ درگیرِ فونت */}
+        {!loading && !error && imageMode && fitWidth > 0 && pages && (
+          <div className="relative mx-auto flex w-fit flex-col items-stretch gap-6">
+            {pages.map((p) => (
+              <RenderedPageView
+                key={p.n}
+                page={p}
+                totalPages={total}
+                cssWidth={pageWidth}
+                registerRef={registerPage}
+                onPainted={handlePainted}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* نوارِ پایین — ناوبریِ بزرگِ موبایل */}
-      {doc && total > 1 && (
+      {readyDocs && total > 1 && (
         <div className="border-t border-white/10 bg-ink-950/90 px-4 py-2.5 sm:hidden">
           <div className="mx-auto flex max-w-md items-center justify-between gap-2">
             <MobileNavBtn
@@ -643,6 +678,131 @@ function PdfPageView({
       </div>
       <figcaption className="mt-2 text-center text-[10px] font-bold tabular-nums text-white/30">
         صفحه‌ی {fa(pageNumber)} از {fa(totalPages)}
+      </figcaption>
+    </figure>
+  );
+}
+
+/* ─────────────── یک برگه‌ی سروررندرشده (موتورِ تصویر) ───────────────
+
+   همان تجربه‌ی PdfPageView اما بدونِ هیچ کanvas/pdf.js: تصویرِ WebPِ
+   فوق‌باکیفیت (۲٫۵ برابرِ عرضِ نمایش) که سرور با موتورِ PDFium از سند ساخته.
+   نسبتِ ابعاد از پی‌لود می‌آید ⇒ صفر CLS؛ لودِ تنبل فقط وقتی «نزدیکِ دید»
+   است؛ زوم فقط عرضِ CSS را عوض می‌کند و چون منبع چگال است، در ۱۶۰٪ هم تیز
+   می‌ماند. خطای یک برگه با دکمه‌ی «تلاش دوباره» (cache-bust) محلی می‌ماند. */
+function RenderedPageView({
+  page,
+  totalPages,
+  cssWidth,
+  registerRef,
+  onPainted,
+}: {
+  page: RenderedDocPage;
+  totalPages: number;
+  cssWidth: number;
+  registerRef: (n: number, el: HTMLElement | null) => void;
+  onPainted: (n: number) => void;
+}) {
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  // دو برگه‌ی اول مشتاقانه (بدونِ انتظارِ IO) لود می‌شوند تا مطالعه بی‌سروصدا
+  // شروع شود؛ بقیه با IOِ تنبل. تصاویرِ WebP ارزان‌اند (~۱۵۰KB) و این تضمین
+  // می‌کند ستونِ مطالعه در هر محیطی — حتی وقتی محاسبه‌ی نزدیکیِ IO در
+  // ویوپورت‌های استثنایی دیر برسد — همیشه «آماده» است.
+  const [near, setNear] = useState(page.n <= 2);
+  const [status, setStatus] = useState<'loading' | 'done' | 'error'>('loading');
+  const [attempt, setAttempt] = useState(0);
+  const paintedRef = useRef(false);
+
+  useEffect(() => {
+    registerRef(page.n, wrapRef.current);
+    return () => registerRef(page.n, null);
+  }, [page.n, registerRef]);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.target === el && entry.isIntersecting) setNear(true);
+        }
+      },
+      { root: null, rootMargin: PRE_RENDER_MARGIN },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  const src = near ? (attempt > 0 ? `${page.url}&cb=${attempt}` : page.url) : undefined;
+
+  return (
+    <figure
+      ref={wrapRef}
+      data-page={page.n}
+      className="relative mx-auto select-none"
+      style={{ width: `${Math.floor(cssWidth)}px` }}
+    >
+      <div className="relative" style={{ aspectRatio: `${page.width} / ${page.height}` }}>
+        {/* img همیشه در DOM است (مثل canvasِ موتورِ pdf.js) اما src فقط وقتی
+            «نزدیکِ دید» است — شبکه بدونِ لزوم صدا نمی‌زند، DOM/اندازه‌ها پایدار. */}
+        {status !== 'error' && (
+          // eslint-disable-next-line @next/next/no-img-element -- تصویرِ استریمِ امضاشده است، نه استاتیکِ next/image
+          <img
+            key={`${page.n}:${attempt}`}
+            src={src}
+            alt={`صفحه‌ی ${fa(page.n)} از سند`}
+            data-testid={page.n === 1 ? 'pdf-canvas' : `pdf-page-${page.n}`}
+            className={`block h-full w-full select-none rounded-[10px] bg-white shadow-[0_30px_80px_-20px_rgba(0,0,0,.85)] ring-1 ring-black/40 transition-opacity duration-300 ${status === 'done' ? 'opacity-100' : 'opacity-0'}`}
+            draggable={false}
+            loading="lazy"
+            decoding="async"
+            onLoad={() => {
+              setStatus('done');
+              if (!paintedRef.current) {
+                paintedRef.current = true;
+                onPainted(page.n);
+              }
+            }}
+            onError={() => setStatus('error')}
+          />
+        )}
+        {/* جایِ برگه تا لود شدن — با همان نسبتِ واقعی، بدونِ جهش */}
+        {status !== 'done' && (
+          <div className="absolute inset-0 grid place-items-center rounded-[10px] bg-white/[.04] ring-1 ring-white/10">
+            {status === 'error' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setStatus('loading');
+                  setAttempt((a) => a + 1);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-full bg-mint-500 px-4 py-2 text-[11px] font-extrabold text-ink-950 transition hover:bg-mint-400"
+              >
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                این صفحه باز نشد — تلاش دوباره
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-ink-950/80 px-3 py-1 text-[10px] font-bold text-white/70 ring-1 ring-white/10">
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                {near ? 'در حال آماده‌سازی صفحه…' : 'به‌زودی اینجا می‌رسد…'}
+              </span>
+            )}
+          </div>
+        )}
+        {/* واترمارکِ برند روی هر برگه — مهرِ «بعثت مردم» */}
+        {status === 'done' && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 grid select-none place-items-center overflow-hidden rounded-[10px]"
+          >
+            <p className="rotate-[-24deg] text-[26px] font-black tracking-[.25em] text-ink-950/[.07]">
+              بعثت مردم
+            </p>
+          </div>
+        )}
+      </div>
+      <figcaption className="mt-2 text-center text-[10px] font-bold tabular-nums text-white/30">
+        صفحه‌ی {fa(page.n)} از {fa(totalPages)}
       </figcaption>
     </figure>
   );

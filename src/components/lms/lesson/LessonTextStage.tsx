@@ -13,7 +13,12 @@ import {
   ScanEye,
 } from 'lucide-react';
 
-import { fetchLessonMedia, postLessonProgress, type LessonProgressEntry } from '@/lib/lms-lesson';
+import {
+  fetchLessonMedia,
+  postLessonProgress,
+  type LessonProgressEntry,
+  type LessonRenderedDocPage,
+} from '@/lib/lms-lesson';
 import type { LmsLesson } from '@/lib/lms-shared';
 
 /** نمایشگرِ درون‌برنامه‌ایِ PDF — سنگین است؛ فقط با اوّلین کلیک بار می‌شود. */
@@ -42,6 +47,7 @@ export function LessonTextStage({ lesson, enrolled, progress, onCompleted, onMed
   const kind = lesson.contentType === 'document' ? 'document' : 'article';
   const [body, setBody] = useState<string | null>(null);
   const [docUrl, setDocUrl] = useState<string | null>(null);
+  const [docPages, setDocPages] = useState<LessonRenderedDocPage[] | null>(null);
   const [docTitle, setDocTitle] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +70,7 @@ export function LessonTextStage({ lesson, enrolled, progress, onCompleted, onMed
       if (kind === 'article') setBody(res.media.body || '');
       else {
         setDocUrl(res.media.url || null);
+        setDocPages(res.media.pages?.length ? res.media.pages : null);
         setDocTitle(res.media.title || null);
       }
     } else if (res.kind === 'forbidden') {
@@ -269,6 +276,7 @@ export function LessonTextStage({ lesson, enrolled, progress, onCompleted, onMed
         <LessonPdfViewer
           title={docTitle || lesson.title}
           url={docUrl}
+          pages={docPages}
           onFirstRender={() => void reportDocumentOpened()}
           onClose={() => setViewerOpen(false)}
         />

@@ -56,6 +56,17 @@ export interface LessonMediaPayload {
   course_id: number;
   title?: string;
   body?: string;
+  /** صفحاتِ سروررندرشده‌ی سند (PDFium → WebP) — ریشه‌ی رفعِ «متنِ به‌هم‌ریخته»؛
+   *  وقتی هست، نمایشگر به‌جای pdf.js تصویرِ دقیقِ هر صفحه را نشان می‌دهد. */
+  pages?: LessonRenderedDocPage[];
+}
+
+/** یک برگه‌ی رندرشده‌ی سمت سرور — عرض/ارتفاعِ واقعی + نشانیِ استریمِ امضاشده. */
+export interface LessonRenderedDocPage {
+  n: number;
+  width: number;
+  height: number;
+  url: string;
 }
 
 export interface LessonQuestionAnswer {
@@ -290,7 +301,15 @@ export async function fetchLessonMedia(
         cache: 'no-store',
       },
     );
-    return { kind: 'ok', media: { ...data, url: resolveMediaUrl(data.url ?? '') } };
+    return {
+      kind: 'ok',
+      media: {
+        ...data,
+        url: resolveMediaUrl(data.url ?? ''),
+        // نشانیِ هر برگه‌ی رندرشده هم مثل url اصلی زیر پراکسیِ امضاشده می‌رود.
+        pages: data.pages?.map((p) => ({ ...p, url: resolveMediaUrl(p.url) })),
+      },
+    };
   } catch (err) {
     if (isApiError(err) && err.status === 403) return { kind: 'forbidden' };
     if (isApiError(err) && err.status === 404) {
