@@ -112,6 +112,37 @@ const nextConfig = {
         source: '/api/proxy/:path*',
         destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/:path*`,
       },
+      // ─── «API پشت Vercel» (پراکسی کاملِ origin) ───────────────────
+      // اگر API_UPSTREAM_URL ست شود، مرورگر فقط با همین دامنه
+      // (besat.me) حرف می‌زند و سرور Next/Vercel درخواست‌های زیر را به
+      // origin واقعی (مثلاً api.besat.me) پراکسی می‌کند. این برای
+      // شبکه‌هایی است که دسترسی مستقیم‌شان به origin کند یا محدود
+      // است؛ CORS را هم هم‌دامنه می‌کند. بدون API_UPSTREAM_URL هیچ
+      // rewrite جدیدی فعال نمی‌شود (رفتار قبلی دست‌نخورده).
+      // نکته: فرانت خودش در مسیرهای /api/* روت‌های محلی دارد؛ چون این
+      // rewriteها بعد از فایل‌سیستم ارزیابی می‌شوند و هیچ روت محلی‌ای
+      // در پیشوندهای زیر نیست (/api/v1 فقطِ بک‌اند است)، تداخلی رخ
+      // نمی‌دهد.
+      ...(process.env.API_UPSTREAM_URL
+        ? [
+            {
+              source: '/api/v1/:path*',
+              destination: `${process.env.API_UPSTREAM_URL}/api/v1/:path*`,
+            },
+            {
+              source: '/media/:path*',
+              destination: `${process.env.API_UPSTREAM_URL}/media/:path*`,
+            },
+            {
+              source: '/static/:path*',
+              destination: `${process.env.API_UPSTREAM_URL}/static/:path*`,
+            },
+            {
+              source: '/admin/:path*',
+              destination: `${process.env.API_UPSTREAM_URL}/admin/:path*`,
+            },
+          ]
+        : []),
     ];
   },
 };
