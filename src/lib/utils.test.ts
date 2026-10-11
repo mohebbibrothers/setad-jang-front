@@ -94,4 +94,36 @@ describe('absoluteMediaUrl', () => {
     const u = `${base.protocol}//${base.host}/media/ok.jpg`;
     expect(absoluteMediaUrl(u)).toBe(u);
   });
+
+  it('رگرسیون R4J: نشانیِ رسانه با میزبانِ api.* به میزبانِ عمومیِ API بازنویسی می‌شود', () => {
+    const base = new URL(siteConfig.apiUrl);
+    const apex = base.hostname.replace(/^www\./, '');
+    const port = base.port ? `:${base.port}` : '';
+    const path = '/media/public/r4j/criminals/1/photos/x.png?w=640';
+    expect(absoluteMediaUrl(`${base.protocol}//api.${apex}${port}${path}`)).toBe(
+      `${base.origin}${path}`,
+    );
+  });
+
+  it('نشانیِ رسانه با میزبانِ www هم به میزبانِ عمومیِ API بازنویسی می‌شود', () => {
+    const base = new URL(siteConfig.apiUrl);
+    const apex = base.hostname.replace(/^www\./, '');
+    const port = base.port ? `:${base.port}` : '';
+    const path = '/media/pub/a.webp';
+    expect(absoluteMediaUrl(`${base.protocol}//www.${apex}${port}${path}`)).toBe(
+      `${base.origin}${path}`,
+    );
+  });
+
+  it('میزبانِ خارجی حتی با مسیر /media/ هرگز بازنویسی نمی‌شود (حفاظت از CDN)', () => {
+    const foreign = 'https://cdn.example-poster.com/media/totally-looks-own.jpg';
+    expect(absoluteMediaUrl(foreign)).toBe(foreign);
+  });
+
+  it('پروتکل-نسبیِ خانواده هم به قراردادِ میزبانِ عمومی درمی‌آید', () => {
+    const base = new URL(siteConfig.apiUrl);
+    const apex = base.hostname.replace(/^www\./, '');
+    const path = '/media/pub/b.jpg';
+    expect(absoluteMediaUrl(`//api.${apex}${path}`)).toBe(`${base.origin}${path}`);
+  });
 });

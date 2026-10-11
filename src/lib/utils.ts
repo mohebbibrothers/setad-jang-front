@@ -94,25 +94,55 @@ export function absoluteMediaUrl(url: string | null | undefined): string | undef
   if (!url) return undefined;
   const trimmed = String(url).trim();
   if (!trimmed) return undefined;
-  if (/^(https?:)?\/\//i.test(trimmed)) return normalizeSameOriginScheme(trimmed);
+  if (/^(https?:)?\/\//i.test(trimmed)) return normalizeMediaUrl(trimmed);
   const base = siteConfig.apiUrl.replace(/\/+$/, '');
   return `${base}/${trimmed.replace(/^\/+/, '')}`;
 }
 
+/** هاست را به فرمِ «خانواده» درمی‌آورد: بدون www و با حروف کوچک. */
+function familyHost(hostname: string): string {
+  return hostname.toLowerCase().replace(/^www\./, '');
+}
+
 /**
- * نشانیِ مطلقی که به میزبانِ خودِ API اشاره می‌کند باید با همان پروتکلِ
- * API سرو شود؛ در غیر این صورت مرورگر (mixed content) یا لودرِ
- * next/image (remotePatterns) آن را پس می‌زند. نشانیِ میزبانِ خارجی
- * هرگز دست‌نخورده برمی‌گردد.
+ * آیا این نشانی به «زیرمجموعه‌ی رسانه‌ی خودی» تعلق دارد؟
+ * خانواده = همان apex (با/بدون www) یا زیردامنه‌ی apiِ آن.
  */
-function normalizeSameOriginScheme(url: string): string {
+function isOwnMediaFamily(abs: URL, base: URL): boolean {
+  const host = familyHost(abs.hostname);
+  const baseFamily = familyHost(base.hostname);
+  return host === baseFamily || host === `api.${baseFamily}`;
+}
+
+/**
+ * نشانیِ مطلقِ رسانه همیشه باید با میزبانِ عمومیِ فعلی
+ * (NEXT_PUBLIC_API_URL) سرو شود — نه با هاستی که بک‌اند هنگامِ ساختِ
+ * پاسخ دیده است.
+ *
+ * چرا؟ در حالت «API پشت Vercel» درخواستِ سرور Next به upstream می‌رود و
+ * request.host در جنگو هاستِ upstream (مثل api.besat.me) است؛ وقتی
+ * سریالایزر build_absolute_uri کند، URLهای مطلق با هاستِ upstream بیرون
+ * می‌آیند (باگِ واقعی: عکس‌های R4J) — آدرس‌هایی که نه در remotePatterns
+ * هستند و نه روی شبکه‌های محدود برای کاربر قابل دریافت. قراردادِ پلتفرم:
+ * مسیر /media/ روی همه‌ی میزبان‌های خانواده (apex/www/api) به یک فایل
+ * اشاره می‌کند، پس بازنویسیِ مبدأ امن است. هر میزبانِ خارجی — حتی با
+ * مسیر /media/ — دست‌نخورده می‌ماند (CDNهای واقعی محافظت می‌شوند).
+ */
+function normalizeMediaUrl(url: string): string {
   try {
     const base = new URL(siteConfig.apiUrl);
     const abs = new URL(url, base);
-    if (abs.host !== base.host) return url;
-    if (abs.protocol === base.protocol) return url;
-    abs.protocol = base.protocol;
-    return abs.href;
+    if (!isOwnMediaFamily(abs, base)) return url;
+    if (!abs.pathname.startsWith('/media/')) {
+      // نشانیِ خودیِ غیررسانه: فقط پروتکل را با API هم‌سو کن (رفتار قبلی)
+      if (abs.host === base.host && abs.protocol !== base.protocol) {
+        abs.protocol = base.protocol;
+        return abs.href;
+      }
+      return url;
+    }
+    // بازنویسیِ مبدأ به میزبانِ عمومیِ فعلی — مسیر، کوئری و هَش حفظ می‌شوند
+    return `${base.origin}${abs.pathname}${abs.search}${abs.hash}`;
   } catch {
     return url;
   }
