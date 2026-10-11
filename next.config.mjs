@@ -123,11 +123,29 @@ const nextConfig = {
       // rewriteها بعد از فایل‌سیستم ارزیابی می‌شوند و هیچ روت محلی‌ای
       // در پیشوندهای زیر نیست (/api/v1 فقطِ بک‌اند است)، تداخلی رخ
       // نمی‌دهد.
+      // ─── جنگِ اسلش: Vercel در برابر APPEND_SLASH جنگو ─────────────
+      // لایه‌ی مسیردهی Vercel پیش‌فرضاً اسلشِ انتهایی را *قبل* از رسیدن
+      // درخواست به rewriteها با 308 می‌تراشد (/admin/ → /admin). جنگو
+      // دقیقاً برعکس است: مسیرِ بی‌اسلش را با 301 به نسخه‌ی اسلش‌دار برمی‌گرداند
+      // (/admin → /admin/). نتیجه بدون اقدام: حلقه‌ی ابدیِ 308⇄301 تا ترکیدن
+      // URL و 500 لبه‌ای origin — همان چیزی که روی پنل ادمین دیدیم.
+      // راه‌حل: چون Vercel هر ورودی را «بدون اسلشِ آخر» به این rewriteها
+      // می‌رساند، برای خانواده‌های endpointای جنگو (api/v1 و admin) اسلش
+      // را این‌جا در *مقصد* دوباره می‌چسبانیم تا جنگو همیشه فرمِ نهایی‌اش
+      // را ببیند و هیچ 301 بازگردانی رخ ندهد.
+      // media و static عمداً بی‌اسلش می‌مانند: فایل‌ها هرگز اسلشِ آخر ندارند
+      // که Vercel تراششان کند، و چسباندن اسلش به URLِ فایل یعنی 404.
+      // نکته: این قراردادِ ترافیکِ production پشت Vercel است؛ ترافیکِ مستقیمِ
+      // توسعه‌ی محلی (بدون تراشِ پلتفرم) از مسیر /api/proxy و api.ts عبور می‌کند.
       ...(process.env.API_UPSTREAM_URL
         ? [
             {
               source: '/api/v1/:path*',
-              destination: `${process.env.API_UPSTREAM_URL}/api/v1/:path*`,
+              destination: `${process.env.API_UPSTREAM_URL}/api/v1/:path*/`,
+            },
+            {
+              source: '/admin/:path*',
+              destination: `${process.env.API_UPSTREAM_URL}/admin/:path*/`,
             },
             {
               source: '/media/:path*',
@@ -136,10 +154,6 @@ const nextConfig = {
             {
               source: '/static/:path*',
               destination: `${process.env.API_UPSTREAM_URL}/static/:path*`,
-            },
-            {
-              source: '/admin/:path*',
-              destination: `${process.env.API_UPSTREAM_URL}/admin/:path*`,
             },
           ]
         : []),
