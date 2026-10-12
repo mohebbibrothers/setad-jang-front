@@ -1,5 +1,6 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
+import { indexNowUrlsFor, submitToIndexNow } from '@/lib/indexnow';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,6 +70,19 @@ export async function POST(request: NextRequest) {
 
   for (const tag of tags) revalidateTag(tag);
   for (const path of paths) revalidatePath(path);
+
+  // ─── IndexNow خودکار پس از هر انتشار ──────────────────────────────
+  // پس از ارسالِ پاسخ، URLهای بروزشده را به موتورهای IndexNow اعلام
+  // می‌کنیم (Bing/Yandex/…) تا نمایهٔ جستجو در همان لحظه تازه شود.
+  // این اعلان کاملاً fire-and-forget است: خطای آن هرگز نباید جریانِ
+  // اصلیِ revalidation را شکست دهد.
+  after(async () => {
+    try {
+      await submitToIndexNow(indexNowUrlsFor(tags, paths));
+    } catch {
+      /* سکوتِ عمدی — این لبه هرگز روی مسیر اصلی اثر نمی‌گذارد */
+    }
+  });
 
   return NextResponse.json({ success: true, revalidated: { tags, paths } });
 }

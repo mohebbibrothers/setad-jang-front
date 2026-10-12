@@ -1,6 +1,8 @@
 import type { MetadataRoute } from 'next';
 import { siteConfig } from '@/lib/site';
 import { fetchCriminalsPage } from '@/lib/r4j';
+import { fetchCampaignsList } from '@/lib/madadkar';
+import { fetchTabyinAllComplete } from '@/lib/home-data';
 import { safeApiFetch, type Paginated } from '@/lib/api';
 
 /**
@@ -83,6 +85,33 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: c.published_at ? new Date(c.published_at) : now,
       changeFrequency: 'weekly',
       priority: 0.85,
+    });
+  }
+
+  // حرکت‌های «مدد به حرکت» — ۱۰۰ حرکتِ تازه (تگ‌های مشترک با صفحه‌ها
+  // تا یک revalidate هر دو را هم‌زمان تازه کند)
+  const campaigns = await fetchCampaignsList({ pageSize: 100 });
+  for (const c of campaigns) {
+    if (!c.slug) continue;
+    entries.push({
+      url: `${base}/madadkar/${encodeURIComponent(c.slug)}`,
+      lastModified: c.published_at ? new Date(c.published_at) : now,
+      changeFrequency: 'weekly',
+      priority: 0.85,
+    });
+  }
+
+  // روایت‌های «جهاد تبیین» — صدها صفحه‌ی خبری که بدون این لیست هرگز
+  // کراول نمی‌شدند. آخرین ۴۰۰ مورد (سقفِ سبکی برای فایل)؛ شناسهٔ عمومی
+  // همان external_id است که کارت‌های جلویی نیز با آن لینک می‌سازند.
+  const tabyinRows = await fetchTabyinAllComplete(400);
+  for (const row of tabyinRows) {
+    if (!row.external_id) continue;
+    entries.push({
+      url: `${base}/tabyin/${encodeURIComponent(row.external_id)}`,
+      lastModified: row.source_created_at ? new Date(row.source_created_at) : now,
+      changeFrequency: 'monthly',
+      priority: 0.8,
     });
   }
 
