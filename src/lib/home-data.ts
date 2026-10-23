@@ -56,6 +56,9 @@ type ApiCampaign = {
   remaining_shares?: number;
   progress_percent?: number;
   is_fully_funded?: boolean;
+  funded_shares?: number;
+  external_funded_shares?: number;
+  external_funded_amount?: number;
   participant_count?: number;
   has_deadline?: boolean;
   deadline?: string | null;
@@ -94,6 +97,7 @@ export async function loadCampaigns(): Promise<CampaignCard[]> {
     coverUrl: absoluteMediaUrl(c.cover_image),
     participantCount: c.participant_count,
     isFullyFunded: c.is_fully_funded,
+    offlineFundedShares: c.external_funded_shares ?? 0,
     hasDeadline: c.has_deadline,
     deadline: c.deadline ?? undefined,
     statusDisplay: c.status_display,

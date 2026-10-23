@@ -4,6 +4,7 @@ import {
   campaignLifecycle,
   clampPercent,
   classifyParticipateError,
+  computeFundingSplit,
   finalStateFromVerify,
   formatTomanFull,
   gatewayDisplayName,
@@ -189,5 +190,48 @@ describe('classifyParticipateError', () => {
     expect(classifyParticipateError(new ApiError('Server exploded', 500)).kind).toBe('generic');
     expect(classifyParticipateError(null).kind).toBe('generic');
     expect(classifyParticipateError(null).message.length).toBeGreaterThan(8);
+  });
+});
+
+describe('computeFundingSplit', () => {
+  it('بدون آفلاین: فقط سگمنت آنلاین', () => {
+    const s = computeFundingSplit(1000, 700, 0);
+    expect(s.fundedShares).toBe(300);
+    expect(s.offlineShares).toBe(0);
+    expect(s.onlineShares).toBe(300);
+    expect(s.onlinePct).toBeCloseTo(30);
+    expect(s.offlinePct).toBe(0);
+  });
+
+  it('ترکیب آنلاین+آفلاین به سقف کل می‌رسد', () => {
+    // remaining از قبل توسط بک‌اند با احتساب آفلاین کم شده
+    const s = computeFundingSplit(1000, 600, 100);
+    expect(s.fundedShares).toBe(400);
+    expect(s.offlineShares).toBe(100);
+    expect(s.onlineShares).toBe(300);
+    expect(s.onlinePct).toBeCloseTo(30);
+    expect(s.offlinePct).toBeCloseTo(10);
+  });
+
+  it('حرکت کامل‌شده با آفلاین', () => {
+    const s = computeFundingSplit(1000, 0, 950);
+    expect(s.fundedShares).toBe(1000);
+    expect(s.offlineShares).toBe(950);
+    expect(s.onlineShares).toBe(50);
+    expect(s.onlinePct).toBeCloseTo(5);
+    expect(s.offlinePct).toBeCloseTo(95);
+  });
+
+  it('آفلاین بیشتر از funded هرگز نمی‌شود (clamp داده مرزی)', () => {
+    const s = computeFundingSplit(1000, 900, 500);
+    expect(s.fundedShares).toBe(100);
+    expect(s.offlineShares).toBe(100);
+    expect(s.onlineShares).toBe(0);
+  });
+
+  it('total صفر یا ورودی شکسته کرش نمی‌کند', () => {
+    expect(computeFundingSplit(0, 0, 10).fundedShares).toBe(0);
+    const s = computeFundingSplit(Number.NaN, Number.POSITIVE_INFINITY, -5);
+    expect(s.onlinePct).toBe(0);
   });
 });

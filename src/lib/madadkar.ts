@@ -300,6 +300,67 @@ export function clampPercent(p: number | null | undefined): number {
 }
 
 /* ───────────────────────────────────────────────────────────────────────── */
+/*  تفکیک آنلاین/آفلاین سهم‌های تأمین‌شده — برای نوار پیشرفت دو-رنگ        */
+/* ───────────────────────────────────────────────────────────────────────── */
+
+export type FundingSplit = {
+  /** درصد تأمین آنلاین (درگاه سایت) — ۰ تا ۱۰۰ */
+  onlinePct: number;
+  /** درصد تأمین خارج از سایت (کارت‌به‌کارت/نقدی توسط گروه جهادی) */
+  offlinePct: number;
+  /** سهم تأمین‌شده آنلاین */
+  onlineShares: number;
+  /** سهم تأمین‌شده خارج از سایت */
+  offlineShares: number;
+  /** مجموع سهم تأمین‌شده (آنلاین + آفلاین) — با سقف total */
+  fundedShares: number;
+};
+
+/**
+ * تفکیک امن و clampشده‌ی سهم‌های تأمین‌شده به آنلاین/آفلاین.
+ *
+ * ورودی‌ها همان فیلدهای سریالایزر عمومی‌اند:
+ *   total              → total_shares
+ *   remaining          → remaining_shares (بک‌اند آفلاین را هم کم کرده)
+ *   externalFunded     → external_funded_shares
+ *
+ * قضیهٔ دیگران‌خوار: بک‌اند remaining را بعد از کسرِ ترنچ آفلاین می‌دهد،
+ * پس «funded = total - remaining» دقیقاً مجموعِ دو مسیر است و آفلاین هرگز
+ * از funded بزرگ‌تر فرض نمی‌شود (clamp) تا در برابر داده‌های مرزیِ گذار
+ * (دپلوی جزئی، کش قدیمی) سایت نترکد.
+ */
+export function computeFundingSplit(
+  total: number,
+  remaining: number,
+  externalFunded: number,
+): FundingSplit {
+  const t = Math.max(0, Math.floor(Number.isFinite(total) ? total : 0));
+  if (t === 0) {
+    return {
+      onlinePct: 0,
+      offlinePct: 0,
+      onlineShares: 0,
+      offlineShares: 0,
+      fundedShares: 0,
+    };
+  }
+  const r = Math.max(0, Math.floor(Number.isFinite(remaining) ? remaining : 0));
+  const funded = Math.min(t, Math.max(0, t - r));
+  const offline = Math.min(
+    funded,
+    Math.max(0, Math.floor(Number.isFinite(externalFunded) ? externalFunded : 0)),
+  );
+  const online = funded - offline;
+  return {
+    onlinePct: (online / t) * 100,
+    offlinePct: (offline / t) * 100,
+    onlineShares: online,
+    offlineShares: offline,
+    fundedShares: funded,
+  };
+}
+
+/* ───────────────────────────────────────────────────────────────────────── */
 /*  چرخۀ عمر حرکت — stamp + cta                                             */
 /* ───────────────────────────────────────────────────────────────────────── */
 

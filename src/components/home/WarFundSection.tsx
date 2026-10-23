@@ -7,6 +7,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SectionTitle } from './SectionTitle';
 import { formatPersianNumber, formatTomanCompact, absoluteMediaUrl } from '@/lib/utils';
+import { computeFundingSplit } from '@/lib/madadkar';
 import { apiFetch } from '@/lib/api';
 import { CampaignAlbum, type AlbumImage } from './CampaignAlbum';
 import { CampaignParticipateModal } from './CampaignParticipateModal';
@@ -79,6 +80,8 @@ export type CampaignCard = {
   /** ISO8601 — only meaningful when hasDeadline is true. */
   deadline?: string;
   statusDisplay?: string;
+  /** تعداد سهم‌هایی که گروه جهادی خارج از سایت تأمین کرده (external_funded_shares). */
+  offlineFundedShares?: number;
 };
 
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -255,6 +258,10 @@ function Card({
 }) {
   // مبلغ کل به تومان نمایش داده می‌شود (واحدِ ذخیره‌سازیِ بک‌اند هم تومان است)
   const pct = Math.round(c.progressPercent);
+  // تفکیک آنلاین/آفلاین برای نوار دو-رنگ — بک‌اند remaining را از قبل با
+  // احتساب ترنچ آفلاین می‌دهد؛ split آن را به دو قطعهٔ رنگی برمی‌گرداند.
+  const split = computeFundingSplit(c.sharesTotal, c.sharesRemaining, c.offlineFundedShares ?? 0);
+  const hasOffline = split.offlineShares > 0;
   // Card thumbnail prefers — in order:
   //   1. an explicit cover_image from the backend
   //   2. the first gallery image (so the card always shows real artwork,
@@ -366,15 +373,53 @@ function Card({
               ٪{formatPersianNumber(pct)}
             </div>
 
-            {/* Progress bar — full cover-column width */}
-            <div className="mt-1.5 h-[6px] w-full overflow-hidden rounded-full bg-ink-100">
+            {/* Progress bar دو-رنگ — برند=آنلاین، طلایی راه‌راه=خارج از سایت.
+                کپسولِ بیرونی شکل را می‌دهد؛ سگمنت‌ها بدون گردی تا درز نخورند. */}
+            <div
+              dir="rtl"
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={
+                hasOffline
+                  ? `٪${formatPersianNumber(pct)} پیشرفت — ${formatPersianNumber(split.onlineShares)} سهم آنلاین و ${formatPersianNumber(split.offlineShares)} سهم خارج از سایت`
+                  : `٪${formatPersianNumber(pct)} پیشرفت تأمین`
+              }
+              title={
+                hasOffline
+                  ? `${formatPersianNumber(split.onlineShares)} سهم آنلاین + ${formatPersianNumber(split.offlineShares)} سهم خارج از سایت`
+                  : undefined
+              }
+              className="mt-1.5 flex h-[6px] w-full overflow-hidden rounded-full bg-ink-100"
+            >
               <motion.div
                 initial={{ width: 0 }}
-                whileInView={{ width: `${pct}%` }}
+                whileInView={{
+                  width: `${hasOffline ? split.onlinePct : pct}%`,
+                }}
                 viewport={{ once: true }}
                 transition={{ duration: 1.1, ease: 'easeOut' }}
-                className="h-full rounded-full bg-gradient-to-l from-brand-400 to-brand-600"
+                className="h-full shrink-0 bg-gradient-to-l from-brand-400 to-brand-600"
               />
+              {hasOffline && (
+                <motion.div
+                  initial={{ width: 0 }}
+                  whileInView={{ width: `${split.offlinePct}%` }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.9, ease: 'easeOut', delay: 0.35 }}
+                  className="relative h-full shrink-0 bg-gradient-to-l from-amber-300 to-amber-500"
+                >
+                  <span
+                    className="absolute inset-0 opacity-25"
+                    style={{
+                      backgroundImage:
+                        'repeating-linear-gradient(135deg, rgba(255,255,255,0.9) 0 2px, transparent 2px 6px)',
+                    }}
+                    aria-hidden="true"
+                  />
+                </motion.div>
+              )}
             </div>
           </div>
 
@@ -417,9 +462,19 @@ function Card({
         {(isFullyFunded ||
           isCompleted ||
           isClosed ||
+          hasOffline ||
           (c.participantCount ?? 0) > 0 ||
           daysLeft !== null) && (
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {hasOffline && (
+              <span
+                className="inline-flex h-6 items-center gap-1 rounded-full bg-amber-50 px-2 text-[10.5px] font-extrabold text-amber-800 ring-1 ring-amber-200"
+                title={`${formatPersianNumber(split.offlineShares)} سهم این حرکت خارج از سایت (کارت‌به‌کارت/حضوری) تأمین شده است`}
+              >
+                <TomanSpark className="h-2.5 w-2.5 text-amber-500" />+
+                {formatPersianNumber(split.offlineShares)} سهم خارجی
+              </span>
+            )}
             {isFullyFunded ? (
               <span className="inline-flex h-6 items-center gap-1 rounded-full bg-mint-500 px-2 text-[10.5px] font-extrabold text-white ring-1 ring-mint-600/40">
                 <svg
