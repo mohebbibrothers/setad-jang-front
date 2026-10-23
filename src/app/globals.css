@@ -1084,3 +1084,35 @@
     transform: none;
   }
 }
+
+/* ── ActiveCta — خواهرِ دعوتیِ مهر: برقِ سفید و هاله‌ی سفید ─────────────── */
+.cta-sheen--white {
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.14),
+    rgba(255, 255, 255, 0.26),
+    transparent
+  );
+}
+
+@keyframes ctaHaloWhite {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+.cta-halo-white {
+  animation: ctaHaloWhite 2.6s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-halo-white {
+    animation: none;
+  }
+}

@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SectionTitle } from './SectionTitle';
 import { formatPersianNumber, formatTomanCompact, absoluteMediaUrl } from '@/lib/utils';
 import { computeFundingSplit } from '@/lib/madadkar';
-import { CompletionCta } from '@/components/madadkar/CompletionCta';
+import { ActiveCta, CompletionCta } from '@/components/madadkar/CompletionCta';
 import { apiFetch } from '@/lib/api';
 import { CampaignAlbum, type AlbumImage } from './CampaignAlbum';
 import { CampaignParticipateModal } from './CampaignParticipateModal';
@@ -216,26 +216,6 @@ function MoneyPill({ amountToman }: { amountToman: number }) {
 }
 
 /** Helping-hand icon — matches the palm glyph on the mockup's CTA */
-function HandIcon({ className = 'w-[18px] h-[18px]' }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.1}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M18 11V6a2 2 0 0 0-4 0v5" />
-      <path d="M14 10V4a2 2 0 0 0-4 0v6" />
-      <path d="M10 10.5V6a2 2 0 0 0-4 0v8" />
-      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-5.7-2.5L1.5 14a2 2 0 0 1 3-2.6L7 13" />
-    </svg>
-  );
-}
-
 /* NOTE — the previous `CoverFallback` gradient+glyph placeholder was
    retired in favour of the unified `<SmartImage variant="campaign" />`
    which ships its own designer-grade fallback (soft brand gradient +
@@ -560,8 +540,8 @@ function Card({
               backend says the campaign is fully funded / closed /
               completed — no more orphan buttons that call a rejected
               /participate/ endpoint.
-              حالتِ کامل‌شده «مُهرِ جشن» می‌گیرد (CompletionCta) — پیروزیِ جمعی
-              خبرِ خوب است، نه دکمه‌ی خاکستری. */}
+              همه‌ی حالت‌ها از یک خانواده‌ی CTA مشترک می‌آیند (ActiveCta /
+              CompletionCta) — قابِ یکسان، حال‌وهوای متفاوت. */}
         {ctaDisabled ? (
           <CompletionCta
             state={isClosed ? 'closed' : 'funded'}
@@ -570,14 +550,7 @@ function Card({
             className="mt-3"
           />
         ) : (
-          <button
-            type="button"
-            onClick={() => onOpenParticipate(c)}
-            className="relative mt-3 inline-flex h-[46px] w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[12px] bg-brand-500 text-[14.5px] font-extrabold text-white shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)] transition-colors hover:bg-brand-600 active:bg-brand-700"
-          >
-            <span>{ctaLabel}</span>
-            <HandIcon />
-          </button>
+          <ActiveCta label={ctaLabel} onClick={() => onOpenParticipate(c)} className="mt-3" />
         )}
       </div>
     </motion.article>

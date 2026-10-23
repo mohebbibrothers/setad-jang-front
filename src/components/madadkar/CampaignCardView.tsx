@@ -12,7 +12,7 @@ import {
   type MadadkarCampaignListItem,
   type PaymentSheetCampaignBridge,
 } from '@/lib/madadkar';
-import { CompletionCta } from './CompletionCta';
+import { ActiveCta, CompletionCta } from './CompletionCta';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -24,26 +24,6 @@ import { CompletionCta } from './CompletionCta';
  * صفحه جزئیات؛ دکمه → باز شدن شیتِ پرداخت از طریق والد.
  * ═══════════════════════════════════════════════════════════════════════════
  */
-
-function HandIcon({ className = 'w-[18px] h-[18px]' }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.1}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M18 11V6a2 2 0 0 0-4 0v5" />
-      <path d="M14 10V4a2 2 0 0 0-4 0v6" />
-      <path d="M10 10.5V6a2 2 0 0 0-4 0v8" />
-      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-5.7-2.5L1.5 14a2 2 0 0 1 3-2.6L7 13" />
-    </svg>
-  );
-}
 
 export function CampaignCardView({
   c,
@@ -231,8 +211,8 @@ export function CampaignCardView({
           </div>
         </div>
 
-        {/* CTA — حالت غیرفعال «مُهرِ جشنِ تأمین» / «سوگِ آرام» می‌گیرد تا
-            زبان تکمیل در کل سایت (هوم + هاب) یک‌دست بماند. */}
+        {/* CTA — هر سه حالت از خانواده‌ی مشترکِ ActiveCta/CompletionCta تا
+            زبانِ دکمه‌ها در کل سایت (هوم + هاب) کاملاً یک‌دست بماند. */}
         {disabled ? (
           <CompletionCta
             state={lifecycle === 'closed' ? 'closed' : 'funded'}
@@ -241,14 +221,7 @@ export function CampaignCardView({
             className="mt-3.5"
           />
         ) : (
-          <button
-            type="button"
-            onClick={() => onParticipate(c)}
-            className="relative mt-3.5 inline-flex h-[46px] w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[12px] bg-brand-500 text-[14px] font-extrabold text-white shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)] transition-colors hover:bg-brand-600 active:bg-brand-700"
-          >
-            <span>{cta}</span>
-            <HandIcon />
-          </button>
+          <ActiveCta label={cta} onClick={() => onParticipate(c)} className="mt-3.5" />
         )}
       </div>
 
