@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SectionTitle } from './SectionTitle';
-import { formatPersianNumber, absoluteMediaUrl } from '@/lib/utils';
+import { formatPersianNumber, formatTomanCompact, absoluteMediaUrl } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { CampaignAlbum, type AlbumImage } from './CampaignAlbum';
 import { CampaignParticipateModal } from './CampaignParticipateModal';
@@ -32,7 +32,7 @@ import { EmptyState } from './EmptyState';
  *   │  ┌──────────┐   ┌──────────────────────────┐    │
  *   │  │  cover   │   │       campaign title     │    │
  *   │  │ 130×130  │   ├──────────────────────────┤    │
- *   │  │          │   │   مبلغ کل ··· ۱۰،۰۰۰،۰۰۰،۰۰۰ ریال │
+ *   │  │          │   │   مبلغ کل ··· ۵/۰ میلیارد تومان ✨ │
  *   │  └──────────┘   ├──────────┬───────────────┤    │
  *   │   ٪۵۰           │ باقی     │   تعداد       │    │
  *   │  ▓▓▓▓░░░░       ├──────────┴───────────────┤    │
@@ -49,8 +49,9 @@ import { EmptyState } from './EmptyState';
  *   - CTA icon (helping hand) is on the LTR-left = end-of-line in RTL.
  *
  * Display notes:
- *   - Backend stores monetary fields in TOMAN; the mockup shows RIAL.
- *     We multiply totalAmount × 10 at render time to match the design.
+ *   - Backend stores monetary fields in TOMAN; UI renders TOMAN with a
+ *     smart compact suffix (هزار/میلیون/میلیارد/تریلیون) + exact-amount
+ *     tooltip — no more ×10 Rial rendering (retired by product decision).
  * ───────────────────────────────────────────────────────────────────────────
  */
 export type CampaignCard = {
@@ -58,7 +59,7 @@ export type CampaignCard = {
   title: string;
   sponsor: string;
   sponsorLogo?: string;
-  /** Toman (storage unit); UI multiplies by 10 to render Rial. */
+  /** Toman (storage unit); UI renders it as compact Toman via MoneyPill. */
   totalAmount: number;
   sharePrice: number;
   sharesTotal: number;
@@ -152,6 +153,64 @@ function MetaPill({
   );
 }
 
+/** ذره‌ی طلاییِ امضای عددِ هوشمند — نشانِ «بدون ملاحظه‌گرِ ریال» */
+function TomanSpark({ className = 'h-3 w-3' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M12 2c.8 4.4 2.4 6 6.8 6.8-4.4.8-6 2.4-6.8 6.8C11.2 11.2 9.6 9.6 5.2 8.8 9.6 8 11.2 6.4 12 2Z" />
+      <path
+        d="M18.6 13.5c.4 2.2 1.2 3 3.4 3.4-2.2.4-3 1.2-3.4 3.4-.4-2.2-1.2-3-3.4-3.4 2.2-.4 3-1.2 3.4-3.4Z"
+        opacity="0.55"
+      />
+    </svg>
+  );
+}
+
+/**
+ * پیلِ پولِ طلایی — نسخه‌ی «تومانِ هوشمند» مبلغ کل.
+ *
+ * چرا جدا از MetaPill؟ چون این‌جا عددِ پولی بزرگ است و سه نیازِ متمایز
+ * دارد:
+ *   ۱) تومان، نه ریال — بک‌اند تومان ذخیره می‌کند و دیگر ×۱۰ نمی‌کنیم
+ *   ۲) نمایشِ فشرده‌ی انسانی (formatTomanCompact): «۵/۰ میلیارد تومان»
+ *      به‌جای «۵٬۰۰۰٬۰۰۰٬۰۰۰ تومان» که در پیل می‌ترکید
+ *   ۳) تولتیپِ دقیق: عددِ کامل با جداکننده‌ی هزارگان روی hover/focus/
+ *      long-press — شفافیتِ کامل بدون شلوغی
+ *
+ * ظاهر: همان هندسه‌ی MetaPill (h-40px, radius-10, border) ولی با لهجه‌ی
+ * طلاییِ ملایم — انگار سکه‌ی تومان کنار کارت درخشیده است؛ گرادیانِ نرم،
+ * حلقه‌ی ظریف، جرقه‌ی ریز. اغراق = ممنوع؛ پریمیوم = حدِ تعادل.
+ */
+function MoneyPill({ amountToman }: { amountToman: number }) {
+  const compact = formatTomanCompact(amountToman);
+  const exact = formatPersianNumber(amountToman);
+  return (
+    <div
+      role="group"
+      tabIndex={0}
+      dir="rtl"
+      aria-label={`مبلغ کل: ${exact} تومان`}
+      title={`دقیقاً ${exact} تومان`}
+      className="group relative flex h-[40px] min-w-0 cursor-help items-center gap-1.5 overflow-hidden rounded-[10px] border border-amber-200/80 bg-gradient-to-l from-amber-50/95 via-[#fff8ec] to-white px-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_3px_rgba(217,119,6,0.06)] ring-1 ring-amber-200/40 transition-all duration-300 hover:-translate-y-px hover:border-amber-300 hover:from-amber-50 hover:shadow-[0_6px_16px_-4px_rgba(217,119,6,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 sm:gap-2 sm:px-3"
+    >
+      {/* سکه‌ی تومان — دیسک طلایی با حلقه‌ی توکار */}
+      <span className="relative grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 shadow-[0_1px_2px_rgba(120,53,15,0.4),inset_0_1px_1px_rgba(255,255,255,0.55)] ring-1 ring-amber-500/50">
+        <TomanSpark className="h-[11px] w-[11px] text-amber-900/80" />
+      </span>
+
+      <span className="shrink-0 whitespace-nowrap text-[11px] font-semibold leading-none text-amber-900/70 sm:text-[12px]">
+        مبلغ کل
+      </span>
+
+      <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-center text-[12.5px] font-extrabold tabular-nums tracking-[-0.01em] text-ink-900 sm:text-[13.5px]">
+        {compact}
+      </span>
+
+      <TomanSpark className="h-3 w-3 shrink-0 text-amber-500 transition-transform duration-500 group-hover:rotate-90" />
+    </div>
+  );
+}
+
 /** Helping-hand icon — matches the palm glyph on the mockup's CTA */
 function HandIcon({ className = 'w-[18px] h-[18px]' }: { className?: string }) {
   return (
@@ -194,8 +253,7 @@ function Card({
   onOpenAlbum: (c: CampaignCard) => void;
   onOpenParticipate: (c: CampaignCard) => void;
 }) {
-  // UI displays Rial; backend stores Toman → ×10 at render time.
-  const totalRial = c.totalAmount * 10;
+  // مبلغ کل به تومان نمایش داده می‌شود (واحدِ ذخیره‌سازیِ بک‌اند هم تومان است)
   const pct = Math.round(c.progressPercent);
   // Card thumbnail prefers — in order:
   //   1. an explicit cover_image from the backend
@@ -330,7 +388,7 @@ function Card({
             </Link>
 
             <div className="space-y-2">
-              <MetaPill label="مبلغ کل" value={totalRial} unit="ریال" />
+              <MoneyPill amountToman={c.totalAmount} />
 
               {/* Tighter gap on phones so both pills fit even when the
                   cover column steals ~84px of horizontal space. */}

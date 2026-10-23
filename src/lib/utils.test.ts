@@ -4,6 +4,7 @@ import {
   cn,
   formatPersianNumber,
   formatToman,
+  formatTomanCompact,
   toPersianDigits,
   truncate,
   absoluteMediaUrl,
@@ -34,6 +35,32 @@ describe('formatPersianNumber', () => {
 describe('formatToman', () => {
   it('واحد را اضافه می‌کند', () => {
     expect(formatToman(1000)).toContain('تومان');
+  });
+});
+
+describe('formatTomanCompact', () => {
+  it('زیر ۱۰۰ هزار تومان عدد خام می‌ماند', () => {
+    expect(formatTomanCompact(999)).toBe('۹۹۹ تومان');
+    expect(formatTomanCompact(45_000)).toBe('۴۵٬۰۰۰ تومان');
+  });
+  it('تا زیر یک میلیون «هزار» می‌شود', () => {
+    expect(formatTomanCompact(150_000)).toBe('۱۵۰ هزار تومان');
+    expect(formatTomanCompact(999_999)).toBe('۱٬۰۰۰ هزار تومان');
+  });
+  it('میلیون با اعشار تمیز فارسی', () => {
+    expect(formatTomanCompact(1_250_000)).toBe('۱/۲۵ میلیون تومان');
+    expect(formatTomanCompact(2_000_000)).toBe('۲ میلیون تومان');
+  });
+  it('میلیارد با یک رقم اعشار نمایشی', () => {
+    expect(formatTomanCompact(5_000_000_000)).toBe('۵ میلیارد تومان');
+    expect(formatTomanCompact(1_234_567_890)).toBe('۱/۲۳ میلیارد تومان');
+  });
+  it('تریلیون برای اعداد کهکشانی', () => {
+    expect(formatTomanCompact(3_700_000_000_000)).toBe('۳/۷ تریلیون تومان');
+  });
+  it('منفی و غیرعددی نمی‌شکند', () => {
+    expect(formatTomanCompact(-1_500_000)).toBe('-۱/۵ میلیون تومان');
+    expect(formatTomanCompact(Number.NaN)).toBe('۰ تومان');
   });
 });
 

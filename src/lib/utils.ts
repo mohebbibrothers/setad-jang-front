@@ -19,6 +19,66 @@ export function formatToman(amount: number): string {
   return `${formatPersianNumber(amount)} تومان`;
 }
 
+/**
+ * نمایش فشرده و فارسیِ مبالغ بزرگ تومان با واحدِ هوشمند.
+ *
+ * انگیزه: پیل‌های «مبلغ کل» کارت‌های مددکاری وقتی عددِ خامِ تومان را
+ * با همه‌ی صفرها نشان می‌دادند («۵٬۰۰۰٬۰۰۰٬۰۰۰ تومان») در عرضِ کم
+ * ترک می‌خوردند و خوانایی نداشتند. این‌جا عدد به نزدیک‌ترین واحدِ
+ * انسانیِ فارسی اسپرد می‌شود:
+ *
+ *   999               → «۹۹۹ تومان»
+ *   45_000            → «۴۵ هزار تومان»
+ *   1_250_000         → «۱/۲۵ میلیون تومان»
+ *   5_000_000_000     → «۵/۰ میلیارد تومان»
+ *   3_700_000_000_000 → «۳/۷ تریلیون تومان»
+ *
+ * قوانین:
+ * - زیرِ ۱۰۰ هزار تومان: عددِ خام (بدون فشرده‌سازیِ گمراه‌کننده)
+ * - اعشار «تفکیکی/چرخشی» (Persian decimal slash «/») تا با جداکننده‌ی
+ *   هزارگان «٬» اشتباه نشود — مثل عادتِ رایجِ نوشتارِ مالیِ فارسی
+ * - صفرِ انتهاییِ اعشار پاک می‌شود (۱/۵ → «۱/۵»، ۱/۰۰ → «۱»)
+ * - حداکثر ۲ رقم اعشار (دقتِ نمایشی، نه حسابداری)
+ * - اعداد منفی و غیرعددی بدون فروپاشی هندل می‌شوند
+ */
+export function formatTomanCompact(amountToman: number): string {
+  if (!Number.isFinite(amountToman)) return '۰ تومان';
+  const negative = amountToman < 0;
+  const abs = Math.abs(amountToman);
+  if (abs < 100_000) {
+    return `${negative ? '-' : ''}${formatPersianNumber(abs)} تومان`;
+  }
+
+  const TENS: Array<[limit: number, unit: string]> = [
+    [1e12, 'تریلیون'],
+    [1e9, 'میلیارد'],
+    [1e6, 'میلیون'],
+  ];
+  let unit = 'هزار';
+  let divisor = 1e3;
+  for (const [limit, u] of TENS) {
+    if (abs >= limit) {
+      unit = u;
+      divisor = limit;
+      break;
+    }
+  }
+
+  let num = abs / divisor;
+  // گردکردنِ پایانه‌محور: دقیقاً ۲ رقم اعشار، سپس حذفِ صفرهای زائد
+  num = Math.round(num * 100) / 100;
+  const intPart = Math.floor(num);
+  const frac = Math.round((num - intPart) * 100);
+  const intFa = formatPersianNumber(intPart);
+  if (frac === 0) {
+    return `${negative ? '-' : ''}${intFa} ${unit} تومان`;
+  }
+  // اعشارِ دورقمی؛ صفرِ انتهایی strip می‌شود: ۱/۵۰ → «۱/۵» ولی ۱/۰۴ → «۱/۰۴»
+  const twoFa = formatPersianNumber(Math.floor(frac / 10)) + formatPersianNumber(frac % 10);
+  const fracFa = twoFa.replace(/۰$/, '');
+  return `${negative ? '-' : ''}${intFa}/${fracFa} ${unit} تومان`;
+}
+
 /** Convert any digits in a string to Persian digits. */
 export function toPersianDigits(input: string | number): string {
   const map = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
