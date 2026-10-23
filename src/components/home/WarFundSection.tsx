@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SectionTitle } from './SectionTitle';
 import { formatPersianNumber, formatTomanCompact, absoluteMediaUrl } from '@/lib/utils';
 import { computeFundingSplit } from '@/lib/madadkar';
+import { CompletionCta } from '@/components/madadkar/CompletionCta';
 import { apiFetch } from '@/lib/api';
 import { CampaignAlbum, type AlbumImage } from './CampaignAlbum';
 import { CampaignParticipateModal } from './CampaignParticipateModal';
@@ -558,21 +559,26 @@ function Card({
               before redirecting to the gateway). Disabled when the
               backend says the campaign is fully funded / closed /
               completed — no more orphan buttons that call a rejected
-              /participate/ endpoint. */}
-        <button
-          type="button"
-          onClick={() => !ctaDisabled && onOpenParticipate(c)}
-          disabled={ctaDisabled}
-          aria-disabled={ctaDisabled}
-          className={`relative mt-3 inline-flex h-[46px] w-full items-center justify-center gap-2 overflow-hidden rounded-[12px] text-[14.5px] font-extrabold text-white transition-colors ${
-            ctaDisabled
-              ? 'cursor-not-allowed bg-ink-300 shadow-none'
-              : 'cursor-pointer bg-brand-500 shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)] hover:bg-brand-600 active:bg-brand-700'
-          }`}
-        >
-          <span>{ctaLabel}</span>
-          {!ctaDisabled && <HandIcon />}
-        </button>
+              /participate/ endpoint.
+              حالتِ کامل‌شده «مُهرِ جشن» می‌گیرد (CompletionCta) — پیروزیِ جمعی
+              خبرِ خوب است، نه دکمه‌ی خاکستری. */}
+        {ctaDisabled ? (
+          <CompletionCta
+            state={isClosed ? 'closed' : 'funded'}
+            label={ctaLabel}
+            sublabel={isClosed ? undefined : 'سپاس از همراهی‌تان'}
+            className="mt-3"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => onOpenParticipate(c)}
+            className="relative mt-3 inline-flex h-[46px] w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[12px] bg-brand-500 text-[14.5px] font-extrabold text-white shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)] transition-colors hover:bg-brand-600 active:bg-brand-700"
+          >
+            <span>{ctaLabel}</span>
+            <HandIcon />
+          </button>
+        )}
       </div>
     </motion.article>
   );

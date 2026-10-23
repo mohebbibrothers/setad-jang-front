@@ -12,6 +12,7 @@ import {
   type MadadkarCampaignListItem,
   type PaymentSheetCampaignBridge,
 } from '@/lib/madadkar';
+import { CompletionCta } from './CompletionCta';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -230,21 +231,25 @@ export function CampaignCardView({
           </div>
         </div>
 
-        {/* CTA */}
-        <button
-          type="button"
-          onClick={() => !disabled && onParticipate(c)}
-          disabled={disabled}
-          aria-disabled={disabled}
-          className={`relative mt-3.5 inline-flex h-[46px] w-full items-center justify-center gap-2 overflow-hidden rounded-[12px] text-[14px] font-extrabold text-white transition-colors ${
-            disabled
-              ? 'cursor-not-allowed bg-ink-300 shadow-none'
-              : 'cursor-pointer bg-brand-500 shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)] hover:bg-brand-600 active:bg-brand-700'
-          }`}
-        >
-          <span>{cta}</span>
-          {!disabled && <HandIcon />}
-        </button>
+        {/* CTA — حالت غیرفعال «مُهرِ جشنِ تأمین» / «سوگِ آرام» می‌گیرد تا
+            زبان تکمیل در کل سایت (هوم + هاب) یک‌دست بماند. */}
+        {disabled ? (
+          <CompletionCta
+            state={lifecycle === 'closed' ? 'closed' : 'funded'}
+            label={cta}
+            sublabel={lifecycle === 'closed' ? undefined : 'سپاس از همراهی‌تان'}
+            className="mt-3.5"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => onParticipate(c)}
+            className="relative mt-3.5 inline-flex h-[46px] w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[12px] bg-brand-500 text-[14px] font-extrabold text-white shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)] transition-colors hover:bg-brand-600 active:bg-brand-700"
+          >
+            <span>{cta}</span>
+            <HandIcon />
+          </button>
+        )}
       </div>
 
       {/* گالری‌هِنت نامرئی برای SEO/دسترس‌پذیری اگر بعداً استفاده شود */}
