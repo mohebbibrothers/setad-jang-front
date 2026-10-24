@@ -21,6 +21,7 @@ import { absoluteMediaUrl, formatPersianNumber, toPersianDigits } from '@/lib/ut
 import {
   campaignLifecycle,
   clampPercent,
+  computeFundingSplit,
   fetchCampaignDetail,
   fetchTransparency,
   formatTomanFull,
@@ -29,6 +30,7 @@ import {
   normalizeCampaignAlbum,
   type PaymentSheetCampaignBridge,
 } from '@/lib/madadkar';
+import { ReadMoreText } from '@/components/ui/ReadMoreText';
 import { normalizeRouteSlug } from '@/lib/route-slug';
 
 /**
@@ -78,6 +80,16 @@ export default async function CampaignDetailPage({ params }: PageProps) {
 
   const lifecycle = campaignLifecycle(campaign);
   const pct = clampPercent(campaign.progress_percent);
+  // تفکیک آنلاین/آفلاین — نوار دو-رنگ هم‌راستا با کارت‌های هوم و هاب
+  const split = computeFundingSplit(
+    campaign.total_shares ?? 0,
+    campaign.remaining_shares ?? 0,
+    campaign.external_funded_shares ?? 0,
+  );
+  const hasOffline = split.offlineShares > 0;
+  const fundedShares = campaign.funded_shares ?? split.fundedShares;
+  const fundedAmountTotal =
+    (campaign.purchased_amount ?? 0) + (campaign.external_funded_amount ?? 0);
   const coverUrl = absoluteMediaUrl(campaign.cover_image);
   const sponsorLogo = absoluteMediaUrl(campaign.sponsor?.logo);
   const album = normalizeCampaignAlbum(campaign);
@@ -208,11 +220,11 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </div>
 
               <div className="px-4 py-4 sm:px-6 sm:py-5">
-                {/* مترِ پیشرفت */}
+                {/* مترِ پیشرفت — دو-رنگ: برند=آنلاین، طلایی راه‌راه=خارج از درگاه */}
                 <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
                   <p className="text-[12px] font-bold leading-6 text-ink-500">
                     <span className="text-[17px] font-black tabular-nums text-ink-900">
-                      {formatPersianNumber(campaign.purchased_shares ?? 0)}
+                      {formatPersianNumber(fundedShares)}
                     </span>{' '}
                     سهم از {formatPersianNumber(campaign.total_shares ?? 0)} سهم تأمین شد
                   </p>
@@ -221,17 +233,42 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                   </span>
                 </div>
                 <div
+                  dir="rtl"
                   role="progressbar"
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={pct}
-                  aria-label="درصد تأمین حرکت"
-                  className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-ink-100"
+                  aria-label={
+                    hasOffline
+                      ? `٪${formatPersianNumber(pct)} تأمین — ${formatPersianNumber(split.onlineShares)} سهم آنلاین و ${formatPersianNumber(split.offlineShares)} سهم خارج از درگاه`
+                      : 'درصد تأمین حرکت'
+                  }
+                  title={
+                    hasOffline
+                      ? `${formatPersianNumber(split.onlineShares)} سهم آنلاین + ${formatPersianNumber(split.offlineShares)} سهم خارج از درگاه`
+                      : undefined
+                  }
+                  className="mt-2.5 flex h-2.5 w-full overflow-hidden rounded-full bg-ink-100"
                 >
                   <div
-                    className="h-full rounded-full bg-gradient-to-l from-mint-400 via-mint-500 to-brand-600 transition-[width] duration-700"
-                    style={{ width: `${pct}%` }}
+                    className="h-full shrink-0 bg-gradient-to-l from-mint-400 via-mint-500 to-brand-600 transition-[width] duration-700"
+                    style={{ width: `${hasOffline ? split.onlinePct : pct}%` }}
                   />
+                  {hasOffline && (
+                    <div
+                      className="relative h-full shrink-0 bg-gradient-to-l from-amber-300 to-amber-500 transition-[width] duration-700"
+                      style={{ width: `${split.offlinePct}%` }}
+                      aria-hidden="true"
+                    >
+                      <span
+                        className="absolute inset-0 opacity-25"
+                        style={{
+                          backgroundImage:
+                            'repeating-linear-gradient(135deg, rgba(255,255,255,0.9) 0 2px, transparent 2px 6px)',
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* چیپ‌های وضعیت */}
@@ -246,6 +283,15 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                       ? `${formatPersianNumber(Math.max(0, campaign.remaining_shares ?? 0))} سهم باقی`
                       : 'حرکت کامل شد'}
                   </span>
+                  {hasOffline && (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] font-extrabold tabular-nums text-amber-800 ring-1 ring-amber-200/70"
+                      title="سهم‌هایی که گروه جهادی خارج از درگاه (نقد/کارت‌به‌کارت) تأمین کرده است"
+                    >
+                      <Landmark className="h-3.5 w-3.5" aria-hidden="true" />+
+                      {formatPersianNumber(split.offlineShares)} سهم خارج از درگاه
+                    </span>
+                  )}
                   {deadlineJalali && lifecycle === 'active' && (
                     <span className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] font-extrabold text-amber-700 ring-1 ring-amber-200/70">
                       <Timer className="h-3.5 w-3.5" aria-hidden="true" />
@@ -279,7 +325,8 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                   value: `${formatPersianNumber(campaign.share_price ?? 0)} تومان`,
                 },
                 { label: 'مبلغ کل حرکت', value: formatTomanFull(campaign.total_amount) },
-                { label: 'تأمین‌شده', value: formatTomanFull(campaign.purchased_amount) },
+                // تأمین‌شده = آنلاین + ترنچِ آفلاین (هم‌سو با نوارِ پیشرفت)
+                { label: 'تأمین‌شده', value: formatTomanFull(fundedAmountTotal) },
                 {
                   label: 'کل سهم‌ها',
                   value: `${formatPersianNumber(campaign.total_shares ?? 0)} سهم`,
@@ -297,7 +344,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               ))}
             </div>
 
-            {/* توضیحات */}
+            {/* توضیحات — متنِ بلند جمع می‌شود تا ساختار صفحه نترکد */}
             {campaign.description && (
               <section aria-labelledby="desc-h">
                 <h2
@@ -307,8 +354,8 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                   <BookOpenText className="h-5 w-5 text-brand-600" aria-hidden="true" />
                   دربارهٔ این حرکت
                 </h2>
-                <div className="prose-fa whitespace-pre-wrap rounded-3xl border border-ink-100 bg-white p-5 text-[13.5px] leading-8 text-ink-700 shadow-[0_2px_10px_-6px_rgba(15,20,32,.06)] sm:p-6 sm:text-[14px]">
-                  {campaign.description}
+                <div className="prose-fa rounded-3xl border border-ink-100 bg-white p-5 text-[13.5px] leading-8 text-ink-700 shadow-[0_2px_10px_-6px_rgba(15,20,32,.06)] sm:p-6 sm:text-[14px]">
+                  <ReadMoreText text={campaign.description} id="campaign-about" />
                 </div>
               </section>
             )}
@@ -413,12 +460,39 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                       </dd>
                     </div>
                   )}
+                  {/* ترنچِ آفلاین — شفاف و از گردشِ درگاه جدا گزارش می‌شود */}
+                  {typeof transparency.external_funding_count === 'number' &&
+                    transparency.external_funding_count > 0 && (
+                      <div className="flex items-center justify-between rounded-xl bg-amber-50 px-2.5 py-2 ring-1 ring-amber-200/60">
+                        <dt className="font-extrabold text-amber-800">
+                          تأمین خارج از درگاه
+                          <span className="mr-1 text-[10px] font-bold text-amber-600">
+                            ({formatPersianNumber(transparency.external_funding_count)} رکورد •{' '}
+                            {formatPersianNumber(transparency.external_funded_shares ?? 0)} سهم)
+                          </span>
+                        </dt>
+                        <dd className="font-extrabold tabular-nums text-amber-800">
+                          {formatTomanFull(transparency.external_funded_amount ?? 0)}
+                        </dd>
+                      </div>
+                    )}
                   <div className="flex items-center justify-between rounded-xl bg-mint-50 px-2.5 py-2 ring-1 ring-mint-100">
-                    <dt className="font-extrabold text-mint-800">جذبِ خالص</dt>
+                    <dt className="font-extrabold text-mint-800">جذبِ خالصِ درگاه</dt>
                     <dd className="text-[13px] font-extrabold tabular-nums text-mint-800">
                       {formatTomanFull(transparency.net_raised_amount)}
                     </dd>
                   </div>
+                  {typeof transparency.total_funded_amount === 'number' &&
+                    transparency.total_funded_amount > transparency.net_raised_amount && (
+                      <div className="flex items-center justify-between rounded-xl bg-brand-50 px-2.5 py-2 ring-1 ring-brand-100">
+                        <dt className="font-extrabold text-brand-800">
+                          جمعِ کلِ تأمین (درگاه + خارج)
+                        </dt>
+                        <dd className="text-[13px] font-extrabold tabular-nums text-brand-800">
+                          {formatTomanFull(transparency.total_funded_amount)}
+                        </dd>
+                      </div>
+                    )}
                   <div className="flex items-center justify-between">
                     <dt className="text-ink-500">هزینه‌کردِ پرداخت‌شده</dt>
                     <dd className="tabular-nums text-ink-900">

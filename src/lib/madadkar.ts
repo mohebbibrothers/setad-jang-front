@@ -60,6 +60,11 @@ export type MadadkarCampaignListItem = {
   participant_count: number;
   remaining_shares: number;
   progress_percent: number;
+  /** مجموعِ سهم تأمین‌شده (آنلاین + آفلاین) — با بک‌اند سنخ */
+  funded_shares?: number;
+  /** ترنچِ آفلاین: سهم/مبلغ ثبت‌شده از «تأمین خارج از سایت» */
+  external_funded_shares?: number;
+  external_funded_amount?: number;
   is_fully_funded: boolean;
   status: string;
   status_display: string;
@@ -97,6 +102,12 @@ export type MadadkarTransparency = {
   completed_refund_amount: number;
   applied_adjustment_delta: number;
   net_raised_amount: number;
+  /** ترنچِ آفلاین — جدا از گردشِ درگاه گزارش می‌شود؛ در «جمعِ کل» دیده می‌شود */
+  external_funded_shares?: number;
+  external_funded_amount?: number;
+  external_funding_count?: number;
+  /** net_raised_amount + external_funded_amount — هم‌راستا با نوارِ پیشرفتِ سایت */
+  total_funded_amount?: number;
   paid_disbursement_amount: number;
   committed_disbursement_amount: number;
   remaining_disbursable_amount: number;
@@ -105,6 +116,8 @@ export type MadadkarTransparency = {
   completed_refund_count: number;
   paid_disbursement_count: number;
   net_progress_percent: number;
+  /** درصدِ تأمین با احتسابِ ترنچِ آفلاین */
+  total_progress_percent?: number;
   public_note: string;
 };
 
