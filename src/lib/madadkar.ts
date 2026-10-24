@@ -190,13 +190,15 @@ function unwrapList<T>(data: Paginated<T> | T[] | null | undefined): T[] {
   return data.results ?? [];
 }
 
-/** لیست عمومی حرکت‌ها (ISR). تگ `madadkar` برای revalidate هدفمند. */
+/** لیست عمومی حرکت‌ها (ISR). تگ `madadkar` برای revalidate هدفمند.
+ *  ترتیب را عمداً به سرور وامی‌گذاریم: دیفالتِ canonical«سهمِ عادلانه»
+ *  (نیازمندترین اول، تأمین‌شده‌ها در انتها) در بک‌اند پین شده است. */
 export async function fetchCampaignsList(opts?: {
   pageSize?: number;
 }): Promise<MadadkarCampaignListItem[]> {
   const size = opts?.pageSize ?? 24;
   const data = await safeApiFetch<Paginated<MadadkarCampaignListItem>>(
-    `/madadkar/campaigns/?page_size=${size}&ordering=-published_at`,
+    `/madadkar/campaigns/?page_size=${size}`,
     { revalidate: 300, tags: ['campaigns', 'madadkar'] },
   );
   return unwrapList(data);

@@ -75,11 +75,12 @@ type ApiCampaign = {
 };
 
 export async function loadCampaigns(): Promise<CampaignCard[]> {
-  // 8 cards = exactly 2 pager pages of 4 on desktop.  Newest first.
-  const data = await safeApiFetch<Paginated<ApiCampaign>>(
-    '/madadkar/campaigns/?page_size=8&ordering=-published_at',
-    { revalidate: 300, tags: ['homepage', 'campaigns', 'madadkar'] },
-  );
+  // 8 cards = exactly 2 pager pages of 4 on desktop.
+  // ترتیب متعلق به سرور است: fair-share (نیازمندترین اول، تأمین‌شده‌ها آخر).
+  const data = await safeApiFetch<Paginated<ApiCampaign>>('/madadkar/campaigns/?page_size=8', {
+    revalidate: 300,
+    tags: ['homepage', 'campaigns', 'madadkar'],
+  });
   const list = unwrap(data);
   return list.map((c) => ({
     slug: c.slug,

@@ -345,7 +345,6 @@ async function fetchMadadkar(
       has_deadline: facets?.has_deadline,
       is_fully_funded: facets?.is_fully_funded,
       sponsor_slug: facets?.sponsor_slug,
-      ordering: '-published_at',
     },
     page,
   );
