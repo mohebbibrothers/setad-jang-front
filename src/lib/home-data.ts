@@ -12,8 +12,9 @@
  *   GET /api/v1/r4j/criminals/              → R4JPublicCriminalListSerializer
  *   GET /api/v1/lms/categories/             → LMSCategoryPublicSerializer
  *   GET /api/v1/lms/courses/                → CourseSummarySerializer
- *   GET /api/v1/kindness-wall/categories/   → KindnessCategorySerializer
- *   GET /api/v1/kindness-wall/listings/     → KindnessListingListSerializer
+ *   GET /api/v1/kindness-wall/categories/   → KindnessCategorySerializer   (v2: آرایه‌ی ساده)
+ *   GET /api/v1/kindness-wall/listings/     → KindnessListingListSerializer (v2: بدون فیلد تماس)
+ *   GET /api/v1/kindness-wall/stats/        → KindnessBoardStatsSerializer (v2: شمارنده‌های تأثیر)
  *   GET /api/v1/tabyin/contents/            → PublicTabyinContentListSerializer
  *   GET /api/v1/public-reports/subjects/    → ReportSubjectPublicSerializer
  */
@@ -26,7 +27,7 @@ import { visibleContents } from '@/lib/tabyin-visibility';
 import type { CampaignCard } from '@/components/home/WarFundSection';
 import type { CriminalCard } from '@/components/home/JusticeSection';
 import type { CourseCard, EduCategory } from '@/components/home/EducationSection';
-import type { KindListing } from '@/components/home/KindnessSection';
+import type { KindListing, KindCategory, KindStats } from '@/components/home/KindnessSection';
 import type { TabyinItem } from '@/components/home/TabyinSection';
 
 type Paginated<T> = { results?: T[]; count?: number } | T[];
@@ -207,77 +208,175 @@ export async function loadCourses(): Promise<CourseCard[]> {
   }));
 }
 
-/* ─── Kindness Wall ──────────────────────────────────────────────────── */
+/* ─── Kindness Wall (v2 — تختهٔ نیازِ ادمین‌محور) ─────────────────────── */
 /**
- * Mirrors apps.kindness_wall.serializers.KindnessListingListSerializer
- * (public LIST endpoint). NOTE: `description`, `address_hint`,
- * `images[]`, `contact_available` live ONLY on the DETAIL serializer.
- * Owner-only fields (`bookmark_count`, `report_count`,
- * `contact_reveal_count`, `matches_*`) are exposed by the owner+admin
- * serializers exclusively — the public homepage MUST NOT depend on
- * them or the response envelope will silently mismatch.
+ * سناریوی v2 (apps/kindness_wall — «rebuild as v2 admin-curated board»):
+ * ادمین دسته‌بندی و آگهیِ «نیاز» را منتشر می‌کند؛ کاربر می‌بیند و از
+ * راه‌های ارتباطیِ درونِ آگهی مستقیم با صاحبِ نیاز تماس می‌گیرد. در نسخهٔ ۱
+ * کاربران خودشان آگهی می‌گذاشتند (need_help/offer_help) — آن دنیا تمام شد.
+ *
+ * قراردادِ جدیدِ بک‌اند:
+ *   لیست:   id, slug, title, excerpt, category{slug,title,icon(emoji)},
+ *           urgency/urgency_display, is_featured, quantity, unit,
+ *           province, city, view_count, open_offers_count, cover_url,
+ *           days_left, published_at
+ *           ⚠️ هیچ فیلد تماسی در لیست نیست (ضد اسکرپینگ) — contact_channels
+ *              فقط در DETAIL می‌آید و صفحه اصلی آن را lazy می‌گیرد.
+ *   دسته‌ها: id, title, slug, description, icon, order, open_listings_count
+ *   آمار:    open_listings, urgent_listings, fulfilled_total, fulfilled_30d,
+ *            volunteers_total, active_categories
+ *
+ * پنجرهٔ گذار (v1 → v2): تا وقتی پروداکشن روی بک‌اند قدیمی باشد، پاسخ‌ها
+ * شمایل قدیمی دارند. تابع نگاشت پایین با «نشان v2» (= وجود excerpt/unit)
+ * سطرهای کهنه را بی‌صدا کنار می‌گذارد تا دیوار از صحیح‌بودن خالی نشود؛
+ * به‌محض دیپلویِ بکِ جدید، دیوار خودش روشن می‌شود.
  */
-type ApiKindness = {
+type ApiKindnessCategory = {
+  id?: number;
+  title?: string;
+  slug?: string;
+  description?: string;
+  icon?: string;
+  order?: number;
+  /** شمارندهٔ زندهٔ آگهی‌های جاری — نشانِ v2 بودنِ دسته. */
+  open_listings_count?: number;
+};
+
+type ApiKindnessListing = {
   id?: number;
   slug: string;
-  listing_type: 'need_help' | 'offer_help';
-  category?: { id?: number; slug?: string; title?: string; icon?: string };
   title: string;
+  /** نشانِ v2 — در شمایل v1 وجود ندارد. */
+  excerpt?: string;
+  category?: { id?: number; slug?: string; title?: string; icon?: string };
+  urgency?: 'normal' | 'urgent' | string;
+  urgency_display?: string;
+  is_featured?: boolean;
+  quantity?: number;
+  unit?: string;
   province?: string;
   city?: string;
-  district?: string;
-  owner_full_name_snapshot?: string;
-  owner_avatar_snapshot?: string | null;
-  published_at?: string;
-  expires_at?: string | null;
   view_count?: number;
-  cover_image?: string | null;
-  /** Present ONLY when the caller was the DETAIL endpoint. Optional. */
-  description?: string;
-  images?: Array<{
-    id: number;
-    image: string;
-    alt_text?: string;
-    caption?: string;
-    is_cover?: boolean;
-    order?: number;
-  }>;
-  contact_available?: boolean;
+  open_offers_count?: number;
+  cover_url?: string | null;
+  days_left?: number | null;
+  published_at?: string | null;
 };
-export async function loadKindnessListings(): Promise<KindListing[]> {
-  const data = await safeApiFetch<Paginated<ApiKindness>>(
-    '/kindness-wall/listings/?page_size=12&ordering=-published_at',
-    { revalidate: 240, tags: ['homepage', 'kindness'] },
+
+type ApiKindnessStats = {
+  open_listings?: number;
+  urgent_listings?: number;
+  fulfilled_total?: number;
+  fulfilled_30d?: number;
+  volunteers_total?: number;
+  active_categories?: number;
+};
+
+/** true فقط وقتی آیتم حداقل قابلیت نمایش صادقانهٔ v2 را دارد. */
+export function isV2KindnessListing(item: ApiKindnessListing): boolean {
+  return (
+    typeof item.slug === 'string' &&
+    item.slug.trim() !== '' &&
+    typeof item.title === 'string' &&
+    item.title.trim() !== '' &&
+    (typeof item.excerpt === 'string' || typeof item.unit === 'string')
   );
-  const list = unwrap(data);
-  return list.map((l) => ({
+}
+
+/** نگاشت خالصِ لیست → مدل کارت سکشن (قابل تست واحد). */
+export function mapKindnessListings(items: ApiKindnessListing[]): KindListing[] {
+  return items.filter(isV2KindnessListing).map((l) => ({
     slug: l.slug,
     title: l.title,
-    type: l.listing_type === 'need_help' ? 'need' : 'offer',
+    excerpt: (l.excerpt ?? '').trim(),
     categoryTitle: l.category?.title,
     categorySlug: l.category?.slug,
-    province: l.province,
-    city: l.city,
-    district: l.district,
-    ownerName: l.owner_full_name_snapshot,
-    ownerAvatar: absoluteMediaUrl(l.owner_avatar_snapshot),
-    coverImage: absoluteMediaUrl(l.cover_image),
-    publishedAt: l.published_at,
-    expiresAt: l.expires_at ?? undefined,
+    categoryIcon: l.category?.icon?.trim() || undefined,
+    urgency: l.urgency === 'urgent' ? 'urgent' : 'normal',
+    isFeatured: l.is_featured === true,
+    quantity: typeof l.quantity === 'number' && l.quantity > 0 ? l.quantity : 1,
+    unit: l.unit?.trim() || 'عدد',
+    province: l.province?.trim() || undefined,
+    city: l.city?.trim() || undefined,
     viewCount: l.view_count,
-    contactAvailable: l.contact_available,
-    gallery: (l.images ?? [])
-      .slice()
-      .sort((a, b) => {
-        if (!!b.is_cover !== !!a.is_cover) return b.is_cover ? 1 : -1;
-        return (a.order ?? 0) - (b.order ?? 0);
-      })
-      .map((g) => ({
-        url: absoluteMediaUrl(g.image) ?? '',
-        alt: g.alt_text || g.caption || l.title,
-      }))
-      .filter((g) => !!g.url),
+    openOffersCount: l.open_offers_count,
+    coverImage: absoluteMediaUrl(l.cover_url),
+    daysLeft: typeof l.days_left === 'number' ? l.days_left : null,
+    publishedAt: l.published_at ?? undefined,
   }));
+}
+
+/** نگاشت دسته‌های v2 (فقط دسته‌هایی که شمارندهٔ v2 دارند). */
+export function mapKindnessCategories(items: ApiKindnessCategory[]): KindCategory[] {
+  return items
+    .filter(
+      (c): c is ApiKindnessCategory & { slug: string; title: string } =>
+        typeof c.slug === 'string' &&
+        typeof c.title === 'string' &&
+        typeof c.open_listings_count === 'number',
+    )
+    .map((c) => ({
+      slug: c.slug,
+      title: c.title,
+      icon: c.icon?.trim() || undefined,
+      count: c.open_listings_count ?? 0,
+    }));
+}
+
+/** guard آمار تخته: یا هر ۶ کلید عددی است یا هیچ‌کدام (v1 → 404 → null). */
+export function mapKindnessStats(raw: ApiKindnessStats | null): KindStats | null {
+  if (
+    !raw ||
+    typeof raw.open_listings !== 'number' ||
+    typeof raw.urgent_listings !== 'number' ||
+    typeof raw.fulfilled_total !== 'number' ||
+    typeof raw.fulfilled_30d !== 'number' ||
+    typeof raw.volunteers_total !== 'number' ||
+    typeof raw.active_categories !== 'number'
+  ) {
+    return null;
+  }
+  return {
+    openListings: raw.open_listings,
+    urgentListings: raw.urgent_listings,
+    fulfilledTotal: raw.fulfilled_total,
+    fulfilled30d: raw.fulfilled_30d,
+    volunteersTotal: raw.volunteers_total,
+    activeCategories: raw.active_categories,
+  };
+}
+
+/**
+ * لودرِ یک‌جای تختهٔ مهربانی برای صفحهٔ اصلی. سه درخواست موازی؛ هر کدام
+ * fail شود فقط همان بخش عقب می‌نشیند (لیست خالی/چیپ‌ها از دادهٔ خود کارت‌ها/
+ * بدون روبان آمار) و صفحه هرگز به‌خاطر یک endpoint نمی‌میرد.
+ */
+export async function loadKindnessBoard(): Promise<{
+  listings: KindListing[];
+  categories: KindCategory[];
+  stats: KindStats | null;
+}> {
+  const [listingsRes, categoriesRes, statsRes] = await Promise.all([
+    safeApiFetch<Paginated<ApiKindnessListing>>('/kindness-wall/listings/?page_size=12', {
+      revalidate: 240,
+      tags: ['homepage', 'kindness'],
+    }),
+    safeApiFetch<ApiKindnessCategory[]>('/kindness-wall/categories/', {
+      revalidate: 240,
+      tags: ['homepage', 'kindness'],
+    }),
+    safeApiFetch<ApiKindnessStats>('/kindness-wall/stats/', {
+      revalidate: 240,
+      tags: ['homepage', 'kindness'],
+    }),
+  ]);
+  return {
+    listings: mapKindnessListings(unwrap(listingsRes)),
+    categories: mapKindnessCategories(
+      Array.isArray(categoriesRes) ? categoriesRes : unwrap(categoriesRes),
+    ),
+    stats: mapKindnessStats(statsRes),
+  };
 }
 
 /* ─── Tabyin ─────────────────────────────────────────────────────────── */
@@ -835,16 +934,7 @@ export async function loadReportSubjects(): Promise<ReportSubject[]> {
   }));
 }
 
-/* ─── Kindness Wall categories (used by the ThemeChip strip) ─────────── */
-type ApiKindnessCategory = { id?: number; slug: string; title: string; icon?: string };
-
-export type KindnessCategory = { slug: string; title: string; icon?: string };
-
-export async function loadKindnessCategories(): Promise<KindnessCategory[]> {
-  const data = await safeApiFetch<Paginated<ApiKindnessCategory>>(
-    '/kindness-wall/categories/?page_size=30',
-    { revalidate: 600, tags: ['kindness-categories'] },
-  );
-  const list = unwrap(data);
-  return list.map((c) => ({ slug: c.slug, title: c.title, icon: c.icon }));
-}
+/* نکتهٔ تاریخی: لودرِ قدیمیِ «loadKindnessCategories» (قرارداد v1، paginated)
+ * با بازسازی v2 حذف شد — دسته‌ها حالا از همان loadKindnessBoard می‌آیند.
+ * (endpoint در v2 آرایهٔ ساده برمی‌گرداند، نه paginated؛ نگه‌داشتن آن لودر
+ * یعنی سکوتِ شکسته‌ای که همیشه [] برگرداند.) */

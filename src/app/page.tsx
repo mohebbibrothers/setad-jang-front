@@ -13,7 +13,7 @@ import {
   loadCriminals,
   loadCourses,
   loadLmsCategories,
-  loadKindnessListings,
+  loadKindnessBoard,
   loadTabyinItems,
   loadTabyinCounts,
   loadReportSubjects,
@@ -146,7 +146,7 @@ export default async function HomePage() {
     criminals,
     lmsCategories,
     courses,
-    kindness,
+    kindnessBoard,
     tabyin,
     tabyinCounts,
     reportSubjects,
@@ -155,7 +155,7 @@ export default async function HomePage() {
     loadCriminals(),
     loadLmsCategories(),
     loadCourses(),
-    loadKindnessListings(),
+    loadKindnessBoard(),
     loadTabyinItems(),
     loadTabyinCounts(),
     loadReportSubjects(),
@@ -190,7 +190,11 @@ export default async function HomePage() {
       <WarFundSection campaigns={campaigns} />
       <JusticeSection criminals={criminals} />
       <EducationSection categories={lmsCategories} courses={courses} />
-      <KindnessSection listings={kindness} />
+      <KindnessSection
+        listings={kindnessBoard.listings}
+        categories={kindnessBoard.categories}
+        stats={kindnessBoard.stats}
+      />
       <TabyinSection items={tabyin} counts={tabyinCounts} />
       <PublicReportSection subjects={reportSubjects} />
 

@@ -1,0 +1,326 @@
+'use client';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  Instagram,
+  MessageCircle,
+  MessagesSquare,
+  MessageSquareText,
+  Phone,
+  Send,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+/**
+ * ───────────────────────────────────────────────────────────────────────────
+ * KindnessContactSheet — «دفترچهٔ راه‌های ارتباط» دیوار مهربانی (v2)
+ *
+ * سیاستِ بک‌اند (apps/kindness_wall/serializers.py):
+ *   contact_channels فقط در DETAIL آگهی می‌آید، هرگز در لیست — پس این شیت
+ *   lazy پر می‌شود و هر آگهی حداقل یک کانال دارد (الزامِ clean/model).
+ *
+ *   payload هر کانال: { kind, label, value, link }
+ *     kind ∈ phone | bale | eitaa | telegram | rubika | instagram
+ *     link: آماده از سرور (tel:+98…، https://t.me/…، …) یا '' (= فقط کپی)
+ *
+ * زبانِ بصری: همان خانوادهٔ CTAهای صفحه — فنر ورود یکسان، دیسک رنگی هر
+ * شبکهٔ اجتماعی، دکمهٔ کپی با بازخورد «کپی شد»، bottom-sheet در موبایل و
+ * کارتِ شناور در دسکتاپ. حرکت در prefers-reduced-motion خاموش می‌شود.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
+
+export type KindContactChannel = {
+  kind: string;
+  label: string;
+  value: string;
+  link?: string;
+};
+
+type ChannelStyle = {
+  disc: string; // رنگ دیسک آیکن
+  Glyph: LucideIcon;
+  linkable: boolean; // آیا لینک وبِ قابل‌بازکردن دارد؟ (بله آگاهانه ندارد)
+};
+
+/** رجیستری بصری کانال‌ها — آینهٔ CONTACT_CHANNEL_REGISTRY بک‌اند. */
+const CHANNEL_STYLE: Record<string, ChannelStyle> = {
+  phone: {
+    disc: 'bg-gradient-to-br from-brand-500 to-brand-700',
+    Glyph: Phone,
+    linkable: true,
+  },
+  bale: { disc: 'bg-[#2E9EED]', Glyph: MessageCircle, linkable: false },
+  eitaa: { disc: 'bg-[#f97316]', Glyph: MessagesSquare, linkable: true },
+  telegram: { disc: 'bg-[#2AABEE]', Glyph: Send, linkable: true },
+  rubika: { disc: 'bg-[#d9a400]', Glyph: MessageSquareText, linkable: true },
+  instagram: {
+    disc: 'bg-[linear-gradient(45deg,#f58529,#dd2a7b,#8134af)]',
+    Glyph: Instagram,
+    linkable: true,
+  },
+};
+
+const FALLBACK_STYLE: ChannelStyle = {
+  disc: 'bg-ink-400',
+  Glyph: MessageCircle,
+  linkable: true,
+};
+
+export function KindnessContactSheet({
+  open,
+  title,
+  subtitle,
+  contactNote,
+  channels,
+  loading,
+  error,
+  onRetry,
+  onClose,
+}: {
+  open: boolean;
+  title: string;
+  /** مثلاً «به نیاب: خانواده‌ای در شوش» — beneficiary_name اختیاری است. */
+  subtitle?: string;
+  /** یادداشت هماهنگی ادمین: «تماس ۱۰ تا ۲۰»، «پیامکی بهتر است». */
+  contactNote?: string;
+  channels: KindContactChannel[];
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+  onClose: () => void;
+}) {
+  const [copiedKind, setCopiedKind] = useState<string | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /* ESC برای بستن + قفل اسکرول بدنه + فوکوس اولیه روی دکمهٔ بستن */
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeRef.current?.focus();
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, onClose]);
+
+  useEffect(
+    () => () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    },
+    [],
+  );
+
+  const copyValue = useCallback((channel: KindContactChannel) => {
+    const done = () => {
+      setCopiedKind(channel.kind);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopiedKind(null), 1600);
+    };
+    const write = navigator.clipboard?.writeText(channel.value);
+    if (write) {
+      write.then(done).catch(() => {
+        /* fallback برای مرورگرهای قدیمی/عدم دسترسی کلیپ‌بورد */
+        const ta = document.createElement('textarea');
+        ta.value = channel.value;
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          done();
+        } catch {
+          /* سکوت — دکمه در همان حالت اول می‌ماند */
+        }
+        ta.remove();
+      });
+    }
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="kw-contact-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22 }}
+          className="fixed inset-0 z-[95] flex items-end justify-center bg-ink-950/45 backdrop-blur-sm sm:items-center sm:p-6"
+          onClick={onClose}
+          data-testid="kw-contact-backdrop"
+        >
+          <motion.div
+            key="kw-contact-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`راه‌های ارتباط ${title}`}
+            initial={{ opacity: 0, y: 42, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.985 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-h-[86dvh] w-full max-w-lg overflow-hidden overflow-y-auto rounded-t-[28px] bg-white shadow-[0_-18px_60px_-24px_rgba(8,50,45,.45)] sm:rounded-[28px] sm:shadow-[0_28px_80px_-28px_rgba(8,50,45,.5)]"
+          >
+            {/* نوار برند بالای کارت */}
+            <div
+              aria-hidden="true"
+              className="h-1.5 w-full bg-[linear-gradient(90deg,#0D8074,#25c5ba,#0D8074)]"
+            />
+
+            <div className="p-5 md:p-6">
+              {/* هدر */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-extrabold tracking-wide text-brand-600">
+                    راه‌های ارتباط مستقیم
+                  </p>
+                  <h3 className="mt-1 line-clamp-2 text-[16px] font-extrabold leading-7 text-ink-900 md:text-[17px]">
+                    {title}
+                  </h3>
+                  {subtitle && (
+                    <p className="mt-1.5 inline-flex max-w-full items-center gap-1 truncate rounded-full bg-ink-50 px-2.5 py-1 text-[11.5px] font-bold text-ink-600 ring-1 ring-ink-100">
+                      {subtitle}
+                    </p>
+                  )}
+                </div>
+                <button
+                  ref={closeRef}
+                  type="button"
+                  onClick={onClose}
+                  aria-label="بستن"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink-50 text-ink-500 ring-1 ring-ink-100 transition-colors hover:bg-ink-100 hover:text-ink-800"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* یادداشت هماهنگی */}
+              {contactNote && !loading && !error && (
+                <p className="mt-3 rounded-2xl bg-brand-50/70 px-3.5 py-2.5 text-[12px] font-bold leading-6 text-brand-800 ring-1 ring-brand-100">
+                  {contactNote}
+                </p>
+              )}
+
+              {/* بدنه */}
+              <div className="mt-4 flex flex-col gap-2">
+                {loading &&
+                  [0, 1].map((i) => (
+                    <div
+                      key={i}
+                      aria-hidden="true"
+                      className="flex h-[62px] animate-pulse items-center gap-3 rounded-2xl bg-ink-50 ring-1 ring-ink-100"
+                    />
+                  ))}
+
+                {error && !loading && (
+                  <div className="rounded-2xl bg-rose-50 px-4 py-5 text-center ring-1 ring-rose-100">
+                    <p className="text-[13px] font-extrabold text-rose-700">
+                      راه‌های ارتباط دریافت نشد
+                    </p>
+                    <p className="mt-1 text-[11.5px] font-bold text-rose-500">
+                      اتصال را چک کن و دوباره تلاش کن.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={onRetry}
+                      className="mt-3 inline-flex h-9 items-center rounded-full bg-rose-600 px-4 text-[12px] font-extrabold text-white transition-colors hover:bg-rose-700"
+                    >
+                      تلاش دوباره
+                    </button>
+                  </div>
+                )}
+
+                {!loading && !error && channels.length === 0 && (
+                  <p className="rounded-2xl bg-ink-50 px-4 py-5 text-center text-[12.5px] font-bold text-ink-500 ring-1 ring-ink-100">
+                    برای این آگهی هنوز راه ارتباطی ثبت نشده است.
+                  </p>
+                )}
+
+                {!loading &&
+                  !error &&
+                  channels.map((channel) => {
+                    const style = CHANNEL_STYLE[channel.kind] ?? FALLBACK_STYLE;
+                    const copied = copiedKind === channel.kind;
+                    const href = style.linkable && channel.link ? channel.link : null;
+                    return (
+                      <div
+                        key={channel.kind}
+                        className="flex items-center gap-3 rounded-2xl bg-white py-2.5 pe-2.5 ps-3.5 ring-1 ring-ink-100 transition-shadow hover:shadow-[0_10px_26px_-18px_rgba(11,53,48,.35)] hover:ring-ink-200"
+                        data-testid={`kw-channel-${channel.kind}`}
+                      >
+                        {/* دیسک رنگی شبکه */}
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-[0_6px_14px_-6px_rgba(15,20,32,.35)]',
+                            style.disc,
+                          )}
+                        >
+                          <style.Glyph className="h-5 w-5" />
+                        </span>
+
+                        {/* برچسب + مقدار */}
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[11px] font-extrabold text-ink-500">
+                            {channel.label}
+                          </span>
+                          <span
+                            dir="ltr"
+                            className="block truncate text-right text-[13.5px] font-extrabold tabular-nums text-ink-900"
+                          >
+                            {channel.value}
+                          </span>
+                        </span>
+
+                        {/* اکشن‌ها: باز کردن لینک (اگر هست) + کپی همیشگی */}
+                        {href && (
+                          <a
+                            href={href}
+                            target={channel.kind === 'phone' ? undefined : '_blank'}
+                            rel={channel.kind === 'phone' ? undefined : 'noopener noreferrer'}
+                            aria-label={`باز کردن ${channel.label}`}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 ring-1 ring-brand-100 transition-colors hover:bg-brand-100 hover:text-brand-700"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => copyValue(channel)}
+                          aria-label={`کپی ${channel.label}`}
+                          className={cn(
+                            'flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1 transition-colors',
+                            copied
+                              ? 'bg-mint-500 text-white ring-mint-500'
+                              : 'bg-ink-50 text-ink-500 ring-ink-100 hover:bg-ink-100 hover:text-ink-800',
+                          )}
+                        >
+                          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* پیام اعتماد ته کارت */}
+              <p className="mt-4 text-center text-[11px] font-bold leading-5 text-ink-400">
+                ارتباط مستقیم و بی‌واسطه با صاحب نیاز است؛ بعثت مردم هیچ واسطه‌ای نیست.
+              </p>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}

@@ -301,12 +301,10 @@ const FACETS: Record<SearchSource, { key: string; label: string; chips: FacetChi
   ],
   kindness: [
     {
-      key: 'listing_type',
-      label: 'نوع',
-      chips: [
-        { label: 'نیازمند کمک', value: 'need_help' },
-        { label: 'پیشنهاد کمک', value: 'offer_help' },
-      ],
+      // v2: فقط فوریت معنا دارد — دوگانهٔ «نیازمند/پیشنهاد» حذف شده
+      key: 'urgent',
+      label: 'فوریت',
+      chips: [{ label: 'فقط فوری‌ها', value: 'true' }],
     },
   ],
   tabyin: [

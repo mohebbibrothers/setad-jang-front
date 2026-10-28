@@ -124,7 +124,7 @@ export type SearchFacets = {
     level?: 'beginner' | 'intermediate' | 'advanced' | 'professional';
   };
   kindness?: {
-    listing_type?: 'need_help' | 'offer_help';
+    urgent?: string; // 'true' → فقط فوری‌ها (مهاجرت v2: listing_type حذف شد)
     category?: string; // category slug
     province?: string;
     city?: string;
@@ -537,25 +537,26 @@ async function fetchKindness(
   limit: number,
   page = 1,
 ): Promise<SourceResult> {
+  // kindness_wall v2: تختهٔ نیاز ادمین‌محور — cover_url/urgency/urgent فیلتر
   type L = {
     slug: string;
     title: string;
-    listing_type?: 'need_help' | 'offer_help' | string;
+    urgency?: 'normal' | 'urgent' | string;
     category?: { title?: string; slug?: string };
     province?: string;
     city?: string;
-    cover_image?: string;
+    cover_url?: string;
     view_count?: number;
   };
   const qs = buildQueryString(
     q,
     limit,
     {
-      listing_type: facets?.listing_type,
+      urgent: facets?.urgent === 'true' ? 'true' : undefined,
       category: facets?.category,
       province: facets?.province,
       city: facets?.city,
-      ordering: '-published_at',
+      ordering: 'fresh',
     },
     page,
   );
@@ -575,16 +576,12 @@ async function fetchKindness(
         id: `kindness:${l.slug}`,
         title: clean(l.title),
         subtitle: [catTitle, loc].filter(Boolean).join(' · ') || undefined,
-        thumb: absoluteMediaUrl(l.cover_image),
+        thumb: absoluteMediaUrl(l.cover_url),
         // See note above — Kindness listing detail route TBD.
         href: `/#kindness`,
         badge: l.view_count ? `${fa(l.view_count)} بازدید` : undefined,
-        pill:
-          l.listing_type === 'need_help'
-            ? 'نیازمند کمک'
-            : l.listing_type === 'offer_help'
-              ? 'پیشنهاد کمک'
-              : undefined,
+        // v2: نشان «فوری» برای نیازهای اورژانسی (listing_type دیگر نیست)
+        pill: l.urgency === 'urgent' ? 'فوری' : undefined,
       };
     }),
   };
