@@ -21,7 +21,6 @@ import {
   X,
 } from 'lucide-react';
 import {
-  DEFAULT_KINDNESS_FILTERS,
   KINDNESS_BOARD_PATH as BOARD,
   KINDNESS_SORT_OPTIONS,
   fetchKindnessCategories,
@@ -336,23 +335,23 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
           <div className="max-w-3xl">
             <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[12px] font-bold text-white/80 backdrop-blur-sm">
               <HeartHandshake className="h-4 w-4 text-brand-300" aria-hidden="true" />
-              اپِ «دیوار مهربانی» — اتصالِ مستقیمِ نیاز و مهربانی
+              دیوار مهربانی — هر نیاز، یک قرارِ مهربانی
             </p>
-            <h1 className="mt-5 text-[28px] font-black leading-[1.35] text-white sm:text-4xl md:text-[46px] md:leading-[1.35]">
-              هر نیازِ روی این دیوار،
-              <span className="block bg-gradient-to-l from-brand-200 via-mint-200 to-brand-400 bg-clip-text text-transparent">
-                یک دعوت به یک مهربانیِ بی‌واسطه
+            <h1 className="fa-title mt-5 text-[26px] font-black text-white sm:text-[34px] md:text-[44px]">
+              سرزمینِ نیازهای کوچک،
+              <span className="grad-text-safe mt-1 block bg-gradient-to-l from-brand-200 via-mint-200 to-brand-400 bg-clip-text text-transparent">
+                دست‌های بزرگ‌تر از آن‌ها
               </span>
             </h1>
             <p className="mt-4 max-w-2xl text-[13.5px] leading-8 text-white/75 md:text-[15px]">
-              نیازها را تیمِ بعثت ثبت و بررسی می‌کند — از لوازم آشپزخانه تا پوشاک. تو فقط پیداش
-              می‌کنی و از راه‌های ارتباطیِ همان آگهی (تماس، بله، ایتا، تلگرام، روبیکا، اینستاگرام)
-              مستقیم با صاحبِ نیاز حرف می‌زنی. بدون واسطه، بدون انتظار.
+              هر آگهیِ این تخته را تیمِ بعثت به‌نیابت از صاحبِ نیاز ثبت و بررسی کرده است. تو
+              می‌گردی، نیازِ هم‌قَدِ توانت را پیدا می‌کنی و از همان کارت، مستقیم و بی‌واسطه با او
+              حرف می‌زنی — بی‌ثبت‌نام، بی‌انتظار، بی‌واسطه.
             </p>
 
             {/* آمارِ زندهٔ تخته (صداقتِ عدد: صفرِ واقعی هم نشان داده می‌شود) */}
             {stats && (
-              <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="mt-8 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
                 {[
                   {
                     value: stats.openListings,
@@ -384,10 +383,17 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
                     icon: LayoutGrid,
                     tone: 'text-brand-200',
                   },
-                ].map((s) => (
+                ].map((s, i, arr) => (
                   <div
                     key={s.label}
-                    className="rounded-2xl border border-white/10 bg-white/[.05] px-4 py-3.5 backdrop-blur-sm"
+                    className={cn(
+                      'rounded-2xl border border-white/10 bg-white/[.05] px-4 py-3.5 backdrop-blur-sm transition-colors duration-300 hover:border-brand-400/25 hover:bg-white/[.08]',
+                      /* ۵ کارت در موبایلِ دوستونی: کارتِ پنجم تمام‌عرض می‌شود
+                         تا یتیم نماند؛ در بریک‌پوینت‌های بالاتر عادی. */
+                      i === arr.length - 1 && arr.length % 2 === 1
+                        ? 'col-span-2 sm:col-span-1'
+                        : undefined,
+                    )}
                   >
                     <div
                       className={cn(
@@ -403,38 +409,30 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
                 ))}
               </div>
             )}
-
-            <div className="mt-8">
-              <a
-                href="#board"
-                className="inline-flex items-center gap-2 rounded-2xl bg-brand-500 px-6 py-3.5 text-[14px] font-extrabold text-white shadow-lg shadow-brand-900/40 transition-all hover:bg-brand-400 active:scale-[.98]"
-              >
-                مشاهدهٔ آگهی‌ها
-                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-              </a>
-            </div>
           </div>
         </div>
       </section>
 
       {/* ══════════ چطور کار می‌کند (سه گام) ══════════ */}
-      <section className="container-edge relative z-10 -mt-8">
-        <div className="grid gap-3 rounded-3xl border border-ink-100 bg-white p-4 shadow-[0_12px_32px_-20px_rgba(15,20,32,.25)] sm:grid-cols-3 md:p-5">
+      {/* باکس روی لبهٔ هیرو می‌نشیند: در موبایل حاشیهٔ کناری حفظ می‌شود تا
+          هالهٔ تیرهٔ هیرو از دو طرفِ باکس بیرون نزند و خطِ برشِ سختی نسازد. */}
+      <section className="relative z-10 -mt-8 px-4 sm:px-6">
+        <div className="mx-auto grid max-w-[1180px] gap-3 rounded-3xl border border-ink-100 bg-white p-4 shadow-[0_12px_32px_-20px_rgba(15,20,32,.25)] sm:grid-cols-3 md:p-5">
           {[
             {
               icon: Search,
-              title: 'نیاز را پیدا کن',
-              text: 'با جست‌وجوی هوشمند و فیلترِ دسته، استان، شهر و فوریت — دقیقاً همان چیزی که می‌توانی برآورده‌اش کنی.',
+              title: 'بگرد و پیدا کن',
+              text: 'جست‌وجوی هوشمند به‌همراهِ فیلترِ دسته، استان، شهر و فوریت؛ در چند ثانیه به نیازِ هم‌قدِ توانِ خودت می‌رسی.',
             },
             {
               icon: PhoneCall,
-              title: 'راه تماس را باز کن',
-              text: 'روی هر کارت «راه‌های ارتباط» را بزن؛ فقط همان‌هایی که صاحبِ نیاز گذاشته: تماس، بله، ایتا، تلگرام، روبیکا، اینستاگرام.',
+              title: 'راهِ ارتباط را باز کن',
+              text: 'روی هر کارت «راه‌های ارتباط» را بزن؛ فقط همان کانال‌هایی که صاحبِ نیاز گذاشته — بدونِ واسطه و بدونِ ثبت‌نام.',
             },
             {
               icon: HeartHandshake,
-              title: 'مستقیم برآورده کن',
-              text: 'بی‌هیچ واسطه‌ای با صاحبِ نیاز هماهنگ کن و کار را به سرانجام برسان؛ سریع، امن و رو در رو.',
+              title: 'کار را تمام کن',
+              text: 'هماهنگ کن، برآورده کن و نیاز را از دیوار به «دیوارِ نتیجه‌ها» بفرست تا همه ببینند مهربانی جواب می‌دهد.',
             },
           ].map((s) => (
             <div key={s.title} className="flex items-start gap-3 rounded-2xl bg-ink-50/60 p-4">
@@ -459,23 +457,14 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
                 <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
                 تختهٔ زندهٔ نیازها
               </p>
-              <h2 className="mt-1 text-[22px] font-black text-ink-900 md:text-[26px]">
+              <h2 className="fa-title mt-1 text-[21px] font-black text-ink-900 md:text-[26px]">
                 آگهی‌های دیوار مهربانی
               </h2>
               <p className="mt-2 max-w-prose text-[12.5px] leading-7 text-ink-500 md:text-[13px]">
-                هر آگهی یک نیازِ واقعیِ بررسی‌شده است؛ دسته را انتخاب کن، جست‌وجو کن و از همانجا
-                مستقیم با صاحبِ نیاز در تماس شو.
+                روی تخته، هر کارت یک نیازِ واقعیِ بررسی‌شده است. با جست‌وجو و فیلترِ دسته و شهر به
+                نیازِ خودت برس و از «راه‌های ارتباط» همان کارت، مستقیم جواب بگیر.
               </p>
             </div>
-            {stats && stats.urgentListings > 0 && (
-              <Link
-                href={`${kindnessHubHref(DEFAULT_KINDNESS_FILTERS, { urgent: true })}#board`}
-                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-gradient-to-l from-[#f43f5e] to-[#e11d48] px-4 text-[12px] font-extrabold text-white shadow-[0_8px_20px_-6px_rgba(225,29,72,.55)] transition-transform hover:-translate-y-0.5 active:scale-[.97]"
-              >
-                <Flame className="h-3.5 w-3.5" aria-hidden="true" />
-                {`${fa(stats.urgentListings)} نیازِ فوری روی دیوار`}
-              </Link>
-            )}
           </div>
 
           {/* ریل دسته‌ها (لینک‌محور، لنگرِ #board) */}
@@ -485,8 +474,25 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
             </div>
           )}
 
-          {/* نوارِ ابزارِ زنده */}
-          <KindnessToolbar filters={f} hasFilters={hasFilters} />
+          {/* نوارِ ابزارِ زنده — گزینه‌های استان/شهر از دادهٔ واقعیِ تخته */}
+          <KindnessToolbar
+            filters={f}
+            hasFilters={hasFilters}
+            facets={{
+              provinces: Array.from(
+                new Set(
+                  [...(pageData?.items ?? [])]
+                    .map((l) => (l.province ?? '').trim())
+                    .filter(Boolean),
+                ),
+              ),
+              cities: Array.from(
+                new Set(
+                  [...(pageData?.items ?? [])].map((l) => (l.city ?? '').trim()).filter(Boolean),
+                ),
+              ),
+            }}
+          />
 
           {/* چیپ‌های فیلترِ فعال */}
           {chips.length > 0 && (
@@ -501,7 +507,7 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
           {pageData && !pageOutOfRange && (
             <div className="mt-6 flex items-center justify-between text-[12px] font-bold text-ink-500">
               <p>
-                {hasFilters ? 'نتایجِ فیلترشده:' : 'همهٔ نیازهای روی دیوار:'}{' '}
+                {hasFilters ? 'نتیجهٔ این جست‌وجو:' : 'همهٔ نیازهای روی دیوار:'}{' '}
                 <span className="tabular-nums text-ink-900">{fa(pageData.count)}</span> آگهی
                 {totalPages > 1 && (
                   <>
@@ -519,16 +525,16 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
           {pageData === null ? (
             <div className="mt-4 rounded-3xl border border-dashed border-ink-200 bg-white/60">
               <EmptyState
-                title="تختهٔ مهربانی در دسترس نیست"
-                description="اتصال به سامانه برقرار نشد؛ لطفاً چند لحظهٔ دیگر دوباره تلاش کن."
+                title="تخته الان بالا نمی‌آید"
+                description="ارتباط با سامانه برقرار نشد. یک‌بار دیگر تلاش کن؛ نیازها همان‌جا منتظرند."
                 iconPath="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
               />
             </div>
           ) : pageOutOfRange ? (
             <div className="mt-4 rounded-3xl border border-dashed border-ink-200 bg-white/60">
               <EmptyState
-                title="این صفحه در تخته نیست"
-                description={`تخته در این نمایش ${fa(pageData.count)} آگهی در ${fa(pageData.pageCount)} صفحه دارد.`}
+                title="این شمارهٔ صفحه، صفحه‌ای ندارد"
+                description={`تخته در این نمایش ${fa(pageData.count)} آگهی در ${fa(pageData.pageCount)} صفحه دارد؛ از صفحهٔ اول شروع کن.`}
                 iconPath="M21 21l-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"
               />
               <div className="-mt-6 pb-8 text-center">
@@ -537,18 +543,18 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
                   className="inline-flex items-center gap-1.5 rounded-2xl border border-ink-200 bg-white px-5 py-2.5 text-[12px] font-extrabold text-ink-700 transition-colors hover:border-ink-300"
                 >
                   <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                  بازگشت به صفحهٔ اول
+                  برگشت به صفحهٔ اول
                 </Link>
               </div>
             </div>
           ) : pageData.items.length === 0 ? (
             <div className="mt-4 rounded-3xl border border-dashed border-ink-200 bg-white/60">
               <EmptyState
-                title={hasFilters ? 'در این فیلتر چیزی نیست' : 'دیوار مهربانی دارد شارژ می‌شود'}
+                title={hasFilters ? 'با این فیلترها چیزی نمانده' : 'دیوار دارد نفس تازه می‌کند'}
                 description={
                   hasFilters
-                    ? 'فیلترها را کم‌رنگ‌تر کن تا بقیهٔ نیازها دیده شوند.'
-                    : 'به‌محض ثبت نیازهای جدید، اینجا پین می‌شوند و هر مهربانی می‌تواند مستقیم پاسخ بدهد.'
+                    ? 'فیلترها را کمی بازتر کن؛ شاید همان نیازِ تو یک تبِ آن‌طرف‌تر نشسته باشد.'
+                    : 'به‌محضِ ثبتِ نیازهای تازه، همین‌جا می‌نشینند و هر مهربانی می‌تواند مستقیم جواب بدهد.'
                 }
                 iconPath="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
               />
@@ -623,12 +629,12 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
                 <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
                 دیوارِ نتیجه‌ها
               </p>
-              <h2 className="mt-1 text-[22px] font-black text-ink-900 md:text-[26px]">
+              <h2 className="fa-title mt-1 text-[21px] font-black text-ink-900 md:text-[26px]">
                 مهربانی‌هایی که به خطِ پایان رسیدند
               </h2>
               <p className="mt-2 max-w-prose text-[12.5px] leading-7 text-ink-500 md:text-[13px]">
-                شفافیت یعنی همین: این نیازها امروز دیگر روی تخته نیستند چون برآورده شدند — روایتِ ۹۰
-                روزِ اخیر.
+                شفافیت یعنی همین: این نیازها دیگر روی تخته نیستند چون برآورده شدند. روایتِ ۹۰ روزِ
+                گذشته، با حرفِ خودِ تیمِ بعثت.
               </p>
             </div>
 
@@ -728,12 +734,11 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
               <ShieldCheck className="h-4 w-4 text-brand-300" aria-hidden="true" />
               اعتماد، پیش از هر تماس
             </p>
-            <h2 className="mt-4 text-[22px] font-black leading-9 text-white md:text-[28px] md:leading-[1.6]">
-              این دیوار با
-              <span className="mx-1.5 bg-gradient-to-l from-brand-200 to-mint-300 bg-clip-text text-transparent">
-                سه قانون
+            <h2 className="fa-title mt-4 text-[21px] font-black text-white md:text-[27px]">
+              سه قانون، پشتِ هر کارتِ این دیوار
+              <span className="grad-text-safe mt-1 block bg-gradient-to-l from-brand-200 via-mint-200 to-mint-400 bg-clip-text text-transparent">
+                بررسی‌شده · بی‌واسطه · زنده
               </span>
-              کار می‌کند
             </h2>
           </div>
 
@@ -743,19 +748,19 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
                 icon: ShieldCheck,
                 ring: 'ring-brand-400/25 bg-brand-500/12 text-brand-200',
                 title: 'بررسی‌شده، نه ناشناس',
-                text: 'نیازها را تیمِ بعثت به‌نیابت از صاحبانِ نیاز ثبت و راستی‌آزمایی می‌کند؛ روی دیوار فقط نیازِ واقعی می‌نشیند.',
+                text: 'هر نیاز را تیمِ بعثت به‌نیابت از صاحبش ثبت و راستی‌آزمایی می‌کند؛ روی دیوار فقط نیازِ واقعی می‌نشیند.',
               },
               {
                 icon: PhoneCall,
                 ring: 'ring-mint-500/25 bg-mint-500/12 text-mint-300',
-                title: 'تماسِ مستقیم، بدون واسطه',
-                text: 'راه‌های ارتباطی را خودِ آگهی می‌دهد؛ هیچ واسطه‌ای بین تو و صاحبِ نیاز نیست و کمکت بی‌واسطه می‌رسد.',
+                title: 'تماسِ مستقیم، بدونِ واسطه',
+                text: 'کانالِ ارتباط را خودِ آگهی می‌دهد؛ نه واسطه‌ای در میان است، نه انتظاری در صف — کمک همان‌جا به دستِ صاحبش می‌رسد.',
               },
               {
                 icon: Timer,
                 ring: 'ring-amber-400/25 bg-amber-400/12 text-amber-300',
                 title: 'عمرِ شفافِ آگهی',
-                text: 'هر آگهی تاریخِ انقضا دارد و نیازهای برآورده‌شده به «دیوار نتیجه‌ها» می‌روند؛ تخته همیشه تازه می‌ماند.',
+                text: 'هر آگهی تاریخِ انقضا دارد و هر نیازِ برآورده‌شده به «دیوارِ نتیجه‌ها» کوچ می‌کند؛ تخته همیشه تازه و واقعی می‌ماند.',
               },
             ].map((t) => (
               <div
@@ -784,19 +789,19 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
           <div className="mt-10 overflow-hidden rounded-[28px] border border-brand-400/25 bg-gradient-to-l from-brand-500/90 via-brand-600 to-brand-800 p-6 shadow-[0_30px_60px_-30px_rgba(13,128,116,.55)] sm:p-8">
             <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <p className="text-[17px] font-black text-white sm:text-[20px]">
-                  یک جایی روی این دیوار، دستِ تو کم است
+                <p className="fa-title text-[16px] font-black text-white sm:text-[19px]">
+                  یک جای این دیوار، دستِ تو کم است
                 </p>
                 <p className="mt-1.5 max-w-xl text-[12px] font-medium leading-7 text-white/85 sm:text-[13px]">
-                  همین حالا تخته را بگرد؛ شاید همان یک نیازِ کوچک باشد که فقط تو می‌توانی برآورده‌اش
-                  کنی — و آن را به «دیوار نتیجه‌ها» بفرستی.
+                  یک‌بار دیگر تخته را بالا و پایین کن؛ شاید همان نیازِ کوچکی آنجاست که فقط تو
+                  می‌توانی برآورده‌اش کنی — و بعدش به «دیوارِ نتیجه‌ها» برود.
                 </p>
               </div>
               <a
                 href="#board"
                 className="inline-flex h-12 shrink-0 items-center gap-2 rounded-2xl bg-white px-6 text-[13.5px] font-extrabold text-ink-900 shadow-[0_14px_30px_-12px_rgba(0,0,0,.45)] transition-all hover:bg-brand-50 active:scale-[.98]"
               >
-                برگشت به تختهٔ نیازها
+                برگشت به بالای تخته
                 <ChevronLeft className="h-4 w-4" aria-hidden="true" />
               </a>
             </div>

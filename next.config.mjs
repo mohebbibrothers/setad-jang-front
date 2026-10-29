@@ -47,6 +47,15 @@ const nextConfig = {
       { protocol: 'https', hostname: 'setadjang.ir', pathname: '/**' },
       { protocol: 'https', hostname: 'www.setadjang.ir', pathname: '/**' },
       { protocol: 'https', hostname: 'api.setadjang.ir', pathname: '/**' },
+      // Production brand domains. `apiUrl` در src/lib/site.ts پیش‌فرض
+      // https://besat.me است و DRF آدرسِ مدیا را نسبی برمی‌گرداند
+      // (`/media/...`) که با absoluteMediaUrl به همین هاست تبدیل می‌شود؛
+      // اگر این الگو نباشد، next/image در رندرِ سروری throw می‌کند و کل
+      // صفحه به error boundary می‌افتد — دقیقاً همان وابستگیِ پنهان به
+      // ست‌بودنِ NEXT_PUBLIC_API_URL که نباید وجود داشته باشد.
+      { protocol: 'https', hostname: 'besat.me', pathname: '/**' },
+      { protocol: 'https', hostname: 'www.besat.me', pathname: '/**' },
+      { protocol: 'https', hostname: 'api.besat.me', pathname: '/**' },
       // Local dev — cover the common ports both frontend + backend run on
       { protocol: 'http', hostname: 'localhost', port: '', pathname: '/**' },
       { protocol: 'http', hostname: 'localhost', port: '8000', pathname: '/**' },

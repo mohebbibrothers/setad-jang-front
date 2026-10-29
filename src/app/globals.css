@@ -1177,3 +1177,55 @@
     animation: none;
   }
 }
+
+/* ── اسکرول‌بارِ سبکِ سایت برای پنل‌های کشویی/لیست‌ها ─────────────── */
+/* اسکرول‌بار صفحه طبق سیاستِ خانه (به‌درخواست کارفرما) مخفی است؛ ولی
+   لیست‌های درون‌صفحه‌ای باید «قابل‌دیدن و هم‌خانواده» باشند: نازک (۶px)،
+   تنهٔ شفاف، شستِ برندِ نیم‌شفاف که با hover پررنگ می‌شود، گوشهٔ کاملِ گرد.
+   Firefox با scrollbar-width/color پوشش داده می‌شود. */
+.kw-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(13, 128, 116, 0.32) transparent;
+  /* فضای ثابتِ نوار تا با ظاهر/محو شدنِ اسکرول‌بار، محتوا جابه‌جا نشود */
+  scrollbar-gutter: stable;
+}
+.kw-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.kw-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 4px;
+}
+.kw-scroll::-webkit-scrollbar-thumb {
+  background: rgba(13, 128, 116, 0.32);
+  border-radius: 999px;
+}
+.kw-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(13, 128, 116, 0.55);
+}
+
+/* ── متنِ گرادیانیِ امن برای حروفِ فارسی ───────────────────────────── */
+/* ریشهٔ «کات‌شدنِ کسره/دنبالهٔ حروف»: با background-clip:text، رنگِ متن
+   شفاف می‌شود و فقط جعبهٔ پس‌زمینه (خط‌جعبه) رنگ می‌گیرد؛ جوهرِ حروفی که
+   از خط‌جعبه بیرون می‌زند (ی، ج، کسره، تنوین، دُمِ «م») کاملاً ناپدید
+   می‌شود. درمان: به جعبه فضای عمودی می‌دهیم و با margin منفی جبران
+   می‌کنیم ⇒ نه چیدمان جابه‌جا می‌شود، نه حرفی کات. box-decoration-break
+   تضمین می‌کند اگر متن به دو خط شکست، هر تکه پس‌زمینهٔ کامل خودش را دارد. */
+.grad-text-safe {
+  display: inline-block;
+  padding-block: 0.16em 0.22em;
+  margin-block: -0.16em -0.22em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  /* فضای کافی برای دنباله‌ها بدون بریدنِ خطِ بعدی */
+  line-height: 1.55;
+}
+
+/* ── تیترهای فارسی: تنفسِ عمودی ──────────────────────────────────── */
+/* فارسی دنباله و کسره دارد؛ line-height تنگ باعث تداخل/برش می‌شود. این
+   کلاس برای تیترهای دو-سه‌خطیِ بخش‌ها استفاده می‌شود. */
+.fa-title {
+  line-height: 1.65;
+  padding-block-end: 0.12em;
+}
