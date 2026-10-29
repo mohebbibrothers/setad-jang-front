@@ -156,21 +156,21 @@ describe('KindnessSection — تختهٔ نیاز v2', () => {
     expect(screen.getAllByText('🍳').length).toBeGreaterThan(0);
   });
 
-  it('تگل «فوری‌ها» فقط کارت‌های اورژانسی را نگه می‌دارد', async () => {
+  it('تب «فوری‌ها» فقط کارت‌های اورژانسی را نگه می‌دارد', async () => {
     renderSection();
-    fireEvent.click(screen.getByRole('button', { name: /فوری‌ها/ }));
+    fireEvent.click(screen.getByRole('tab', { name: /فوری‌ها/ }));
     // AnimatePresence exit: کارت‌های قبلی تا پایان انیمیشن خروج می‌مانند
     await waitFor(() => expect(screen.queryByText('لباس زمستانی بچگانه')).toBeNull());
     await waitFor(() => expect(screen.queryByText('ویلچر استاندارد')).toBeNull());
     expect(screen.queryByText('یخچال دوقلو سالم')).toBeTruthy();
   });
 
-  it('چیپ دسته فقط همان دسته را نشان می‌دهد و با «همه» برمی‌گردد', async () => {
+  it('تب دسته فقط همان دسته را نشان می‌دهد و با «همه» برمی‌گردد', async () => {
     renderSection();
-    fireEvent.click(screen.getByRole('button', { name: /پوشاک/ }));
+    fireEvent.click(screen.getByRole('tab', { name: /پوشاک/ }));
     await waitFor(() => expect(screen.queryByText('یخچال دوقلو سالم')).toBeNull());
     expect(screen.queryByText('لباس زمستانی بچگانه')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: /همه/ }));
+    fireEvent.click(screen.getByRole('tab', { name: /همه/ }));
     await screen.findByText('یخچال دوقلو سالم');
   });
 
@@ -237,6 +237,52 @@ describe('KindnessSection — تختهٔ نیاز v2', () => {
     apiFetchMock.mockResolvedValueOnce(DETAIL);
     fireEvent.click(screen.getByRole('button', { name: 'تلاش دوباره' }));
     await waitFor(() => screen.getByTestId('kw-channel-phone'));
+  });
+
+  it('ریل دسته‌ها: tablist مرکزچین با تب «همه» (آیکن گرید خانواده) + ایموجی دسته‌ها', () => {
+    renderSection();
+    const rail = screen.getByTestId('kw-rail');
+    expect(rail.getAttribute('role')).toBe('tablist');
+    const allTab = screen.getByRole('tab', { name: /همه/ });
+    expect(rail.contains(allTab)).toBe(true);
+    expect(allTab.querySelector('svg')).toBeTruthy(); // grid glyph
+    // والدِ مرکزچین: همان الگوی w-fit mx-auto قرارگاه آموزشی تا صفحه هرگز اسکرول عرضی نگیرد
+    expect(rail.parentElement?.parentElement?.className).toContain('mx-auto');
+    expect(rail.parentElement?.parentElement?.className).toContain('w-fit');
+  });
+
+  it('دکمهٔ اشتراک‌گذاری با Web Share API لینک slug آینده را می‌فرستد', async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+    renderSection();
+    fireEvent.click(screen.getAllByRole('button', { name: /اشتراک‌گذاری آگهی/ })[0]);
+    await waitFor(() => expect(share).toHaveBeenCalled());
+    const arg = share.mock.calls[0][0] as { url: string };
+    expect(arg.url).toContain('/kindness-wall/');
+    expect(decodeURIComponent(arg.url)).toContain('/kindness-wall/یخچال-دوقلو');
+  });
+
+  it('بدون Web Share API، لینک به کلیپ‌بورد می‌رود و بازخورد می‌دهد', async () => {
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    renderSection();
+    const btn = screen.getAllByRole('button', { name: /اشتراک‌گذاری آگهی/ })[0];
+    fireEvent.click(btn);
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(expect.stringContaining('/kindness-wall/یخچال-دوقلو')),
+    );
+    await waitFor(() => expect(btn.getAttribute('title')).toBe('لینک کپی شد'));
+  });
+
+  it('شیت تماس با portal روی body سوار می‌شود — جریان صفحه را نمی‌شکند', async () => {
+    renderSection();
+    fireEvent.click(screen.getAllByRole('button', { name: /راه‌های ارتباط/ })[0]);
+    await waitFor(() => screen.getByRole('dialog'));
+    const backdrop = screen.getByTestId('kw-contact-backdrop');
+    expect(backdrop.parentElement).toBe(document.body);
+    // داخل سکشنِ دیوار مهربانی نیست
+    expect(document.getElementById('kindness')?.contains(backdrop)).toBe(false);
   });
 
   it('ESC شیت را می‌بندد', async () => {

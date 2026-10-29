@@ -1,18 +1,21 @@
 'use client';
 
+import { useCallback, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
+  Check,
   Clock,
   Eye,
   Flame,
   Handshake,
-  Images,
   MapPin,
   Package,
   Phone,
+  Share2,
   Sparkles,
 } from 'lucide-react';
 import { SmartImage } from '@/components/ui/SmartImage';
+import { siteConfig } from '@/lib/site';
 import { formatPersianNumber as fa } from '@/lib/utils';
 import type { KindListing } from './KindnessSection';
 
@@ -24,10 +27,17 @@ import type { KindListing } from './KindnessSection';
  * بصری: کاور → بج فوریت/ویژگی + روزهای مانده → چیپ دسته (با ایموجی ادمین) →
  * عنوان → چکیده → مقدار/موقعیت → اثبات اجتماعی (اعلام‌های آمادگی) → CTA.
  *
- * قهرمان کارت دکمه‌ی «راه‌های ارتباط» است (همان چیزی که کل سناریو حولش
- * می‌چرخد) — گرادیانت برند مثل خانوادهٔ CTA حرکت‌ها. گالری دوم‌هاست، نه اول.
+ * قهرمان کارت دکمه‌ی «راه‌های ارتباط» است — گرادیانت برندِ خانوادهٔ CTA.
+ * دومین اکشن = اشتراک‌گذاری لینک آگهی (Web Share API با fallbackِ کپی) —
+ * حتی پیش از ساخته‌شدن صفحهٔ slug، لینکِ استانداردِ آینده پخش می‌شود و
+ * هیچ دکمه‌ی مرده/گمراه‌کننده‌ای روی کارت نیست.
  * ───────────────────────────────────────────────────────────────────────────
  */
+
+/** لینکِ مطلق و پایدار آگهی — مسیرِ صفحهٔ slug در مایلستونِ بعد ساخته می‌شود. */
+export function kindnessListingUrl(slug: string): string {
+  return `${siteConfig.url}/kindness-wall/${slug}`;
+}
 
 export function KindnessCard({
   l,
@@ -43,6 +53,26 @@ export function KindnessCard({
   const urgent = l.urgency === 'urgent';
   const expiringSoon = l.daysLeft !== null && l.daysLeft <= 14;
   const location = [l.city, l.province].filter(Boolean).join('، ') || 'سراسر کشور';
+
+  /* اشتراک‌گذاری — share بومی اگر دارد، وگرنه کپی + بازخورد سبز */
+  const [shared, setShared] = useState(false);
+  const shareTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shareListing = useCallback(async () => {
+    const url = kindnessListingUrl(l.slug);
+    const text = `دیوار مهربانی — ${l.title}`;
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        await navigator.share({ title: l.title, text, url });
+        return;
+      }
+      await navigator.clipboard?.writeText(url);
+      setShared(true);
+      if (shareTimer.current) clearTimeout(shareTimer.current);
+      shareTimer.current = setTimeout(() => setShared(false), 1800);
+    } catch {
+      /* کاربر دیالوگ share را بست یا کلیپ‌بورد رد کرد — سکوتِ مؤدب */
+    }
+  }, [l.slug, l.title]);
 
   return (
     <motion.article
@@ -157,7 +187,7 @@ export function KindnessCard({
           )}
         </div>
 
-        {/* اکشن‌ها — راه‌های ارتباط قهرمان است */}
+        {/* اکشن‌ها — راه‌های ارتباط قهرمان است، اشتراک‌گذاری همراهش */}
         <div className="mt-3.5 flex items-center gap-2">
           <button
             type="button"
@@ -169,12 +199,16 @@ export function KindnessCard({
           </button>
           <button
             type="button"
-            onClick={() => onAlbum(l)}
-            aria-label={`گالری تصاویر ${l.title}`}
-            title="گالری تصاویر"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-ink-200 bg-white text-ink-500 transition-colors hover:border-brand-300 hover:text-brand-600"
+            onClick={shareListing}
+            aria-label={`اشتراک‌گذاری آگهی ${l.title}`}
+            title={shared ? 'لینک کپی شد' : 'اشتراک‌گذاری'}
+            className={`inline-flex h-11 w-11 items-center justify-center rounded-xl border transition-colors ${
+              shared
+                ? 'border-mint-500 bg-mint-50 text-mint-600'
+                : 'border-ink-200 bg-white text-ink-500 hover:border-brand-300 hover:text-brand-600'
+            }`}
           >
-            <Images className="h-4 w-4" />
+            {shared ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
           </button>
         </div>
       </div>

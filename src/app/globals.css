@@ -1137,3 +1137,24 @@
     animation: none;
   }
 }
+
+/* ── اسکرول‌بار نازکِ شیت راه‌های ارتباط (دیوار مهربانی) ───────────── */
+/* فقط داخل شیت اعمال می‌شود؛ اسکرول‌بار صفحه طبق سیاست سایت مخفی است.
+   thumb برنزی-سبز ملایم، تنه شفاف، گوشه‌های کاملاً گرد. */
+.kw-sheet-scroll {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(13, 128, 116, 0.35) transparent;
+}
+.kw-sheet-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.kw-sheet-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.kw-sheet-scroll::-webkit-scrollbar-thumb {
+  background: rgba(13, 128, 116, 0.35);
+  border-radius: 999px;
+}
+.kw-sheet-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(13, 128, 116, 0.55);
+}
