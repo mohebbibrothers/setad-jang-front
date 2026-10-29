@@ -7,12 +7,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { BadgeCheck, Flame, HeartHandshake, Layers } from 'lucide-react';
 import { SectionTitle } from './SectionTitle';
 import { EmptyState } from './EmptyState';
-import { CampaignAlbum, type AlbumImage } from './CampaignAlbum';
 import { KindnessCard } from './KindnessCard';
-import { KindnessContactSheet, type KindContactChannel } from './KindnessContactSheet';
+import { useKindnessOverlays } from './useKindnessOverlays';
+import type { KindContactChannel } from './KindnessContactSheet';
 import { Icon } from '@/components/icons/Icon';
-import { apiFetch } from '@/lib/api';
-import { absoluteMediaUrl, cn, formatPersianNumber as fa } from '@/lib/utils';
+import { cn, formatPersianNumber as fa } from '@/lib/utils';
 
 /**
  * ───────────────────────────────────────────────────────────────────────────
@@ -32,7 +31,7 @@ import { absoluteMediaUrl, cn, formatPersianNumber as fa } from '@/lib/utils';
  *   • شیت راه‌های ارتباط با portal روی body (مانند CampaignAlbum) تا
  *     هرگز جریان صفحه را نشکند.
  *   • هیچ لینک مرده‌ای نیست؛ کاور → آلبوم، CTA → شیت تماس، فوتر →
- *     «مشاهده همه آگهی‌ها» (هابِ مایلستون بعد).
+ *     «مشاهده همه آگهی‌ها» به هابِ واقعی /kindness-wall.
  * ───────────────────────────────────────────────────────────────────────────
  */
 
@@ -188,120 +187,12 @@ export function KindnessSection({
   const goPrev = () => setPage((p) => (p - 1 + totalPages) % totalPages);
   const goNext = () => setPage((p) => (p + 1) % totalPages);
 
-  /* ── شیت راه‌های ارتباط + کش جزئیات (یک fetch برای شیت و آلبوم) ──────── */
-  const [sheet, setSheet] = useState<{ open: boolean; listing: KindListing | null }>({
-    open: false,
-    listing: null,
-  });
-  const [details, setDetails] = useState<Record<string, KindListingDetail | null>>({});
-  const ensureDetail = useCallback(
-    (l: KindListing) => {
-      if (details[l.slug] !== undefined) return;
-      apiFetch<KindListingDetail>(`/kindness-wall/listings/${encodeURIComponent(l.slug)}/`, {
-        revalidate: 600,
-        tags: [`kindness:${l.slug}`, 'kindness'],
-        skipAuth: true,
-      })
-        .then((d) => setDetails((prev) => ({ ...prev, [l.slug]: d })))
-        .catch(() => setDetails((prev) => ({ ...prev, [l.slug]: null })));
-    },
-    [details],
-  );
-  const retryDetail = useCallback((l: KindListing) => {
-    setDetails((prev) => {
-      const next = { ...prev };
-      delete next[l.slug];
-      return next;
-    });
-  }, []);
-  useEffect(() => {
-    /* بعد از پاک‌کردن کشِ خطا، دوباره بگیر */
-    if (sheet.open && sheet.listing && details[sheet.listing.slug] === undefined) {
-      ensureDetail(sheet.listing);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [details]);
-
-  const openSheet = useCallback(
-    (l: KindListing) => {
-      setSheet({ open: true, listing: l });
-      ensureDetail(l);
-    },
-    [ensureDetail],
-  );
-  const closeSheet = useCallback(() => setSheet((s) => ({ ...s, open: false })), []);
-
-  /* ── آلبوم تصاویر ───────────────────────────────────────────────────── */
-  const [album, setAlbum] = useState<{
-    open: boolean;
-    title: string;
-    subtitle?: { label: string; value: string };
-    images: AlbumImage[];
-    loading: boolean;
-  }>({ open: false, title: '', images: [], loading: false });
-  const albumSlugRef = useRef<string | null>(null);
-  const closeAlbum = useCallback(() => setAlbum((a) => ({ ...a, open: false })), []);
-
-  const buildAlbumImages = useCallback(
-    (l: KindListing, detail: KindListingDetail | null | undefined): AlbumImage[] => {
-      const out: AlbumImage[] = [];
-      if (l.coverImage) out.push({ url: l.coverImage, alt: l.title });
-      for (const im of detail?.images?.slice().sort((a, b) => {
-        if (Boolean(b.is_cover) !== Boolean(a.is_cover)) return b.is_cover ? 1 : -1;
-        return (a.order ?? 0) - (b.order ?? 0);
-      }) ?? []) {
-        const url = absoluteMediaUrl(im.image) ?? im.image;
-        if (url && !out.some((o) => o.url === url)) out.push({ url, alt: im.alt_text || l.title });
-      }
-      return out;
-    },
-    [],
-  );
-
-  const openAlbum = useCallback(
-    (l: KindListing) => {
-      albumSlugRef.current = l.slug;
-      const cached = details[l.slug];
-      setAlbum({
-        open: true,
-        title: l.title,
-        subtitle: {
-          label: 'دسته',
-          value: l.categoryTitle ? `${l.categoryTitle} · ${fa(l.quantity)} ${l.unit}` : l.title,
-        },
-        images: buildAlbumImages(l, cached === null ? undefined : cached),
-        loading: cached === undefined,
-      });
-      if (cached === undefined) ensureDetail(l);
-    },
-    [details, buildAlbumImages, ensureDetail],
-  );
-
-  /* وقتی جزئیات تازه رسید و آلبوم باز است، تصاویر را زنده به‌روز کن */
-  useEffect(() => {
-    if (!album.open) return;
-    const slug = albumSlugRef.current;
-    if (!slug) return;
-    const listing = listings.find((l) => l.slug === slug);
-    const detail = details[slug];
-    if (!listing || detail === undefined) return;
-    setAlbum((a) =>
-      a.open
-        ? {
-            ...a,
-            images: buildAlbumImages(listing, detail === null ? undefined : detail),
-            loading: false,
-          }
-        : a,
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [details, album.open]);
+  /* رویه‌های شناور (شیت راه‌های ارتباط + آلبوم) — منبعِ یکتا: هوکِ مشترک
+     که هابِ /kindness-wall هم از آن تغذیه می‌کند. */
+  const { openContact, openAlbum, overlays } = useKindnessOverlays(listings);
 
   const showStats =
     stats !== null && stats.openListings + stats.fulfilled30d + stats.volunteersTotal > 0;
-
-  const sheetListing = sheet.listing;
-  const sheetDetail = sheetListing ? details[sheetListing.slug] : undefined;
 
   return (
     <section className="section-y section-alt" id="kindness">
@@ -403,7 +294,7 @@ export function KindnessSection({
                   key={l.slug}
                   l={l}
                   delay={i * 0.04}
-                  onContact={openSheet}
+                  onContact={openContact}
                   onAlbum={openAlbum}
                 />
               ))}
@@ -445,11 +336,11 @@ export function KindnessSection({
           </button>
         </div>
 
-        {/* دکمهٔ «مشاهده همه» — همان الگوی بقیهٔ سکشن‌ها */}
+        {/* دکمهٔ «مشاهده همه» → هابِ واقعی دیوار مهربانی (/kindness-wall) */}
         {listings.length > 0 && (
           <div className="mt-8 flex items-center justify-center md:mt-10">
             <Link
-              href="/#kindness"
+              href="/kindness-wall"
               className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-brand-500 bg-white px-7 text-[14px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
             >
               <span>مشاهده همه آگهی‌ها</span>
@@ -459,32 +350,8 @@ export function KindnessSection({
         )}
       </div>
 
-      {/* شیت راه‌های ارتباط (portal به body) */}
-      {sheetListing && (
-        <KindnessContactSheet
-          open={sheet.open}
-          title={sheetListing.title}
-          subtitle={
-            sheetDetail?.beneficiary_name ? `به‌نیاب: ${sheetDetail.beneficiary_name}` : undefined
-          }
-          contactNote={sheetDetail?.contact_note || undefined}
-          channels={sheetDetail?.contact_channels ?? []}
-          loading={sheetDetail === undefined}
-          error={sheetDetail === null}
-          onRetry={() => retryDetail(sheetListing)}
-          onClose={closeSheet}
-        />
-      )}
-
-      {/* آلبوم تصاویر (portal به body — الگوی موجود) */}
-      <CampaignAlbum
-        open={album.open}
-        onClose={closeAlbum}
-        title={album.title}
-        subtitle={album.subtitle}
-        images={album.images}
-        loading={album.loading}
-      />
+      {/* شیت راه‌های ارتباط + آلبوم (هر دو portal به body) */}
+      {overlays}
     </section>
   );
 }

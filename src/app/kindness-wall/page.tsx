@@ -1,0 +1,808 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import Script from 'next/script';
+import {
+  BadgeCheck,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Flame,
+  HeartHandshake,
+  Layers,
+  LayoutGrid,
+  MapPin,
+  Package,
+  PhoneCall,
+  RotateCcw,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Timer,
+  X,
+} from 'lucide-react';
+import {
+  DEFAULT_KINDNESS_FILTERS,
+  KINDNESS_BOARD_PATH as BOARD,
+  KINDNESS_SORT_OPTIONS,
+  fetchKindnessCategories,
+  fetchKindnessListingsPage,
+  fetchKindnessStats,
+  fetchKindnessStories,
+  hasActiveKindnessFilters,
+  kindnessHubHref,
+  readKindnessFilters,
+} from '@/lib/kindness-wall';
+import { KindnessHubRail, type HubRailTab } from '@/components/kindness/KindnessHubRail';
+import { KindnessToolbar } from '@/components/kindness/KindnessToolbar';
+import { KindnessBoard } from '@/components/kindness/KindnessBoard';
+import { EmptyState } from '@/components/home/EmptyState';
+import { SmartImage } from '@/components/ui/SmartImage';
+import { siteConfig } from '@/lib/site';
+import { cn, formatPersianNumber as fa, toPersianDigits } from '@/lib/utils';
+
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * kindness-wall/ — هابِ «دیوار مهربانی» (تختهٔ نیاز ادمین‌محور، v2)
+ *
+ *   • SSR + ISR (revalidate=240، تگ «kindness» مشترک با صفحهٔ اصلی) —
+ *     فیلتر/مرتب‌سازی/جست‌وجو/صفحه‌بندی همه‌کارهٔ بک‌اند از URL خوانده
+ *     می‌شود: لینک‌ها shareable‌اند و Back/Forward درست کار می‌کند.
+ *   • ریلِ دسته‌ها (لینک‌محور) + نوارِ ابزارِ زنده (debounce) + چیپ‌های
+ *     حذفِ تکیِ فیلتر — قرارداد کاملِ KindnessListingPublicFilter پوشش
+ *     داده شده: category / province / city / urgent / ordering / search.
+ *   • تعاملِ کارت‌ها (شیتِ راه‌های ارتباط + آلبوم) در KindnessBoard از
+ *     هوکِ مشترکِ useKindnessOverlays می‌آید — همان رفتارِ صفحهٔ اصلی.
+ *   • «دیوار نتیجه‌ها» = استریمِ stories بک‌اند (پنجرهٔ ۹۰ روز) — نیازهای
+ *     برطرف‌شده با روایتِ شفاف؛ بدون تماس، فقط اثر.
+ *   • SEO: canonical روی نمایِ بدون‌فیلتر؛ نسخه‌های فیلتردار/صفحه‌بندی
+ *     noindex,follow می‌گیرند تا فضای بی‌نهایتِ کوئری ایندکس نشود؛
+ *     JSON-LD (CollectionPage + ItemList + BreadcrumbList) فقط روی نمایِ
+ *     مرجع — آیتم‌ها به لنگرِ پایدارِ هر کارت (#kw-{slug}) اشاره می‌کنند.
+ * ═══════════════════════════════════════════════════════════════════
+ */
+
+export const revalidate = 240;
+
+type SP = Record<string, string | string[] | undefined>;
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<SP>;
+}): Promise<Metadata> {
+  const sp = await searchParams;
+  const f = readKindnessFilters(sp ?? {});
+  const canonical = !hasActiveKindnessFilters(f) && f.page === 1;
+  const sortLabel = KINDNESS_SORT_OPTIONS.find((o) => o.value === f.ordering)?.label;
+  const suffix = f.search
+    ? `جست‌وجو: ${f.search}`
+    : f.urgent
+      ? 'نیازهای فوری'
+      : sortLabel && f.ordering
+        ? `مرتب‌سازی: ${sortLabel}`
+        : 'نتایج فیلترشده';
+  return {
+    title: canonical ? 'دیوار مهربانی' : `دیوار مهربانی — ${suffix}`,
+    description:
+      'تختهٔ نیازهای واقعی و بررسی‌شده؛ با جست‌وجو و فیلترِ دسته و شهر، نیاز را پیدا کن و مستقیم و بی‌واسطه از راه‌های ارتباطیِ همان آگهی با صاحبِ نیاز هماهنگ شو.',
+    alternates: { canonical: BOARD },
+    /* نمایِ مرجع ایندکس می‌شود؛ فضای بی‌نهایتِ فیلتر/صفحه → فالو بدون ایندکس */
+    robots: canonical ? undefined : { index: false, follow: true },
+  };
+}
+
+/* ── آجرهای کوچکِ سروری ────────────────────────────────────────────── */
+
+/** برچسبِ نسبیِ فارسیِ تاریخِ برطرف‌شدن (پنجرهٔ بایگانی ≤ ۹۰ روز است). */
+function relFa(iso?: string): string | undefined {
+  if (!iso) return undefined;
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return undefined;
+  const days = Math.max(0, Math.floor((Date.now() - t) / 86_400_000));
+  if (days <= 0) return 'امروز';
+  if (days === 1) return 'دیروز';
+  if (days < 30) return `${fa(days)} روز پیش`;
+  const months = Math.floor(days / 30);
+  return months <= 1 ? 'ماه گذشته' : `${fa(months)} ماه پیش`;
+}
+
+/** چیپِ فیلترِ فعال با ضربدرِ حذفِ تکی (لینکِ سروری با حفظِ بقیهٔ فیلترها). */
+function FilterChip({
+  label,
+  href,
+  rose = false,
+}: {
+  label: string;
+  href: string;
+  rose?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'group inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11.5px] font-extrabold transition-colors',
+        rose
+          ? 'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300'
+          : 'border-brand-200 bg-brand-50 text-brand-700 hover:border-brand-300',
+      )}
+    >
+      <span className="max-w-52 truncate">{label}</span>
+      <X
+        className="h-3 w-3 opacity-60 transition-opacity group-hover:opacity-100"
+        aria-hidden="true"
+      />
+      <span className="sr-only">حذف این فیلتر</span>
+    </Link>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+ *  صفحه
+ * ══════════════════════════════════════════════════════════════════ */
+
+export default async function KindnessWallHubPage({ searchParams }: { searchParams: Promise<SP> }) {
+  const sp = await searchParams;
+  const f = readKindnessFilters(sp ?? {});
+  const hasFilters = hasActiveKindnessFilters(f);
+  const isCanonicalView = !hasFilters && f.page === 1;
+
+  const [pageData, categories, stats, stories] = await Promise.all([
+    fetchKindnessListingsPage(f),
+    fetchKindnessCategories(),
+    fetchKindnessStats(),
+    fetchKindnessStories(8),
+  ]);
+
+  const base = siteConfig.url.replace(/\/+$/, '');
+
+  /* ── تب‌های ریل: «همه» → «فوری‌ها» → دسته‌ها (شمارندهٔ زندهٔ بک‌اند) ── */
+  const urgentCount =
+    stats?.urgentListings ?? pageData?.items.filter((l) => l.urgency === 'urgent').length ?? 0;
+  const totalOnBoard = stats?.openListings ?? pageData?.count ?? 0;
+
+  const railTabs: HubRailTab[] = [
+    {
+      slug: '__all__',
+      title: 'همه',
+      count: totalOnBoard,
+      tone: 'brand',
+      grid: true,
+      href: `${kindnessHubHref(f, { category: '', urgent: false, page: 1 })}#board`,
+      active: !f.category && !f.urgent,
+    },
+    ...(urgentCount > 0
+      ? [
+          {
+            slug: '__urgent__',
+            title: 'فوری‌ها',
+            count: urgentCount,
+            tone: 'rose' as const,
+            href: `${kindnessHubHref(f, { category: '', urgent: true, page: 1 })}#board`,
+            active: f.urgent && !f.category,
+          },
+        ]
+      : []),
+    ...categories
+      .filter((c) => c.count > 0)
+      .map((c) => ({
+        slug: c.slug,
+        title: c.title,
+        icon: c.icon,
+        count: c.count,
+        tone: 'brand' as const,
+        href: `${kindnessHubHref(f, { category: c.slug, urgent: false, page: 1 })}#board`,
+        active: f.category === c.slug && !f.urgent,
+      })),
+  ];
+  /* ریل وقتی معنا دارد که بیش از «همه» تب داشته باشد و تخته اصلاً خالی نباشد */
+  const showRail = railTabs.length > 1 && totalOnBoard > 0;
+
+  /* ── چیپ‌های فیلترِ فعال (حذف تکی) ──────────────────────────────────── */
+  const activeCategoryTitle = categories.find((c) => c.slug === f.category)?.title;
+  const chips: Array<{ key: string; label: string; href: string; rose?: boolean }> = [];
+  if (f.search)
+    chips.push({
+      key: 'search',
+      label: `جست‌وجو: ${f.search}`,
+      href: `${kindnessHubHref(f, { search: '', page: 1 })}#board`,
+    });
+  if (f.urgent)
+    chips.push({
+      key: 'urgent',
+      label: 'فقط فوری‌ها',
+      href: `${kindnessHubHref(f, { urgent: false, page: 1 })}#board`,
+      rose: true,
+    });
+  if (f.category)
+    chips.push({
+      key: 'category',
+      label: `دسته: ${activeCategoryTitle ?? f.category}`,
+      href: `${kindnessHubHref(f, { category: '', page: 1 })}#board`,
+    });
+  if (f.province)
+    chips.push({
+      key: 'province',
+      label: `استان: ${f.province}`,
+      href: `${kindnessHubHref(f, { province: '', page: 1 })}#board`,
+    });
+  if (f.city)
+    chips.push({
+      key: 'city',
+      label: `شهر: ${f.city}`,
+      href: `${kindnessHubHref(f, { city: '', page: 1 })}#board`,
+    });
+  if (f.ordering) {
+    const sort = KINDNESS_SORT_OPTIONS.find((o) => o.value === f.ordering);
+    if (sort)
+      chips.push({
+        key: 'ordering',
+        label: `مرتب‌سازی: ${sort.label}`,
+        href: `${kindnessHubHref(f, { ordering: '', page: 1 })}#board`,
+      });
+  }
+
+  /* ── صفحه‌بندی (پنجرهٔ لغزانِ ۵تایی — الگوی /r4j) ────────────────────── */
+  const currentPage = pageData?.page ?? f.page;
+  const totalPages = pageData?.pageCount ?? 1;
+  const windowStart = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+  const windowPages = Array.from(
+    { length: Math.min(5, totalPages) },
+    (_, i) => windowStart + i,
+  ).filter((p) => p <= totalPages);
+  /* DRF برای page خارج از محدوده ۴۰۴ می‌دهد → fetcher آن را به پرچمِ
+     outOfRange ترجمه می‌کند (نه حالتِ «API خاموش»). محاسبهٔ جایگزینِ
+     page>pageCount برای صلحتِ دوبل هم نگه داشته شده. */
+  const pageOutOfRange =
+    pageData !== null &&
+    (pageData.outOfRange === true || (pageData.count > 0 && currentPage > pageData.pageCount));
+
+  /* ── JSON-LD فقط روی نمایِ مرجع (سئوی تمیز، بدون duplicate) ─────────── */
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'بعثت مردم', item: base },
+      { '@type': 'ListItem', position: 2, name: 'دیوار مهربانی', item: `${base}${BOARD}` },
+    ],
+  };
+  const boardLd =
+    isCanonicalView && pageData && pageData.items.length > 0
+      ? {
+          '@context': 'https://schema.org',
+          '@graph': [
+            {
+              '@type': 'CollectionPage',
+              '@id': `${base}${BOARD}#page`,
+              url: `${base}${BOARD}`,
+              name: 'دیوار مهربانی — بعثت مردم',
+              description:
+                'تختهٔ نیازهای واقعی و بررسی‌شده؛ ارتباط مستقیم و بی‌واسطه با صاحبِ نیاز.',
+              isPartOf: { '@type': 'WebSite', name: 'بعثت مردم', url: base },
+              inLanguage: 'fa-IR',
+            },
+            {
+              '@type': 'ItemList',
+              '@id': `${base}${BOARD}#board`,
+              name: 'آگهی‌های نیازِ جاریِ دیوار مهربانی',
+              numberOfItems: pageData.count,
+              itemListElement: pageData.items.map((l, i) => ({
+                '@type': 'ListItem',
+                position: i + 1,
+                name: l.title,
+                url: `${base}${BOARD}#kw-${l.slug}`,
+              })),
+            },
+          ],
+        }
+      : null;
+
+  return (
+    <main className="bg-white">
+      {/* SEO: گراف‌ها در HTMLِ اولیه (الگوی صفحهٔ اصلی) */}
+      <Script
+        id="ld-json-kindness-breadcrumb"
+        type="application/ld+json"
+        strategy="beforeInteractive"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+      />
+      {boardLd && (
+        <Script
+          id="ld-json-kindness-board"
+          type="application/ld+json"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(boardLd) }}
+        />
+      )}
+
+      {/* ══════════ هیرو ══════════ */}
+      <section className="relative overflow-hidden bg-ink-900 text-white">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.55]"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(-45deg, rgba(255,255,255,.035) 0 2px, transparent 2px 14px)',
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-brand-500/25 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-rose-500/15 blur-3xl"
+        />
+        <div className="container-edge relative py-14 md:py-20">
+          <div className="max-w-3xl">
+            <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[12px] font-bold text-white/80 backdrop-blur-sm">
+              <HeartHandshake className="h-4 w-4 text-brand-300" aria-hidden="true" />
+              اپِ «دیوار مهربانی» — اتصالِ مستقیمِ نیاز و مهربانی
+            </p>
+            <h1 className="mt-5 text-[28px] font-black leading-[1.35] text-white sm:text-4xl md:text-[46px] md:leading-[1.35]">
+              هر نیازِ روی این دیوار،
+              <span className="block bg-gradient-to-l from-brand-200 via-mint-200 to-brand-400 bg-clip-text text-transparent">
+                یک دعوت به یک مهربانیِ بی‌واسطه
+              </span>
+            </h1>
+            <p className="mt-4 max-w-2xl text-[13.5px] leading-8 text-white/75 md:text-[15px]">
+              نیازها را تیمِ بعثت ثبت و بررسی می‌کند — از لوازم آشپزخانه تا پوشاک. تو فقط پیداش
+              می‌کنی و از راه‌های ارتباطیِ همان آگهی (تماس، بله، ایتا، تلگرام، روبیکا، اینستاگرام)
+              مستقیم با صاحبِ نیاز حرف می‌زنی. بدون واسطه، بدون انتظار.
+            </p>
+
+            {/* آمارِ زندهٔ تخته (صداقتِ عدد: صفرِ واقعی هم نشان داده می‌شود) */}
+            {stats && (
+              <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {[
+                  {
+                    value: stats.openListings,
+                    label: 'نیازِ جاری',
+                    icon: Layers,
+                    tone: 'text-brand-300',
+                  },
+                  {
+                    value: stats.urgentListings,
+                    label: 'نیازِ فوری',
+                    icon: Flame,
+                    tone: 'text-rose-300',
+                  },
+                  {
+                    value: stats.fulfilledTotal,
+                    label: 'برطرف‌شده تا امروز',
+                    icon: BadgeCheck,
+                    tone: 'text-mint-300',
+                  },
+                  {
+                    value: stats.volunteersTotal,
+                    label: 'دستِ آماده‌ی کمک',
+                    icon: HeartHandshake,
+                    tone: 'text-amber-300',
+                  },
+                  {
+                    value: stats.activeCategories,
+                    label: 'دستهٔ فعال',
+                    icon: LayoutGrid,
+                    tone: 'text-brand-200',
+                  },
+                ].map((s) => (
+                  <div
+                    key={s.label}
+                    className="rounded-2xl border border-white/10 bg-white/[.05] px-4 py-3.5 backdrop-blur-sm"
+                  >
+                    <div
+                      className={cn(
+                        'flex items-center gap-1.5 text-[22px] font-black tabular-nums md:text-[24px]',
+                        s.tone,
+                      )}
+                    >
+                      <s.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      {fa(s.value)}
+                    </div>
+                    <div className="mt-1 text-[11.5px] font-bold text-white/70">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-8">
+              <a
+                href="#board"
+                className="inline-flex items-center gap-2 rounded-2xl bg-brand-500 px-6 py-3.5 text-[14px] font-extrabold text-white shadow-lg shadow-brand-900/40 transition-all hover:bg-brand-400 active:scale-[.98]"
+              >
+                مشاهدهٔ آگهی‌ها
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════ چطور کار می‌کند (سه گام) ══════════ */}
+      <section className="container-edge relative z-10 -mt-8">
+        <div className="grid gap-3 rounded-3xl border border-ink-100 bg-white p-4 shadow-[0_12px_32px_-20px_rgba(15,20,32,.25)] sm:grid-cols-3 md:p-5">
+          {[
+            {
+              icon: Search,
+              title: 'نیاز را پیدا کن',
+              text: 'با جست‌وجوی هوشمند و فیلترِ دسته، استان، شهر و فوریت — دقیقاً همان چیزی که می‌توانی برآورده‌اش کنی.',
+            },
+            {
+              icon: PhoneCall,
+              title: 'راه تماس را باز کن',
+              text: 'روی هر کارت «راه‌های ارتباط» را بزن؛ فقط همان‌هایی که صاحبِ نیاز گذاشته: تماس، بله، ایتا، تلگرام، روبیکا، اینستاگرام.',
+            },
+            {
+              icon: HeartHandshake,
+              title: 'مستقیم برآورده کن',
+              text: 'بی‌هیچ واسطه‌ای با صاحبِ نیاز هماهنگ کن و کار را به سرانجام برسان؛ سریع، امن و رو در رو.',
+            },
+          ].map((s) => (
+            <div key={s.title} className="flex items-start gap-3 rounded-2xl bg-ink-50/60 p-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-700">
+                <s.icon className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[13.5px] font-extrabold text-ink-900">{s.title}</p>
+                <p className="mt-1 text-[11.5px] leading-6 text-ink-500">{s.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ══════════ تختهٔ نیازها ══════════ */}
+      <section id="board" className="section-y scroll-mt-24">
+        <div className="container-edge">
+          <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="inline-flex items-center gap-1.5 text-[12px] font-extrabold text-brand-700">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                تختهٔ زندهٔ نیازها
+              </p>
+              <h2 className="mt-1 text-[22px] font-black text-ink-900 md:text-[26px]">
+                آگهی‌های دیوار مهربانی
+              </h2>
+              <p className="mt-2 max-w-prose text-[12.5px] leading-7 text-ink-500 md:text-[13px]">
+                هر آگهی یک نیازِ واقعیِ بررسی‌شده است؛ دسته را انتخاب کن، جست‌وجو کن و از همانجا
+                مستقیم با صاحبِ نیاز در تماس شو.
+              </p>
+            </div>
+            {stats && stats.urgentListings > 0 && (
+              <Link
+                href={`${kindnessHubHref(DEFAULT_KINDNESS_FILTERS, { urgent: true })}#board`}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-gradient-to-l from-[#f43f5e] to-[#e11d48] px-4 text-[12px] font-extrabold text-white shadow-[0_8px_20px_-6px_rgba(225,29,72,.55)] transition-transform hover:-translate-y-0.5 active:scale-[.97]"
+              >
+                <Flame className="h-3.5 w-3.5" aria-hidden="true" />
+                {`${fa(stats.urgentListings)} نیازِ فوری روی دیوار`}
+              </Link>
+            )}
+          </div>
+
+          {/* ریل دسته‌ها (لینک‌محور، لنگرِ #board) */}
+          {showRail && (
+            <div className="mb-6">
+              <KindnessHubRail tabs={railTabs} />
+            </div>
+          )}
+
+          {/* نوارِ ابزارِ زنده */}
+          <KindnessToolbar filters={f} hasFilters={hasFilters} />
+
+          {/* چیپ‌های فیلترِ فعال */}
+          {chips.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {chips.map((c) => (
+                <FilterChip key={c.key} label={c.label} href={c.href} rose={c.rose} />
+              ))}
+            </div>
+          )}
+
+          {/* شمارِ نتایج */}
+          {pageData && !pageOutOfRange && (
+            <div className="mt-6 flex items-center justify-between text-[12px] font-bold text-ink-500">
+              <p>
+                {hasFilters ? 'نتایجِ فیلترشده:' : 'همهٔ نیازهای روی دیوار:'}{' '}
+                <span className="tabular-nums text-ink-900">{fa(pageData.count)}</span> آگهی
+                {totalPages > 1 && (
+                  <>
+                    {' '}
+                    — صفحه <span className="tabular-nums">
+                      {toPersianDigits(currentPage)}
+                    </span> از <span className="tabular-nums">{toPersianDigits(totalPages)}</span>
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
+          {/* بدنهٔ تخته */}
+          {pageData === null ? (
+            <div className="mt-4 rounded-3xl border border-dashed border-ink-200 bg-white/60">
+              <EmptyState
+                title="تختهٔ مهربانی در دسترس نیست"
+                description="اتصال به سامانه برقرار نشد؛ لطفاً چند لحظهٔ دیگر دوباره تلاش کن."
+                iconPath="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
+              />
+            </div>
+          ) : pageOutOfRange ? (
+            <div className="mt-4 rounded-3xl border border-dashed border-ink-200 bg-white/60">
+              <EmptyState
+                title="این صفحه در تخته نیست"
+                description={`تخته در این نمایش ${fa(pageData.count)} آگهی در ${fa(pageData.pageCount)} صفحه دارد.`}
+                iconPath="M21 21l-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"
+              />
+              <div className="-mt-6 pb-8 text-center">
+                <Link
+                  href={`${kindnessHubHref(f, { page: 1 })}#board`}
+                  className="inline-flex items-center gap-1.5 rounded-2xl border border-ink-200 bg-white px-5 py-2.5 text-[12px] font-extrabold text-ink-700 transition-colors hover:border-ink-300"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                  بازگشت به صفحهٔ اول
+                </Link>
+              </div>
+            </div>
+          ) : pageData.items.length === 0 ? (
+            <div className="mt-4 rounded-3xl border border-dashed border-ink-200 bg-white/60">
+              <EmptyState
+                title={hasFilters ? 'در این فیلتر چیزی نیست' : 'دیوار مهربانی دارد شارژ می‌شود'}
+                description={
+                  hasFilters
+                    ? 'فیلترها را کم‌رنگ‌تر کن تا بقیهٔ نیازها دیده شوند.'
+                    : 'به‌محض ثبت نیازهای جدید، اینجا پین می‌شوند و هر مهربانی می‌تواند مستقیم پاسخ بدهد.'
+                }
+                iconPath="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
+              />
+              {hasFilters && (
+                <div className="-mt-6 pb-8 text-center">
+                  <Link
+                    href={`${BOARD}#board`}
+                    className="inline-flex items-center gap-1.5 rounded-2xl border border-ink-200 bg-white px-5 py-2.5 text-[12px] font-extrabold text-ink-700 transition-colors hover:border-ink-300"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                    حذف فیلترها و مشاهدهٔ همه
+                  </Link>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-4">
+              <KindnessBoard listings={pageData.items} />
+            </div>
+          )}
+
+          {/* صفحه‌بندی — لینک‌های سروری با حفظِ فیلترها (+ لنگرِ #board) */}
+          {pageData && !pageOutOfRange && totalPages > 1 && (
+            <nav
+              aria-label="صفحه‌بندی آگهی‌های دیوار مهربانی"
+              className="mt-10 flex items-center justify-center gap-1.5"
+            >
+              {currentPage > 1 && (
+                <Link
+                  href={`${kindnessHubHref(f, { page: currentPage - 1 })}#board`}
+                  aria-label="صفحهٔ قبلی"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-ink-200 bg-white text-ink-600 transition-colors hover:border-ink-300 hover:text-ink-900"
+                >
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              )}
+              {windowPages.map((p) => (
+                <Link
+                  key={p}
+                  href={`${kindnessHubHref(f, { page: p })}#board`}
+                  aria-current={p === currentPage ? 'page' : undefined}
+                  className={cn(
+                    'flex h-10 min-w-10 items-center justify-center rounded-xl px-3 text-[13px] font-extrabold tabular-nums transition-colors',
+                    p === currentPage
+                      ? 'bg-[linear-gradient(135deg,#0D8074,#0A6E64_50%,#085C54)] text-white shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)]'
+                      : 'border border-ink-200 bg-white text-ink-600 hover:border-ink-300 hover:text-ink-900',
+                  )}
+                >
+                  {toPersianDigits(p)}
+                </Link>
+              ))}
+              {currentPage < totalPages && (
+                <Link
+                  href={`${kindnessHubHref(f, { page: currentPage + 1 })}#board`}
+                  aria-label="صفحهٔ بعدی"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-ink-200 bg-white text-ink-600 transition-colors hover:border-ink-300 hover:text-ink-900"
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              )}
+            </nav>
+          )}
+        </div>
+      </section>
+
+      {/* ══════════ دیوار نتیجه‌ها (داستان‌های مهربانی) ══════════ */}
+      {stories.length > 0 && (
+        <section className="section-alt">
+          <div className="container-edge section-y">
+            <div className="mb-7 max-w-2xl">
+              <p className="inline-flex items-center gap-1.5 text-[12px] font-extrabold text-mint-700">
+                <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                دیوارِ نتیجه‌ها
+              </p>
+              <h2 className="mt-1 text-[22px] font-black text-ink-900 md:text-[26px]">
+                مهربانی‌هایی که به خطِ پایان رسیدند
+              </h2>
+              <p className="mt-2 max-w-prose text-[12.5px] leading-7 text-ink-500 md:text-[13px]">
+                شفافیت یعنی همین: این نیازها امروز دیگر روی تخته نیستند چون برآورده شدند — روایتِ ۹۰
+                روزِ اخیر.
+              </p>
+            </div>
+
+            <div className="no-scrollbar -mx-4 snap-x snap-mandatory overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
+              <div className="flex w-max gap-4 md:gap-5">
+                {stories.map((s) => (
+                  <article
+                    key={s.slug}
+                    className="group w-64 shrink-0 snap-start overflow-hidden rounded-[22px] bg-white ring-1 ring-ink-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_36px_-20px_rgba(11,53,48,.28)] sm:w-72"
+                  >
+                    <div className="relative aspect-[16/10] overflow-hidden bg-ink-100">
+                      <SmartImage
+                        src={s.coverImage}
+                        alt={s.title}
+                        variant="kindness"
+                        fill
+                        sizes="(max-width: 640px) 256px, 288px"
+                        className="object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+                      />
+                      <div
+                        aria-hidden="true"
+                        className="absolute inset-x-0 bottom-0 z-[1] h-1/2 bg-gradient-to-t from-black/50 via-black/10 to-transparent"
+                      />
+                      <span className="absolute right-3 top-3 z-10 inline-flex h-7 items-center gap-1 rounded-full bg-mint-500 px-2.5 text-[10.5px] font-extrabold text-white ring-[2.5px] ring-black/10">
+                        <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+                        برطرف شد
+                      </span>
+                      {s.categoryTitle && (
+                        <span className="absolute bottom-3 right-3 z-10 inline-flex h-6 items-center gap-1 rounded-full bg-white/95 px-2.5 text-[11px] font-extrabold text-ink-700 shadow-soft backdrop-blur-md">
+                          {s.categoryIcon && (
+                            <span aria-hidden="true" className="text-[12px] leading-none">
+                              {s.categoryIcon}
+                            </span>
+                          )}
+                          {s.categoryTitle}
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3
+                        className="line-clamp-2 min-h-[2.75rem] text-[13.5px] font-extrabold leading-6 text-ink-900"
+                        title={s.title}
+                      >
+                        {s.title}
+                      </h3>
+                      <div className="mt-2.5 flex items-center justify-between gap-2 text-[11.5px] font-bold text-ink-500">
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-ink-50 px-2 py-0.5 ring-1 ring-ink-100">
+                          <Package className="h-3 w-3 text-mint-600" aria-hidden="true" />
+                          <span className="tabular-nums">{`${fa(s.quantity)} ${s.unit}`}</span>
+                        </span>
+                        <span className="inline-flex min-w-0 items-center gap-1">
+                          <MapPin className="h-3 w-3 shrink-0 text-mint-600" aria-hidden="true" />
+                          <span className="truncate">{s.city || 'سراسر کشور'}</span>
+                        </span>
+                      </div>
+                      {s.note && (
+                        <p className="mt-3 line-clamp-2 rounded-xl bg-mint-50/70 px-3 py-2 text-[11px] font-medium leading-5 text-ink-600 ring-1 ring-mint-100">
+                          «{s.note}»
+                        </p>
+                      )}
+                      {relFa(s.fulfilledAt) && (
+                        <div className="mt-3 flex items-center gap-1 border-t border-ink-100 pt-3 text-[10.5px] font-bold text-ink-400">
+                          <Clock className="h-3 w-3" aria-hidden="true" />
+                          {`برطرف شد: ${relFa(s.fulfilledAt)}`}
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ══════════ سالنِ اعتماد — سه قانونِ دیوار ══════════ */}
+      <section className="relative overflow-hidden bg-ink-950 text-white">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.5]"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(-45deg, rgba(255,255,255,.03) 0 2px, transparent 2px 16px)',
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-32 top-0 h-80 w-80 rounded-full bg-brand-500/15 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-24 bottom-10 h-72 w-72 rounded-full bg-rose-500/10 blur-3xl"
+        />
+        <div className="container-edge relative py-14 md:py-16">
+          <div className="max-w-2xl">
+            <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[11.5px] font-bold text-white/80 backdrop-blur-sm">
+              <ShieldCheck className="h-4 w-4 text-brand-300" aria-hidden="true" />
+              اعتماد، پیش از هر تماس
+            </p>
+            <h2 className="mt-4 text-[22px] font-black leading-9 text-white md:text-[28px] md:leading-[1.6]">
+              این دیوار با
+              <span className="mx-1.5 bg-gradient-to-l from-brand-200 to-mint-300 bg-clip-text text-transparent">
+                سه قانون
+              </span>
+              کار می‌کند
+            </h2>
+          </div>
+
+          <div className="mt-8 grid gap-3 sm:grid-cols-3 sm:gap-4">
+            {[
+              {
+                icon: ShieldCheck,
+                ring: 'ring-brand-400/25 bg-brand-500/12 text-brand-200',
+                title: 'بررسی‌شده، نه ناشناس',
+                text: 'نیازها را تیمِ بعثت به‌نیابت از صاحبانِ نیاز ثبت و راستی‌آزمایی می‌کند؛ روی دیوار فقط نیازِ واقعی می‌نشیند.',
+              },
+              {
+                icon: PhoneCall,
+                ring: 'ring-mint-500/25 bg-mint-500/12 text-mint-300',
+                title: 'تماسِ مستقیم، بدون واسطه',
+                text: 'راه‌های ارتباطی را خودِ آگهی می‌دهد؛ هیچ واسطه‌ای بین تو و صاحبِ نیاز نیست و کمکت بی‌واسطه می‌رسد.',
+              },
+              {
+                icon: Timer,
+                ring: 'ring-amber-400/25 bg-amber-400/12 text-amber-300',
+                title: 'عمرِ شفافِ آگهی',
+                text: 'هر آگهی تاریخِ انقضا دارد و نیازهای برآورده‌شده به «دیوار نتیجه‌ها» می‌روند؛ تخته همیشه تازه می‌ماند.',
+              },
+            ].map((t) => (
+              <div
+                key={t.title}
+                className="group flex items-start gap-3.5 rounded-3xl border border-white/10 bg-white/[.05] p-4 backdrop-blur-sm transition-colors duration-300 hover:border-brand-400/25 hover:bg-white/[.08] sm:block sm:p-5"
+              >
+                <span
+                  className={cn(
+                    'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1 transition-transform duration-300 group-hover:scale-105',
+                    t.ring,
+                  )}
+                >
+                  <t.icon className="h-[22px] w-[22px]" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[14.5px] font-extrabold text-white">{t.title}</p>
+                  <p className="mt-1.5 text-[11.5px] leading-6 text-white/65 sm:mt-2 sm:text-[12px] sm:leading-7">
+                    {t.text}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* دعوتِ پایانی */}
+          <div className="mt-10 overflow-hidden rounded-[28px] border border-brand-400/25 bg-gradient-to-l from-brand-500/90 via-brand-600 to-brand-800 p-6 shadow-[0_30px_60px_-30px_rgba(13,128,116,.55)] sm:p-8">
+            <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-[17px] font-black text-white sm:text-[20px]">
+                  یک جایی روی این دیوار، دستِ تو کم است
+                </p>
+                <p className="mt-1.5 max-w-xl text-[12px] font-medium leading-7 text-white/85 sm:text-[13px]">
+                  همین حالا تخته را بگرد؛ شاید همان یک نیازِ کوچک باشد که فقط تو می‌توانی برآورده‌اش
+                  کنی — و آن را به «دیوار نتیجه‌ها» بفرستی.
+                </p>
+              </div>
+              <a
+                href="#board"
+                className="inline-flex h-12 shrink-0 items-center gap-2 rounded-2xl bg-white px-6 text-[13.5px] font-extrabold text-ink-900 shadow-[0_14px_30px_-12px_rgba(0,0,0,.45)] transition-all hover:bg-brand-50 active:scale-[.98]"
+              >
+                برگشت به تختهٔ نیازها
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}

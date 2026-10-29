@@ -111,7 +111,7 @@ function buildHomeItemList() {
     },
     {
       name: 'دیوار مهربانی',
-      href: '/#kindness',
+      href: '/kindness-wall',
       pos: 5,
       description: 'اتصال داوطلبانه نیازمندان و کمک‌کنندگان در سراسر کشور.',
     },

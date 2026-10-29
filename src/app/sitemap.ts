@@ -11,8 +11,8 @@ import { safeApiFetch, type Paginated } from '@/lib/api';
  * WHY this file is short
  * ──────────────────────
  * Only routes that actually resolve are listed. The domain-area routes
- * (/madadkar, /r4j, /lms, /kindness-wall, /public-reports) plus the
- * corporate pages (/about, /contact, /faq, /privacy, /terms, /support)
+ * not yet shipped (/public-reports) plus the corporate pages
+ * (/about, /contact, /faq, /privacy, /terms, /support)
  * and the auth flow (/auth/*) are NOT built yet — listing them would
  * ask crawlers to index 404s and hurt SEO.
  *
@@ -46,6 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/r4j', priority: 0.9, changeFrequency: 'daily' as const },
     { path: '/madadkar', priority: 0.9, changeFrequency: 'daily' as const },
     { path: '/lms', priority: 0.9, changeFrequency: 'daily' as const },
+    { path: '/kindness-wall', priority: 0.9, changeFrequency: 'daily' as const },
     // /search is intentionally omitted — see robots.ts (infinite query
     // space; no ranking value). Listing it here would contradict the
     // Disallow rule and waste crawl budget.

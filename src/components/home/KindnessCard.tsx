@@ -42,11 +42,14 @@ export function kindnessListingUrl(slug: string): string {
 export function KindnessCard({
   l,
   delay = 0,
+  id,
   onContact,
   onAlbum,
 }: {
   l: KindListing;
   delay?: number;
+  /** لنگرِ HTML اختیاری (هاب: kw-{slug} — دیپ‌لینک/JSON-LD). */
+  id?: string;
   onContact: (l: KindListing) => void;
   onAlbum: (l: KindListing) => void;
 }) {
@@ -76,12 +79,14 @@ export function KindnessCard({
 
   return (
     <motion.article
+      id={id}
       initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
       transition={{ duration: 0.4, delay }}
-      /* همان ریتم ستونی خانواده‌ی صفحه: ۱/۲/۳ ستونه + وسط‌چینی یتیم‌ها */
-      className="group isolate flex w-full min-w-0 flex-col overflow-hidden rounded-[26px] bg-white shadow-[0_2px_10px_-4px_rgba(15,20,32,.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_44px_-22px_rgba(11,53,48,.22)] sm:w-[calc((100%-1.25rem)/2)] lg:w-[calc((100%-2.5rem)/3)]"
+      /* همان ریتم ستونی خانواده‌ی صفحه: ۱/۲/۳ ستونه + وسط‌چینی یتیم‌ها
+         scroll-mt-28: لنگرِ #kw-{slug} زیر هدرِ چسبان نمی‌چسبد. */
+      className="group isolate flex w-full min-w-0 scroll-mt-28 flex-col overflow-hidden rounded-[26px] bg-white shadow-[0_2px_10px_-4px_rgba(15,20,32,.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_44px_-22px_rgba(11,53,48,.22)] sm:w-[calc((100%-1.25rem)/2)] lg:w-[calc((100%-2.5rem)/3)]"
       data-testid="kw-card"
       data-urgent={urgent || undefined}
     >

@@ -197,7 +197,9 @@ export const SEARCH_SOURCES: Record<SearchSource, SearchSourceMeta> = {
     shortLabel: 'آگهی‌ها',
     glyph: 'heart',
     accent: 'mint',
-    seeAllHref: (q, f) => seeAllUrl('/#kindness', q, f),
+    // هابِ /kindness-wall هم‌نامِ پارامترهای API را می‌خواند
+    // (search/category/province/city/urgent) — پس seeAllUrl مستقیم می‌نشیند.
+    seeAllHref: (q, f) => seeAllUrl('/kindness-wall', q, f),
   },
   tabyin: {
     key: 'tabyin',
@@ -577,8 +579,10 @@ async function fetchKindness(
         title: clean(l.title),
         subtitle: [catTitle, loc].filter(Boolean).join(' · ') || undefined,
         thumb: absoluteMediaUrl(l.cover_url),
-        // See note above — Kindness listing detail route TBD.
-        href: `/#kindness`,
+        // هابِ /kindness-wall + لنگرِ پایدارِ کارت؛ کارت روی استخرِ فعلی
+        // دقیقاً همان‌جاست و در نبودش کاربر خودِ تخته را می‌بیند (هر دو از
+        // یک fetch/tag می‌آیند). صفحهٔ slug در مایل‌استونِ بعد.
+        href: `/kindness-wall#kw-${l.slug}`,
         badge: l.view_count ? `${fa(l.view_count)} بازدید` : undefined,
         // v2: نشان «فوری» برای نیازهای اورژانسی (listing_type دیگر نیست)
         pill: l.urgency === 'urgent' ? 'فوری' : undefined,
