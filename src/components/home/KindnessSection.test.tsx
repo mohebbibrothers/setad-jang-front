@@ -96,6 +96,8 @@ const STATS: KindStats = {
 const DETAIL = {
   beneficiary_name: 'خانواده‌ای در شوش',
   contact_note: 'تماس ۱۰ تا ۲۰ — پیامکی بهتر است.',
+  /* کاربرِ واردشده: سرور مقدار و لینکِ کامل می‌دهد و دروازه بسته است. */
+  contact_gated: false,
   contact_channels: [
     { kind: 'phone', label: 'شماره تماس', value: '09123456789', link: 'tel:+989123456789' },
     { kind: 'telegram', label: 'آیدی تلگرام', value: '@kind_user', link: 'https://t.me/kind_user' },

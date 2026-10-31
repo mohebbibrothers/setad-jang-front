@@ -324,3 +324,30 @@ describe('fetcherها', () => {
     );
   });
 });
+
+describe('isContactGated — پرچمِ سرور و دروازهٔ دفاعیِ پنجرهٔ گذار', () => {
+  it('پرچمِ true سرور → دروازه باز است', async () => {
+    const { isContactGated } = await import('./kindness-listing');
+    expect(isContactGated({ ...BASE, contact_gated: true })).toBe(true);
+  });
+
+  it('پرچمِ false سرور → مقدارِ کامل مجاز است (کاربرِ واردشده)', async () => {
+    const { isContactGated } = await import('./kindness-listing');
+    expect(isContactGated({ ...BASE, contact_gated: false })).toBe(false);
+  });
+
+  it('سرورِ قدیمی بدونِ پرچم → دروازهٔ دفاعی روشن (سیاستِ محصول)', async () => {
+    const { isContactGated } = await import('./kindness-listing');
+    const legacy = { ...BASE };
+    delete (legacy as { contact_gated?: boolean }).contact_gated;
+    expect(isContactGated(legacy)).toBe(true);
+  });
+
+  it('بدونِ کانال، دروازه‌ای وجود ندارد', async () => {
+    const { isContactGated } = await import('./kindness-listing');
+    const legacy = { ...BASE, contact_channels: [] };
+    delete (legacy as { contact_gated?: boolean }).contact_gated;
+    expect(isContactGated(legacy)).toBe(false);
+    expect(isContactGated(null)).toBe(false);
+  });
+});

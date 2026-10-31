@@ -78,6 +78,8 @@ describe('KindnessBoard', () => {
     apiFetchMock.mockResolvedValue({
       beneficiary_name: 'خانواده‌ای در شوش',
       contact_note: 'تماس ۱۰ تا ۲۰',
+      /* کاربرِ مجاز: دروازه بسته تا کانال‌ها با لینکِ واقعی رندر شوند. */
+      contact_gated: false,
       contact_channels: [
         { kind: 'phone', label: 'شماره تماس', value: '09120000000', link: 'tel:+989120000000' },
         { kind: 'telegram', label: 'آیدی تلگرام', value: 'besat', link: 'https://t.me/besat' },

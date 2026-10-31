@@ -326,6 +326,12 @@ export async function fetchKindnessListingDetailAuthed(
  *
  * ورودیِ ساختاریِ سبک هم پذیرفته می‌شود (`{contact_gated, contact_channels}`)
  * چون شیتِ تخته فقط همین دو فیلد را از DETAIL نگه می‌دارد.
+ *
+ * ⚠️ پنجرهٔ گذار: تا وقتی نسخهٔ قدیمیِ بک‌اند روی پروداکشن است، پرچم اصلاً
+ * نمی‌آید (`undefined`) در حالی که سرور مقدارِ کامل را به بی‌نام می‌دهد.
+ * سیاستِ محصول می‌گوید بی‌نام نباید ببیند؛ پس در نبودِ پرچم، «دروازهٔ دفاعی»
+ * روشن می‌شود. به‌محضِ دیپلویِ بک‌اند، پرچم می‌آید و همین تابع دقیقاً از
+ * سرور تبعیت می‌کند (کاربرِ واردشده همچنان مقدارِ کامل می‌گیرد).
  */
 export function isContactGated(
   detail:
@@ -338,6 +344,8 @@ export function isContactGated(
 ): boolean {
   if (!detail) return false;
   if (detail.contact_gated === true) return true;
+  /* سرورِ قدیمی پرچم را نفرستاده ⇒ دروازهٔ دفاعی روشن (با هر کانالِ موجود). */
+  if (detail.contact_gated === undefined) return (detail.contact_channels ?? []).length > 0;
   /* fallbackِ دفاعی: اگر سرورِ قدیمی پرچم را نفرستد ولی همهٔ مقادیر ماسک
      باشند، باز هم درگاه را نشان می‌دهیم (هرگز برعکسش: مقدارِ کامل را با
      حدس پنهان نمی‌کنیم). */
