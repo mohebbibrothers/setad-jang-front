@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
+  ArrowLeft,
   Check,
   Clock,
   Eye,
@@ -15,6 +16,7 @@ import {
   Share2,
   Sparkles,
 } from 'lucide-react';
+import Link from 'next/link';
 import { SmartImage } from '@/components/ui/SmartImage';
 import { siteConfig } from '@/lib/site';
 import { formatPersianNumber as fa } from '@/lib/utils';
@@ -35,9 +37,14 @@ import type { KindListing } from './KindnessSection';
  * ───────────────────────────────────────────────────────────────────────────
  */
 
-/** لینکِ مطلق و پایدار آگهی — مسیرِ صفحهٔ slug در مایلستونِ بعد ساخته می‌شود. */
+/** مسیرِ نسبیِ صفحهٔ آگهی (اسلاگ فارسی → انکدِ امن). */
+export function kindnessListingPath(slug: string): string {
+  return `/kindness-wall/${encodeURIComponent(slug)}`;
+}
+
+/** لینکِ مطلق و پایدار آگهی (اشتراک‌گذاری/JSON-LD). */
 export function kindnessListingUrl(slug: string): string {
-  return `${siteConfig.url}/kindness-wall/${slug}`;
+  return `${siteConfig.url}${kindnessListingPath(slug)}`;
 }
 
 export function KindnessCard({
@@ -152,11 +159,14 @@ export function KindnessCard({
 
       {/* بدنه */}
       <div className="flex flex-1 flex-col p-4 md:p-5">
-        <h3
-          className="line-clamp-2 min-h-[3.25rem] text-[14.5px] font-extrabold leading-7 text-ink-900 md:text-[15px]"
-          title={l.title}
-        >
-          {l.title}
+        <h3 className="min-h-[3.25rem] text-[14.5px] font-extrabold leading-7 text-ink-900 md:text-[15px]">
+          <Link
+            href={kindnessListingPath(l.slug)}
+            title={l.title}
+            className="line-clamp-2 rounded transition-colors hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60"
+          >
+            {l.title}
+          </Link>
         </h3>
 
         {l.excerpt && (
@@ -218,6 +228,14 @@ export function KindnessCard({
             <Phone className="h-3.5 w-3.5" />
             راه‌های ارتباط
           </button>
+          <Link
+            href={kindnessListingPath(l.slug)}
+            aria-label={`مشاهدهٔ صفحهٔ آگهی ${l.title}`}
+            title="مشاهدهٔ جزئیات"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink-200 bg-white text-ink-500 transition-colors hover:border-brand-300 hover:text-brand-700"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
           <button
             type="button"
             onClick={shareListing}

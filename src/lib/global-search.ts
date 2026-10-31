@@ -579,10 +579,8 @@ async function fetchKindness(
         title: clean(l.title),
         subtitle: [catTitle, loc].filter(Boolean).join(' · ') || undefined,
         thumb: absoluteMediaUrl(l.cover_url),
-        // هابِ /kindness-wall + لنگرِ پایدارِ کارت؛ کارت روی استخرِ فعلی
-        // دقیقاً همان‌جاست و در نبودش کاربر خودِ تخته را می‌بیند (هر دو از
-        // یک fetch/tag می‌آیند). صفحهٔ slug در مایل‌استونِ بعد.
-        href: `/kindness-wall#kw-${l.slug}`,
+        // صفحهٔ اختصاصیِ آگهی (اسلاگ فارسی → انکدِ امن).
+        href: `/kindness-wall/${encodeURIComponent(l.slug)}`,
         badge: l.view_count ? `${fa(l.view_count)} بازدید` : undefined,
         // v2: نشان «فوری» برای نیازهای اورژانسی (listing_type دیگر نیست)
         pill: l.urgency === 'urgent' ? 'فوری' : undefined,

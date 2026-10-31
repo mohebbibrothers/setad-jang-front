@@ -269,8 +269,12 @@ describe('KindnessSection — تختهٔ نیاز v2', () => {
     renderSection();
     const btn = screen.getAllByRole('button', { name: /اشتراک‌گذاری آگهی/ })[0];
     fireEvent.click(btn);
+    /* قراردادِ درست: لینکِ مطلق با اسلاگِ **انکد‌شده** (URL معتبر در همهٔ
+       مرورگرها/پیام‌رسان‌ها) — نه اسلاگِ خامِ فارسی. */
     await waitFor(() =>
-      expect(writeText).toHaveBeenCalledWith(expect.stringContaining('/kindness-wall/یخچال-دوقلو')),
+      expect(writeText).toHaveBeenCalledWith(
+        expect.stringContaining(`/kindness-wall/${encodeURIComponent('یخچال-دوقلو')}`),
+      ),
     );
     await waitFor(() => expect(btn.getAttribute('title')).toBe('لینک کپی شد'));
   });

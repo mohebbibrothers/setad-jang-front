@@ -116,5 +116,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
+  // آگهی‌های زندهٔ «دیوار مهربانی» — صفحهٔ اسلاگِ هر نیاز صفحه‌ای محتوایی و
+  // قابلِ‌ایندکس است (شرح، دسته، موقعیت، تاریخ). حداکثر ۳ صفحه از فهرستِ
+  // عمومی (۳۰۰ آگهی، page_size=100 = سقفِ DRF) تا فایل سبک بماند؛ آگهی‌های
+  // تازه‌تر پیش از بقیه در تخته‌اند و همان‌ها اولویت SEO دارند.
+  const kindnessRows: Array<{ slug?: string; published_at?: string | null }> = [];
+  for (let page = 1; page <= 3; page += 1) {
+    const data = await safeApiFetch<Paginated<{ slug?: string; published_at?: string | null }>>(
+      `/kindness-wall/listings/?page_size=100&page=${page}`,
+      { revalidate: 3600, tags: ['kindness', 'sitemap'] },
+    );
+    const results = data?.results ?? [];
+    kindnessRows.push(...results);
+    if (results.length < 100) break;
+  }
+  for (const row of kindnessRows) {
+    if (!row.slug) continue;
+    entries.push({
+      url: `${base}/kindness-wall/${encodeURIComponent(row.slug)}`,
+      lastModified: row.published_at ? new Date(row.published_at) : now,
+      changeFrequency: 'daily',
+      priority: 0.8,
+    });
+  }
+
   return entries;
 }
