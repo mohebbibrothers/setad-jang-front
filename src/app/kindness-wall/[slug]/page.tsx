@@ -29,6 +29,7 @@ import { ListingContactCard } from '@/components/kindness/ListingContactCard';
 import { ListingOfferBox } from '@/components/kindness/ListingOfferBox';
 import { ListingShareCard } from '@/components/kindness/ListingShareCard';
 import { ListingStickyBar } from '@/components/kindness/ListingStickyBar';
+import { ListingViewCounter } from '@/components/kindness/ListingViewCounter';
 import { KindnessBoard } from '@/components/kindness/KindnessBoard';
 import { ReadMoreText } from '@/components/ui/ReadMoreText';
 import {
@@ -144,6 +145,9 @@ export default async function KindnessListingPage({ params }: PageProps) {
   const detail = await fetchKindnessListingDetail(slug);
   if (!detail) notFound();
 
+  /* سه کارت = یک ردیفِ کامل در گریدِ سه‌ستونهٔ دسکتاپ (بدونِ کارتِ یتیم) و
+     دو کارتِ خوانا در موبایل. سرور پیش‌فرضش ۴ است؛ این‌جا عمداً ۳ می‌خواهیم
+     تا بخشِ «نیازهای مشابه» یک تیزرِ تمیز بماند، نه فهرستِ دوم. */
   const related = await fetchRelatedKindnessListings(detail, 3);
 
   const base = siteConfig.url.replace(/\/+$/, '');
@@ -382,10 +386,12 @@ export default async function KindnessListingPage({ params }: PageProps) {
                   {quantity}
                 </span>
                 {typeof detail.view_count === 'number' && detail.view_count > 0 && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Eye className="h-3.5 w-3.5 text-brand-300" aria-hidden="true" />
-                    {`${fa(detail.view_count)} بازدید`}
-                  </span>
+                  <ListingViewCounter
+                    slug={detail.slug}
+                    initialCount={detail.view_count}
+                    className="text-white/55"
+                    withLabel
+                  />
                 )}
                 <span className="inline-flex items-center gap-1.5">
                   <Handshake className="h-3.5 w-3.5 text-mint-300" aria-hidden="true" />
@@ -593,12 +599,17 @@ export default async function KindnessListingPage({ params }: PageProps) {
                     value={formatJalaliDate(detail.published_at)}
                   />
                 )}
-                <FactRow
-                  icon={Eye}
-                  label="بازدید"
-                  value={fa(detail.view_count ?? 0)}
-                  tone="text-ink-400"
-                />
+                <li className="flex items-center justify-between gap-3 py-2.5">
+                  <span className="inline-flex items-center gap-2 text-[11.5px] font-bold text-ink-500">
+                    <Eye className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
+                    بازدید
+                  </span>
+                  <ListingViewCounter
+                    slug={detail.slug}
+                    initialCount={detail.view_count ?? 0}
+                    className="text-[12px] font-extrabold text-ink-900"
+                  />
+                </li>
                 <FactRow
                   icon={Handshake}
                   label="اعلامِ آمادگی"

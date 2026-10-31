@@ -259,25 +259,44 @@ describe('fetcherها', () => {
     expect(await fetchKindnessListingDetail('nope')).toBeNull();
   });
 
-  it('نیازهای مشابه: فیلترِ دسته + حذفِ خودِ آگهی', async () => {
-    safeApiFetchMock.mockResolvedValue({
-      count: 3,
-      next: null,
-      previous: null,
-      results: [
-        { slug: BASE.slug, title: 'خودم', excerpt: 'x', urgency: 'normal', quantity: 1 },
-        { slug: 'other-1', title: 'دیگری', excerpt: 'y', urgency: 'normal', quantity: 1 },
-      ],
-    });
+  it('نیازهای مشابه: از endpoint اختصاصیِ related با limit', async () => {
+    safeApiFetchMock.mockResolvedValue([
+      { slug: 'other-1', title: 'دیگری', excerpt: 'y', urgency: 'normal', quantity: 1 },
+      {
+        slug: BASE.slug,
+        title: 'خودم (نباید بیاید)',
+        excerpt: 'x',
+        urgency: 'normal',
+        quantity: 1,
+      },
+    ]);
     const out = await fetchRelatedKindnessListings(BASE);
+    /* حتی اگر سرور خودِ آگهی را بدهد، فرانت هم فیلتر می‌کند (دفاعِ دولایه) */
     expect(out.map((i) => i.slug)).toEqual(['other-1']);
-    expect(String(safeApiFetchMock.mock.calls[0][0])).toContain('category=ashpazkhane');
+    const url = String(safeApiFetchMock.mock.calls[0][0]);
+    expect(url).toContain('/related/');
+    expect(url).toContain('limit=4');
   });
 
-  it('بدونِ دسته → بدونِ درخواست', async () => {
-    const out = await fetchRelatedKindnessListings({ ...BASE, category: undefined });
-    expect(out).toEqual([]);
-    expect(safeApiFetchMock).not.toHaveBeenCalled();
+  it('نیازهای مشابه: پاسخ غیرآرایه → لیست خالی (بدونِ کرش)', async () => {
+    safeApiFetchMock.mockResolvedValue(null);
+    expect(await fetchRelatedKindnessListings(BASE)).toEqual([]);
+  });
+
+  it('beacon بازدید: POST به /view/ و نگاشتِ پاسخ', async () => {
+    const { registerListingView } = await import('./kindness-listing');
+    apiFetchMock.mockResolvedValue({ counted: true, view_count: 9 });
+    const out = await registerListingView(BASE.slug);
+    expect(out).toEqual({ counted: true, viewCount: 9 });
+    const [path, init] = apiFetchMock.mock.calls[0];
+    expect(String(path)).toContain('/view/');
+    expect(init).toMatchObject({ method: 'POST' });
+  });
+
+  it('beacon بازدید: خطا → null (هرگز throw نمی‌کند)', async () => {
+    const { registerListingView } = await import('./kindness-listing');
+    apiFetchMock.mockRejectedValue(new ApiError('boom', 500));
+    expect(await registerListingView(BASE.slug)).toBeNull();
   });
 
   it('my-offers: رکوردِ همین آگهی با شناسه پیدا می‌شود', async () => {

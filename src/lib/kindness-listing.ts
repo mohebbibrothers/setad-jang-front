@@ -389,26 +389,57 @@ export function isContactGated(
 }
 
 /**
- * «نیازهای مشابه»: همان دسته، بدونِ خودِ آگهی. یک درخواست به فهرستِ عمومی
- * (که فیلدِ تماس ندارد — کاملاً بی‌خطر) و برشِ سمتِ فرانت.
+ * «نیازهای مشابه» — از endpoint اختصاصی `listings/{slug}/related/`.
+ *
+ * چرا endpoint جدا و نه فهرستِ عمومی؟
+ *   • **حذفِ خودِ آگهی سمتِ سرور** است (پیش‌تر در فرانت حذف می‌شد و یک جای
+ *     خالی در گرید می‌گذاشت)؛
+ *   • ترتیب بر پایهٔ **ربط** است (دسته+شهر › دسته › استان › سراسری)، نه فقط
+ *     تازگی — پس پیشنهادها واقعاً «شبیه» هستند؛
+ *   • پاسخ سبک است و وقتی دسته کم‌جمعیت باشد، سرور با نیازهای هم‌استان و
+ *     سراسری پرش می‌کند؛ بخشِ صفحه هرگز نصفه نمی‌ماند.
+ *
+ * خروجی هیچ فیلدِ تماسی ندارد (همان سیاستِ ضد اسکرپینگِ فهرست).
  */
 export async function fetchRelatedKindnessListings(
   detail: KindnessListingDetail,
-  limit = 3,
+  limit = 4,
 ): Promise<KindListing[]> {
-  const category = (detail.category?.slug || '').trim();
-  if (!category) return [];
-  const data = await safeApiFetch<Paginated<Parameters<typeof mapKindnessListings>[0][number]>>(
-    `/kindness-wall/listings/?category=${encodeURIComponent(category)}&page_size=${Math.max(
-      limit + 1,
-      6,
-    )}`,
-    { revalidate: 240, tags: ['kindness', `kindness:related:${category}`] },
+  const key = canonicalApiLookup(detail.slug);
+  const data = await safeApiFetch<Parameters<typeof mapKindnessListings>[0]>(
+    `/kindness-wall/listings/${key}/related/?limit=${limit}`,
+    { revalidate: 240, tags: ['kindness', `kindness:related:${detail.slug}`] },
   );
-  if (!data) return [];
-  return mapKindnessListings(data.results ?? [])
-    .filter((item) => item.slug !== detail.slug)
-    .slice(0, limit);
+  if (!Array.isArray(data)) return [];
+  return mapKindnessListings(data).filter((item) => item.slug !== detail.slug);
+}
+
+/* ── شمارشِ بازدید (beacon کلاینتی) ─────────────────────────────────── */
+
+export type ViewBeaconResult = { counted: boolean; viewCount: number };
+
+/**
+ * ثبتِ بازدیدِ یکتا از مرورگر.
+ *
+ * صفحهٔ جزئیات سروری/ISR است، پس شمارش در آن هر revalidate را «بازدید»
+ * می‌کرد. این beacon از سمتِ کلاینت (یک‌بار در هر mount) صدا زده می‌شود و
+ * سرور با پنجرهٔ dedupe (پیش‌فرض ۶ ساعت) و شناسهٔ کاربر یا اثرِ IP+UA
+ * تصمیم می‌گیرد. پاسخ عددِ **تازه** را می‌دهد تا رابط بی‌درنگ به‌روز شود.
+ *
+ * هرگز throw نمی‌کند: شمارشِ آماری نباید تجربهٔ خواندن را بشکند.
+ */
+export async function registerListingView(slug: string): Promise<ViewBeaconResult | null> {
+  const key = canonicalApiLookup(slug);
+  try {
+    const data = await apiFetch<{ counted?: boolean; view_count?: number }>(
+      `/kindness-wall/listings/${key}/view/`,
+      { method: 'POST', skipRefresh: true, cache: 'no-store' },
+    );
+    if (!data || typeof data.view_count !== 'number') return null;
+    return { counted: data.counted === true, viewCount: data.view_count };
+  } catch {
+    return null;
+  }
 }
 
 /* ── اعلام آمادگی (کلاینت، احراز هویت‌شده) ────────────────────────── */
