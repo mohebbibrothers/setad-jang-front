@@ -351,3 +351,24 @@ describe('isContactGated — پرچمِ سرور و دروازهٔ دفاعیِ 
     expect(isContactGated(null)).toBe(false);
   });
 });
+
+describe('redactGatedChannels — پاک‌سازیِ payload پیش از props', () => {
+  it('کانال‌های کامل را ماسک و لینک را خالی می‌کند', async () => {
+    const { redactGatedChannels } = await import('./kindness-listing');
+    const legacy = { ...BASE };
+    delete (legacy as { contact_gated?: boolean }).contact_gated;
+    const safe = redactGatedChannels(legacy);
+    expect(safe.contact_gated).toBe(true);
+    const blob = JSON.stringify(safe);
+    expect(blob).not.toContain('09120000000');
+    expect(blob).not.toContain('tel:+989120000000');
+    expect(blob).not.toContain('https://t.me/besat');
+    expect(safe.contact_channels?.[0].value).toContain('•');
+  });
+
+  it('وقتی سرور دروازه را بسته (کاربرِ مجاز)، داده دست‌نخورده می‌ماند', async () => {
+    const { redactGatedChannels } = await import('./kindness-listing');
+    const safe = redactGatedChannels({ ...BASE, contact_gated: false });
+    expect(safe.contact_channels?.[0].value).toBe('besat');
+  });
+});

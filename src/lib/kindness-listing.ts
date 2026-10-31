@@ -296,11 +296,14 @@ export async function fetchKindnessListingDetail(
   slug: string,
 ): Promise<KindnessListingDetail | null> {
   const key = canonicalApiLookup(slug);
-  return safeApiFetch<KindnessListingDetail>(`/kindness-wall/listings/${key}/`, {
+  const detail = await safeApiFetch<KindnessListingDetail>(`/kindness-wall/listings/${key}/`, {
     revalidate: 180,
     tags: [`kindness:${slug}`, 'kindness'],
     skipAuth: true,
   });
+  /* رندرِ سروری همیشه بی‌توکن است ⇒ هر کانالی که سرور داده، اگر دروازه باز
+     است، پیش از رسیدن به props ماسک می‌شود (بدونِ نشتی در HTMLِ خام). */
+  return detail ? redactGatedChannels(detail) : null;
 }
 
 /**
@@ -308,6 +311,38 @@ export async function fetchKindnessListingDetail(
  * تخته وقتی نشست وجود دارد. سرور برای کاربرِ واردشده مقدار و لینکِ کامل
  * را می‌دهد (`contact_gated=false`) و برای بی‌نام ماسک‌شده.
  */
+/**
+ * پاک‌سازیِ کانال‌ها **پیش از رسیدن به props کامپوننت** وقتی دروازه باز است.
+ *
+ * چرا لازم است؟ حتی اگر UI مقدار را رندر نکند، هر چیزی که در props/سریالایزِ
+ * RSC برود در HTMLِ خام صفحه دیده می‌شود (DevTools/View Source). پس برای
+ * بینندهٔ بی‌نام، خودِ داده نیز باید ماسک‌شده به کامپوننت برسد — لایهٔ دومِ
+ * دفاع، مستقل از رفتارِ سرور (که در نسخهٔ جدید خودش ماسک می‌کند).
+ */
+export function redactGatedChannels(detail: KindnessListingDetail): KindnessListingDetail {
+  if (!isContactGated(detail)) return detail;
+  const mask = (value: string, kind: string): string => {
+    const raw = (value || '').trim();
+    if (!raw) return '';
+    if (kind === 'phone') {
+      const digits = raw.replace(/\D/g, '');
+      return digits.length >= 7 ? `${digits.slice(0, 4)}•••••${digits.slice(-2)}` : '••••';
+    }
+    return raw.length <= 3 ? '•••' : `${raw.slice(0, 3)}•••`;
+  };
+  return {
+    ...detail,
+    contact_gated: true,
+    contact_channels: (detail.contact_channels ?? []).map((channel) => ({
+      kind: channel.kind,
+      label: channel.label,
+      value: mask(channel.value, channel.kind),
+      link: '',
+      masked: 'true',
+    })) as typeof detail.contact_channels,
+  };
+}
+
 export async function fetchKindnessListingDetailAuthed(
   slug: string,
 ): Promise<KindnessListingDetail | null> {
