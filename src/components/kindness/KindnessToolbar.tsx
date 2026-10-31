@@ -93,6 +93,8 @@ export function KindnessToolbar({
   /* ── شهرهای وابسته: هر بار که استان عوض شود از APIِ geo می‌آیند ──────── */
   const [cityList, setCityList] = useState<string[]>([]);
   const [citiesLoading, setCitiesLoading] = useState(false);
+  /** فهرست از سرور نیامد (مثلاً بک‌اندِ قدیمی) — کاربر آزادانه تایپ می‌کند. */
+  const [citiesFailed, setCitiesFailed] = useState(false);
   useEffect(() => {
     const province = pv.trim();
     if (!province) {
@@ -101,9 +103,12 @@ export function KindnessToolbar({
     }
     let alive = true;
     setCitiesLoading(true);
+    setCitiesFailed(false);
     fetchGeoCities(province)
       .then((list) => {
-        if (alive) setCityList(list);
+        if (!alive) return;
+        setCityList(list);
+        setCitiesFailed(list.length === 0);
       })
       .finally(() => {
         if (alive) setCitiesLoading(false);
@@ -192,7 +197,9 @@ export function KindnessToolbar({
                   ? 'ابتدا استان را انتخاب کنید'
                   : citiesLoading
                     ? 'در حال بارگذاری…'
-                    : 'همهٔ شهرها'
+                    : citiesFailed
+                      ? 'نامِ شهر را تایپ کنید…'
+                      : 'همهٔ شهرها'
               }
               disabled={!pv}
               searchable
