@@ -218,7 +218,10 @@ export function KindnessCard({
           )}
         </div>
 
-        {/* اکشن‌ها — راه‌های ارتباط قهرمان است، اشتراک‌گذاری همراهش */}
+        {/* اکشن‌ها — ترتیبِ خواندنِ RTL (راست→چپ):
+            «راه‌های ارتباط» (قهرمان) → «اشتراک‌گذاری» → «ورود به صفحهٔ آگهی».
+            قهرمان عرضِ کشسان دارد و دو اکشنِ فرعی، مربعِ هم‌اندازه‌اند تا
+            سلسله‌مراتب فقط با رنگ بیان شود، نه با ابعادِ ناسازگار. */}
         <div className="mt-3.5 flex items-center gap-2">
           <button
             type="button"
@@ -228,20 +231,12 @@ export function KindnessCard({
             <Phone className="h-3.5 w-3.5" />
             راه‌های ارتباط
           </button>
-          <Link
-            href={kindnessListingPath(l.slug)}
-            aria-label={`مشاهدهٔ صفحهٔ آگهی ${l.title}`}
-            title="مشاهدهٔ جزئیات"
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink-200 bg-white text-ink-500 transition-colors hover:border-brand-300 hover:text-brand-700"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
           <button
             type="button"
             onClick={shareListing}
             aria-label={`اشتراک‌گذاری آگهی ${l.title}`}
             title={shared ? 'لینک کپی شد' : 'اشتراک‌گذاری'}
-            className={`inline-flex h-11 w-11 items-center justify-center rounded-xl border transition-colors ${
+            className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors ${
               shared
                 ? 'border-mint-500 bg-mint-50 text-mint-600'
                 : 'border-ink-200 bg-white text-ink-500 hover:border-brand-300 hover:text-brand-600'
@@ -249,6 +244,14 @@ export function KindnessCard({
           >
             {shared ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
           </button>
+          <Link
+            href={kindnessListingPath(l.slug)}
+            aria-label={`مشاهدهٔ صفحهٔ آگهی ${l.title}`}
+            title="مشاهدهٔ صفحهٔ آگهی"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink-200 bg-white text-ink-500 transition-colors hover:border-brand-300 hover:bg-brand-50/40 hover:text-brand-700"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     </motion.article>

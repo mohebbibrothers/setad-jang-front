@@ -8,6 +8,8 @@ import {
   Copy,
   ExternalLink,
   Instagram,
+  Lock,
+  LogIn,
   MessageCircle,
   MessagesSquare,
   MessageSquareText,
@@ -16,6 +18,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 /**
@@ -83,7 +86,9 @@ export function KindnessContactSheet({
   title,
   subtitle,
   contactNote,
+  slug,
   channels,
+  gated = false,
   loading,
   error,
   onRetry,
@@ -95,7 +100,11 @@ export function KindnessContactSheet({
   subtitle?: string;
   /** یادداشت هماهنگی ادمین: «تماس ۱۰ تا ۲۰»، «پیامکی بهتر است». */
   contactNote?: string;
+  /** اسلاگِ آگهی — برای لینکِ «ورود و مشاهدهٔ کامل» در حالتِ درگاه. */
+  slug: string;
   channels: KindContactChannel[];
+  /** آیا سرور مقدارها را ماسک کرده است؟ (بینندهٔ بی‌نام) */
+  gated?: boolean;
   loading: boolean;
   error: boolean;
   onRetry: () => void;
@@ -255,6 +264,52 @@ export function KindnessContactSheet({
                 </div>
               )}
 
+              {/* درگاهِ ورود: بینندهٔ بی‌نام مقدارِ کامل را نمی‌بیند */}
+              {!loading && !error && gated && channels.length > 0 && (
+                <div
+                  className="rounded-2xl border border-brand-200/70 bg-[linear-gradient(180deg,#f2faf8,#ffffff)] px-4 py-5 text-center"
+                  data-testid="kw-sheet-gate"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="mx-auto grid h-11 w-11 place-items-center rounded-2xl bg-brand-500/10 text-brand-700 ring-1 ring-brand-200/70"
+                  >
+                    <Lock className="h-5 w-5" />
+                  </span>
+                  <p className="mt-2.5 text-[12.5px] font-black text-ink-900">
+                    راه‌های ارتباط پس از ورود نمایش داده می‌شود
+                  </p>
+                  <p className="mx-auto mt-1.5 max-w-sm text-[11px] font-medium leading-6 text-ink-500">
+                    برای امنیتِ صاحبِ نیاز، شماره و آیدی‌ها فقط برای کاربرانِ واردشده نمایش داده
+                    می‌شود.
+                  </p>
+                  <ul className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+                    {channels.map((channel) => {
+                      const style = CHANNEL_STYLE[channel.kind] ?? FALLBACK_STYLE;
+                      return (
+                        <li
+                          key={channel.kind}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-ink-100 bg-white px-2.5 py-1 text-[10.5px] font-extrabold text-ink-600"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={cn('h-2 w-2 rounded-full', style.disc)}
+                          />
+                          {channel.label}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <Link
+                    href={`/kindness-wall/${encodeURIComponent(slug)}`}
+                    className="mt-3.5 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#0D8074,#0A6E64_50%,#085C54)] px-5 text-[12.5px] font-extrabold text-white transition-all hover:brightness-[1.08]"
+                  >
+                    <LogIn className="h-4 w-4" aria-hidden="true" />
+                    ورود و مشاهدهٔ کامل
+                  </Link>
+                </div>
+              )}
+
               {!loading && !error && channels.length === 0 && (
                 <p className="rounded-2xl bg-ink-50 px-4 py-5 text-center text-[12.5px] font-bold text-ink-500 ring-1 ring-ink-100">
                   برای این آگهی هنوز راه ارتباطی ثبت نشده است.
@@ -263,6 +318,7 @@ export function KindnessContactSheet({
 
               {!loading &&
                 !error &&
+                !gated &&
                 channels.map((channel) => {
                   const style = CHANNEL_STYLE[channel.kind] ?? FALLBACK_STYLE;
                   const copied = copiedKind === channel.kind;

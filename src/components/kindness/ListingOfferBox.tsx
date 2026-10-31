@@ -240,17 +240,25 @@ export function ListingOfferBox({
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value.slice(0, MAX_MESSAGE))}
-                rows={3}
+                rows={4}
                 placeholder="مثلاً: «یک پتوی نو در منزل دارم و می‌توانم تا پایان هفته برسانم.»"
-                className="w-full resize-y rounded-2xl border border-ink-200 bg-ink-50/50 px-3.5 py-3 text-[12.5px] font-medium leading-7 text-ink-900 transition-colors placeholder:text-ink-400 focus:border-brand-500 focus:bg-white focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
+                /* resize-none: دستهٔ سه‌خطیِ گوشهٔ پایین‌چپ (افزونهٔ بومیِ مرورگر)
+                   حذف می‌شود؛ ارتفاع ثابت و قابلِ‌اعتماد در همهٔ دستگاه‌ها.
+                   kw-scroll: اسکرول‌بارِ نازکِ برندِ سایت (۶px، تنهٔ شفاف، شستِ
+                   سبزِ نیم‌شفاف) که با پنل‌های کشویی هم‌خانواده است. */
+                className="kw-scroll block max-h-40 min-h-[7.5rem] w-full resize-none overflow-y-auto rounded-2xl border border-ink-200 bg-ink-50/50 px-3.5 py-3 text-[12.5px] font-medium leading-7 text-ink-900 transition-colors placeholder:text-ink-400 focus:border-brand-500 focus:bg-white focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
               />
             </label>
 
+            {/* ⚠️ ریشهٔ باگِ «دکمهٔ نازک در موبایل»: در چیدمانِ ستونی (flex-col)
+                خاصیتِ flex-1 روی محورِ عمودی اعمال می‌شد و flex-basis:0 ارتفاعِ
+                دکمه را جمع می‌کرد. درمان: عرضِ کامل در موبایل (w-full) و
+                flex-1 فقط از sm که چیدمان ردیفی می‌شود. */}
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
               <button
                 type="submit"
                 disabled={busy}
-                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#0D8074,#0A6E64_50%,#085C54)] text-[13px] font-extrabold text-white shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)] transition-all hover:brightness-[1.08] active:scale-[.99] disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#0D8074,#0A6E64_50%,#085C54)] text-[13px] font-extrabold text-white shadow-[0_6px_14px_-6px_rgba(13,128,116,.55)] transition-all hover:brightness-[1.08] active:scale-[.99] disabled:cursor-not-allowed disabled:opacity-70 sm:flex-1"
               >
                 {busy ? (
                   <Loader2
@@ -270,7 +278,7 @@ export function ListingOfferBox({
                     setMessage(offer?.message ?? '');
                     setError(null);
                   }}
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-ink-200 px-4 text-[12px] font-extrabold text-ink-600 transition-colors hover:border-ink-300 hover:text-ink-900"
+                  className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-ink-200 px-4 text-[12px] font-extrabold text-ink-600 transition-colors hover:border-ink-300 hover:text-ink-900 sm:w-auto"
                 >
                   انصراف
                 </button>
@@ -318,7 +326,7 @@ export function ListingOfferBox({
                 <button
                   type="button"
                   onClick={() => setPhase('editing')}
-                  className="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-ink-200 text-[12px] font-extrabold text-ink-700 transition-colors hover:border-brand-300 hover:text-brand-700"
+                  className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-ink-200 text-[12px] font-extrabold text-ink-700 transition-colors hover:border-brand-300 hover:text-brand-700 sm:flex-1"
                 >
                   <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                   ویرایشِ پیام
@@ -327,7 +335,7 @@ export function ListingOfferBox({
                   type="button"
                   onClick={() => void withdraw()}
                   disabled={busy}
-                  className="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-rose-200 text-[12px] font-extrabold text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-rose-200 text-[12px] font-extrabold text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-1"
                 >
                   {busy ? (
                     <Loader2

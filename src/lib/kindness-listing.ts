@@ -76,6 +76,12 @@ export type KindnessListingDetail = {
   contact_note?: string;
   images?: KindnessImage[];
   contact_channels?: KindContactChannel[];
+  /**
+   * آیا راه‌های ارتباط برای این بیننده ماسک شده‌اند؟ (پاسخِ بی‌نام = true)
+   * منبعِ حقیقت **بک‌اند** است؛ فرانت فقط همین پرچم را باور می‌کند و هرگز
+   * به «پنهان‌سازیِ ظاهری» تکیه نمی‌کند.
+   */
+  contact_gated?: boolean;
   my_offer_status?: 'new' | 'contacted' | 'declined' | string | null;
   can_offer?: boolean;
 };
@@ -295,6 +301,48 @@ export async function fetchKindnessListingDetail(
     tags: [`kindness:${slug}`, 'kindness'],
     skipAuth: true,
   });
+}
+
+/**
+ * همان جزئیات، ولی **با هویتِ کاربر** — برای بازخوانی پس از ورود یا در شیتِ
+ * تخته وقتی نشست وجود دارد. سرور برای کاربرِ واردشده مقدار و لینکِ کامل
+ * را می‌دهد (`contact_gated=false`) و برای بی‌نام ماسک‌شده.
+ */
+export async function fetchKindnessListingDetailAuthed(
+  slug: string,
+): Promise<KindnessListingDetail | null> {
+  const key = canonicalApiLookup(slug);
+  try {
+    return await apiFetch<KindnessListingDetail>(`/kindness-wall/listings/${key}/`, {
+      cache: 'no-store',
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * آیا این پاسخ، کانال‌های پنهان‌شده دارد؟ (پرچمِ سرور، با fallbackِ امن)
+ *
+ * ورودیِ ساختاریِ سبک هم پذیرفته می‌شود (`{contact_gated, contact_channels}`)
+ * چون شیتِ تخته فقط همین دو فیلد را از DETAIL نگه می‌دارد.
+ */
+export function isContactGated(
+  detail:
+    | (Partial<Pick<KindnessListingDetail, 'contact_gated' | 'contact_channels'>> & {
+        contact_gated?: boolean;
+        contact_channels?: KindContactChannel[];
+      })
+    | null
+    | undefined,
+): boolean {
+  if (!detail) return false;
+  if (detail.contact_gated === true) return true;
+  /* fallbackِ دفاعی: اگر سرورِ قدیمی پرچم را نفرستد ولی همهٔ مقادیر ماسک
+     باشند، باز هم درگاه را نشان می‌دهیم (هرگز برعکسش: مقدارِ کامل را با
+     حدس پنهان نمی‌کنیم). */
+  const channels = detail.contact_channels ?? [];
+  return channels.length > 0 && channels.every((c) => c.link === '' && c.value.includes('•'));
 }
 
 /**

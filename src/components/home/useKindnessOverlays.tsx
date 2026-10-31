@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { CampaignAlbum, type AlbumImage } from './CampaignAlbum';
 import { KindnessContactSheet } from './KindnessContactSheet';
 import { apiFetch } from '@/lib/api';
+import { isContactGated } from '@/lib/kindness-listing';
+import { hasSession } from '@/lib/auth-tokens';
 import { absoluteMediaUrl, formatPersianNumber as fa } from '@/lib/utils';
 import type { KindListing, KindListingDetail } from './KindnessSection';
 
@@ -39,10 +41,14 @@ export function useKindnessOverlays(listings: KindListing[]) {
   const ensureDetail = useCallback(
     (l: KindListing) => {
       if (details[l.slug] !== undefined) return;
+      /* اگر نشست داریم، درخواست را با هویت می‌فرستیم تا سرور مقدار و لینکِ
+         کاملِ راه‌های ارتباط را بدهد؛ بی‌نام، پاسخ ماسک‌شده می‌آید و شیت
+         درگاهِ ورود را نشان می‌دهد (منبعِ حقیقت: پرچمِ contact_gated سرور). */
+      const authed = typeof window !== 'undefined' && hasSession();
       apiFetch<KindListingDetail>(`/kindness-wall/listings/${encodeURIComponent(l.slug)}/`, {
         revalidate: 600,
         tags: [`kindness:${l.slug}`, 'kindness'],
-        skipAuth: true,
+        skipAuth: !authed,
       })
         .then((d) => setDetails((prev) => ({ ...prev, [l.slug]: d })))
         .catch(() => setDetails((prev) => ({ ...prev, [l.slug]: null })));
@@ -150,11 +156,13 @@ export function useKindnessOverlays(listings: KindListing[]) {
         <KindnessContactSheet
           open={sheet.open}
           title={sheetListing.title}
+          slug={sheetListing.slug}
           subtitle={
             sheetDetail?.beneficiary_name ? `به‌نیاب: ${sheetDetail.beneficiary_name}` : undefined
           }
           contactNote={sheetDetail?.contact_note || undefined}
           channels={sheetDetail?.contact_channels ?? []}
+          gated={isContactGated(sheetDetail)}
           loading={sheetDetail === undefined}
           error={sheetDetail === null}
           onRetry={() => retryDetail(sheetListing)}

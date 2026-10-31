@@ -35,6 +35,7 @@ import {
   fetchKindnessListingDetail,
   fetchRelatedKindnessListings,
   kindnessListingCanonical,
+  isContactGated,
   listingAlbumImages,
   listingDeadline,
   listingLocationLine,
@@ -394,12 +395,13 @@ export default async function KindnessListingPage({ params }: PageProps) {
                 </span>
               </div>
 
-              {/* دکمه‌های اصلی (دسکتاپ) */}
-              <div className="mt-6 hidden flex-wrap gap-2.5 sm:flex">
+              {/* دکمه‌های اصلی — در موبایل هم دیده می‌شوند (تمام‌عرضِ روی‌هم) تا
+                  کاربر پیش از دیدنِ نوارِ چسبان هم راهِ اقدام را داشته باشد. */}
+              <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
                 {hasChannels ? (
                   <a
                     href="#contact"
-                    className="inline-flex h-[52px] items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#0D8074,#0A6E64_50%,#085C54)] px-6 text-[13.5px] font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(13,128,116,.75)] transition-all hover:brightness-[1.08] active:scale-[.99]"
+                    className="inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#0D8074,#0A6E64_50%,#085C54)] px-6 text-[13.5px] font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(13,128,116,.75)] transition-all hover:brightness-[1.08] active:scale-[.99] sm:w-auto"
                   >
                     <PhoneCall className="h-4 w-4" aria-hidden="true" />
                     راه‌های ارتباط
@@ -407,7 +409,7 @@ export default async function KindnessListingPage({ params }: PageProps) {
                 ) : null}
                 <a
                   href="#offer"
-                  className="inline-flex h-[52px] items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/[.06] px-5 text-[13px] font-extrabold text-white backdrop-blur-sm transition-colors hover:border-brand-300/50 hover:bg-white/[.12]"
+                  className="inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/[.06] px-5 text-[13px] font-extrabold text-white backdrop-blur-sm transition-colors hover:border-brand-300/50 hover:bg-white/[.12] sm:w-auto"
                 >
                   <HandHeart className="h-4 w-4" aria-hidden="true" />
                   من هم می‌توانم
@@ -429,7 +431,8 @@ export default async function KindnessListingPage({ params }: PageProps) {
       </section>
 
       {/* ══════════ بدنه: محتوا + سایدبار ══════════ */}
-      <section className="container-edge relative z-10 -mt-12 pb-14 md:pb-20">
+      {/* pb-32 در موبایل: نوارِ چسبانِ پایین (~۷۲px) هرگز روی محتوا نمی‌افتد. */}
+      <section className="container-edge relative z-10 -mt-12 pb-32 sm:pb-24 lg:pb-20">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
           {/* ── ستونِ محتوا ─────────────────────────────────────── */}
           <div className="min-w-0 space-y-5">
@@ -477,7 +480,9 @@ export default async function KindnessListingPage({ params }: PageProps) {
             {/* راه‌های ارتباط */}
             <div id="contact" className="scroll-mt-24">
               <ListingContactCard
+                slug={detail.slug}
                 channels={channels}
+                gated={isContactGated(detail)}
                 contactNote={detail.contact_note}
                 beneficiary={detail.beneficiary_name}
               />
@@ -523,30 +528,10 @@ export default async function KindnessListingPage({ params }: PageProps) {
                 </p>
               </div>
             )}
-
-            {/* بازگشت به تخته */}
-            <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href={`${kindnessHubHref(DEFAULT_KINDNESS_FILTERS, {})}#board`}
-                className="inline-flex h-11 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 text-[12px] font-extrabold text-ink-700 transition-colors hover:border-brand-300 hover:text-brand-700"
-              >
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                همهٔ نیازهای دیوار
-              </Link>
-              {categoryTitle && (
-                <Link
-                  href={categoryHref}
-                  className="inline-flex h-11 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 text-[12px] font-extrabold text-ink-700 transition-colors hover:border-brand-300 hover:text-brand-700"
-                >
-                  <Layers className="h-4 w-4" aria-hidden="true" />
-                  {`همهٔ نیازهای «${categoryTitle}»`}
-                </Link>
-              )}
-            </div>
           </div>
 
           {/* ── سایدبار ─────────────────────────────────────────── */}
-          <aside className="min-w-0 space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <aside className="min-w-0 space-y-4 pt-1 lg:sticky lg:top-24 lg:self-start lg:pt-0">
             {/* مهلت */}
             <div className="rounded-[22px] border border-ink-100 bg-white p-4">
               <div className="flex items-center justify-between gap-2">
@@ -638,6 +623,46 @@ export default async function KindnessListingPage({ params }: PageProps) {
                 <li>• بدونِ واسطه و بدونِ پرداختِ آنلاین — حضوری هماهنگ کن.</li>
               </ul>
             </div>
+
+            {/* قدمِ بعدی — مرورِ تخته/دسته. در دسکتاپ ته سایدبار و در
+                موبایل/تبلت دقیقاً زیرِ همین کارت‌ها می‌نشیند (نه شناور
+                میانِ محتوا). هر دو لینک تمام‌عرض و هم‌ارتفاع‌اند. */}
+            <nav
+              aria-label="مرورِ نیازهای بیشتر"
+              className="rounded-[22px] border border-ink-100 bg-white p-3"
+            >
+              <p className="px-1 pb-2 text-[11.5px] font-black text-ink-900">قدمِ بعدی</p>
+              <div className="grid gap-2">
+                <Link
+                  href={`${kindnessHubHref(DEFAULT_KINDNESS_FILTERS, {})}#board`}
+                  className="group inline-flex h-11 items-center justify-between gap-2 rounded-xl border border-ink-200 bg-white px-3.5 text-[12px] font-extrabold text-ink-700 transition-colors hover:border-brand-300 hover:bg-brand-50/40 hover:text-brand-700"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <ArrowRight className="h-4 w-4 text-brand-600" aria-hidden="true" />
+                    همهٔ نیازهای دیوار
+                  </span>
+                  <ChevronLeft
+                    className="h-3.5 w-3.5 text-ink-300 transition-transform group-hover:-translate-x-0.5 group-hover:text-brand-500"
+                    aria-hidden="true"
+                  />
+                </Link>
+                {categoryTitle && (
+                  <Link
+                    href={categoryHref}
+                    className="group inline-flex h-11 items-center justify-between gap-2 rounded-xl border border-ink-200 bg-white px-3.5 text-[12px] font-extrabold text-ink-700 transition-colors hover:border-brand-300 hover:bg-brand-50/40 hover:text-brand-700"
+                  >
+                    <span className="inline-flex min-w-0 items-center gap-2">
+                      <Layers className="h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
+                      <span className="truncate">{`نیازهای «${categoryTitle}»`}</span>
+                    </span>
+                    <ChevronLeft
+                      className="h-3.5 w-3.5 shrink-0 text-ink-300 transition-transform group-hover:-translate-x-0.5 group-hover:text-brand-500"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                )}
+              </div>
+            </nav>
           </aside>
         </div>
 
