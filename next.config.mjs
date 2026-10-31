@@ -117,10 +117,12 @@ const nextConfig = {
     // `/` (that's the frontend contract), so the resulting URL is
     // exactly `.../<path>/` end-of-string. No double slash, no 404.
     return [
-      {
-        source: '/api/proxy/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/:path*`,
-      },
+      // ─── پراکسیِ هم‌دامنه ──────────────────────────────────────────
+      // مسیرِ `/api/proxy/*` دیگر rewrite نیست: یک **Route Handler** واقعی
+      // است در `src/app/api/proxy/[...path]/route.ts`. دلیل: در Next،
+      // rewriteهای afterFiles پیش از روت‌های داینامیک ارزیابی می‌شوند و
+      // اسلشِ پایانی را می‌خورند؛ نتیجه زنجیرهٔ ۳۰۱ جنگو → ۴۰۴ روی دامنهٔ
+      // فرانت بود. handler همان مسیر را با اسلش/کوئری/متدِ درست به DRF می‌دهد.
       // ─── «API پشت Vercel» (پراکسی کاملِ origin) ───────────────────
       // اگر API_UPSTREAM_URL ست شود، مرورگر فقط با همین دامنه
       // (besat.me) حرف می‌زند و سرور Next/Vercel درخواست‌های زیر را به

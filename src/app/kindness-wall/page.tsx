@@ -27,6 +27,7 @@ import {
   fetchKindnessListingsPage,
   fetchKindnessStats,
   fetchKindnessStories,
+  fetchGeoProvinces,
   hasActiveKindnessFilters,
   kindnessHubHref,
   readKindnessFilters,
@@ -145,11 +146,12 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
   const hasFilters = hasActiveKindnessFilters(f);
   const isCanonicalView = !hasFilters && f.page === 1;
 
-  const [pageData, categories, stats, stories] = await Promise.all([
+  const [pageData, categories, stats, stories, provinces] = await Promise.all([
     fetchKindnessListingsPage(f),
     fetchKindnessCategories(),
     fetchKindnessStats(),
     fetchKindnessStories(8),
+    fetchGeoProvinces(),
   ]);
 
   const base = siteConfig.url.replace(/\/+$/, '');
@@ -475,24 +477,8 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
           )}
 
           {/* نوارِ ابزارِ زنده — گزینه‌های استان/شهر از دادهٔ واقعیِ تخته */}
-          <KindnessToolbar
-            filters={f}
-            hasFilters={hasFilters}
-            facets={{
-              provinces: Array.from(
-                new Set(
-                  [...(pageData?.items ?? [])]
-                    .map((l) => (l.province ?? '').trim())
-                    .filter(Boolean),
-                ),
-              ),
-              cities: Array.from(
-                new Set(
-                  [...(pageData?.items ?? [])].map((l) => (l.city ?? '').trim()).filter(Boolean),
-                ),
-              ),
-            }}
-          />
+          {/* نوارِ ابزارِ زنده — استان از دیتاستِ رسمیِ بک‌اند، شهر وابسته */}
+          <KindnessToolbar filters={f} hasFilters={hasFilters} provinces={provinces} />
 
           {/* چیپ‌های فیلترِ فعال */}
           {chips.length > 0 && (
@@ -785,25 +771,88 @@ export default async function KindnessWallHubPage({ searchParams }: { searchPara
             ))}
           </div>
 
-          {/* دعوتِ پایانی */}
-          <div className="mt-10 overflow-hidden rounded-[28px] border border-brand-400/25 bg-gradient-to-l from-brand-500/90 via-brand-600 to-brand-800 p-6 shadow-[0_30px_60px_-30px_rgba(13,128,116,.55)] sm:p-8">
-            <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="fa-title text-[16px] font-black text-white sm:text-[19px]">
-                  یک جای این دیوار، دستِ تو کم است
-                </p>
-                <p className="mt-1.5 max-w-xl text-[12px] font-medium leading-7 text-white/85 sm:text-[13px]">
-                  یک‌بار دیگر تخته را بالا و پایین کن؛ شاید همان نیازِ کوچکی آنجاست که فقط تو
-                  می‌توانی برآورده‌اش کنی — و بعدش به «دیوارِ نتیجه‌ها» برود.
-                </p>
+          {/* ═════ دعوتِ پایانی — پنلِ کلاسیک با قابِ نور و کارتِ آمار ═════ */}
+          <div className="relative mt-12">
+            {/* هالهٔ نرمِ پشتِ پنل */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -inset-x-6 -bottom-6 -top-6 rounded-[40px] bg-[radial-gradient(60%_120%_at_80%_0%,rgba(13,128,116,.28),transparent_70%)] blur-2xl"
+            />
+            <div className="border-white/12 relative overflow-hidden rounded-[28px] border bg-[linear-gradient(135deg,#0b2f2b_0%,#0d3f39_45%,#0a5a51_100%)] p-6 shadow-[0_34px_70px_-34px_rgba(0,0,0,.65)] sm:p-9">
+              {/* بافتِ خطِ مورب + هاله‌ها */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 opacity-[0.35]"
+                style={{
+                  backgroundImage:
+                    'repeating-linear-gradient(-45deg, rgba(255,255,255,.05) 0 1.5px, transparent 1.5px 13px)',
+                }}
+              />
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-brand-400/25 blur-3xl"
+              />
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -left-20 bottom-0 h-52 w-52 rounded-full bg-mint-400/15 blur-3xl"
+              />
+              {/* خطِ نورِ بالای قاب */}
+              <div
+                aria-hidden="true"
+                className="absolute inset-x-8 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(125,211,192,.65),transparent)]"
+              />
+
+              <div className="relative flex flex-col gap-7 lg:flex-row lg:items-stretch lg:justify-between lg:gap-10">
+                <div className="max-w-xl">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[.07] px-3 py-1.5 text-[11px] font-bold text-white/80 backdrop-blur-sm">
+                    <HeartHandshake className="h-3.5 w-3.5 text-mint-300" aria-hidden="true" />
+                    دعوتِ دیوار
+                  </span>
+                  <h3 className="fa-title mt-4 text-[19px] font-black text-white sm:text-[23px]">
+                    یک جای این دیوار، دستِ تو کم است
+                  </h3>
+                  <p className="mt-2.5 text-[12.5px] font-medium leading-7 text-white/70 sm:text-[13.5px]">
+                    یک‌بار دیگر تخته را بالا و پایین کن؛ شاید همان نیازِ کوچکی آنجاست که فقط تو
+                    می‌توانی برآورده‌اش کنی — و بعدش به «دیوارِ نتیجه‌ها» برود.
+                  </p>
+
+                  {/* سه ریز-تعهدِ دیوار — همان زبانِ کلاسیکِ صفحه */}
+                  <div className="mt-5 flex flex-wrap items-center gap-2">
+                    {[
+                      { icon: ShieldCheck, text: 'نیازِ بررسی‌شده' },
+                      { icon: PhoneCall, text: 'تماسِ بی‌واسطه' },
+                      { icon: Timer, text: 'آگهیِ تاریخ‌دار' },
+                    ].map((item) => (
+                      <span
+                        key={item.text}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[.06] px-2.5 py-1 text-[10.5px] font-bold text-white/65 backdrop-blur-sm"
+                      >
+                        <item.icon className="h-3 w-3 text-mint-300/90" aria-hidden="true" />
+                        {item.text}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ستونِ اکشن: جداکنندهٔ عمودی + دکمه + شمارنده — عمود‌وسط‌چین */}
+                <div className="flex shrink-0 flex-col justify-center gap-3 lg:min-w-[240px] lg:border-s lg:border-white/10 lg:ps-8">
+                  <a
+                    href="#board"
+                    className="group inline-flex h-[52px] items-center justify-center gap-2 rounded-2xl bg-white px-7 text-[13.5px] font-extrabold text-ink-900 shadow-[0_18px_36px_-16px_rgba(0,0,0,.6)] transition-all hover:-translate-y-0.5 hover:bg-mint-50 hover:shadow-[0_22px_40px_-16px_rgba(0,0,0,.65)] active:translate-y-0 active:scale-[.98]"
+                  >
+                    برگشت به بالای تخته
+                    <ChevronLeft
+                      className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5"
+                      aria-hidden="true"
+                    />
+                  </a>
+                  <p className="text-center text-[10.5px] font-bold leading-5 text-white/45">
+                    {stats && stats.openListings > 0
+                      ? `${fa(stats.openListings)} نیاز همین حالا روی تخته منتظرِ توست`
+                      : 'به‌محضِ ثبتِ نیازهای تازه، همین‌جا می‌نشینند'}
+                  </p>
+                </div>
               </div>
-              <a
-                href="#board"
-                className="inline-flex h-12 shrink-0 items-center gap-2 rounded-2xl bg-white px-6 text-[13.5px] font-extrabold text-ink-900 shadow-[0_14px_30px_-12px_rgba(0,0,0,.45)] transition-all hover:bg-brand-50 active:scale-[.98]"
-              >
-                برگشت به بالای تخته
-                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-              </a>
             </div>
           </div>
         </div>

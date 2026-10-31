@@ -320,3 +320,36 @@ export async function fetchKindnessStories(limit = 8): Promise<KindStory[]> {
   );
   return mapKindnessStories(data?.results ?? []);
 }
+
+/* ── جغرافیا — لیستِ وابستهٔ شهر از APIِ بک‌اند ─────────────────────── */
+
+export type GeoCityResponse = { province?: string; cities?: string[] };
+
+/**
+ * شهرهای رسمیِ یک استان از `/geo/cities/?province=…`.
+ *
+ * چرا از API و نه از یک لیستِ دستی در فرانت؟ چون **منبعِ حقیقت یکی است**:
+ * همان دیتاستی که ادمین در پنل از آن انتخاب می‌کند، همان چیزی است که کاربر
+ * در فیلتر می‌بیند — همان قراردادی که باگِ «شهر در فرانت نیست» را ریشه‌کن
+ * می‌کند. پاسخ در Next به مدتِ ۲۴ ساعت کش می‌شود (تقسیماتِ کشوری سالی
+ * یک‌بار عوض می‌شود).
+ */
+export async function fetchGeoCities(province: string): Promise<string[]> {
+  const key = (province || '').trim();
+  if (!key) return [];
+  const data = await safeApiFetch<GeoCityResponse>(
+    `/geo/cities/?province=${encodeURIComponent(key)}`,
+    { revalidate: 86_400, tags: ['geo', `geo:cities:${key}`] },
+  );
+  const cities = data?.cities;
+  return Array.isArray(cities) ? cities.filter((c) => typeof c === 'string' && c.trim()) : [];
+}
+
+/** فهرستِ استان‌های رسمی (برای هم‌گام‌سازی با choicesِ بک‌اند). */
+export async function fetchGeoProvinces(): Promise<string[]> {
+  const rows = await safeApiFetch<Array<{ name?: string }>>('/geo/provinces/', {
+    revalidate: 86_400,
+    tags: ['geo', 'geo:provinces'],
+  });
+  return Array.isArray(rows) ? rows.map((r) => (r?.name ?? '').trim()).filter(Boolean) : [];
+}

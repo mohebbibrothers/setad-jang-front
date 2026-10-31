@@ -256,6 +256,8 @@ type ApiKindnessListing = {
   unit?: string;
   province?: string;
   city?: string;
+  locality?: string;
+  is_nationwide?: boolean;
   view_count?: number;
   open_offers_count?: number;
   cover_url?: string | null;
@@ -298,6 +300,8 @@ export function mapKindnessListings(items: ApiKindnessListing[]): KindListing[] 
     unit: l.unit?.trim() || 'عدد',
     province: l.province?.trim() || undefined,
     city: l.city?.trim() || undefined,
+    locality: l.locality?.trim() || undefined,
+    isNationwide: l.is_nationwide === true,
     viewCount: l.view_count,
     openOffersCount: l.open_offers_count,
     coverImage: absoluteMediaUrl(l.cover_url),

@@ -56,6 +56,7 @@ export function KindnessSelect({
   clearLabel,
   /** برچسبِ کوچکِ بالای مقدارِ انتخاب‌شده (الگوی فیلترِ حرفه‌ای). */
   stackedLabel,
+  disabled = false,
   leadingIcon: Leading,
   className,
   testId,
@@ -72,6 +73,8 @@ export function KindnessSelect({
   clearLabel?: string;
   /** برچسبِ کوچکِ ثابت (۹.۵px) بالای مقدار — جای پیشوندِ بلندِ بریده‌شده. */
   stackedLabel?: string;
+  /** غیرفعال (مثلِ فیلدِ شهر تا وقتی استان انتخاب نشده). */
+  disabled?: boolean;
   leadingIcon?: typeof Search;
   className?: string;
   testId?: string;
@@ -277,21 +280,28 @@ export function KindnessSelect({
         )}
         style={isMobile ? { maxHeight: '72dvh' } : { maxHeight: box.maxHeight }}
       >
-        {/* دسته‌گیرِ بصری (فقط موبایل) + نوارِ برندِ بالای پنل */}
+        {/* دسته‌گیرِ بصری (فقط موبایل) */}
         {isMobile && (
-          <div aria-hidden="true" className="flex justify-center pt-2.5">
+          <div aria-hidden="true" className="flex justify-center pb-1 pt-2.5">
             <span className="h-1 w-10 rounded-full bg-ink-200" />
           </div>
         )}
-        <div
-          aria-hidden="true"
-          className="h-[3px] w-full bg-[linear-gradient(90deg,#0D8074,#0A6E64_55%,#7DD3C0)]"
-        />
 
-        {/* هدرِ موبایل */}
-        {isMobile && (
-          <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
-            <p className="text-[12.5px] font-extrabold text-ink-800">{ariaLabel}</p>
+        {/* هدرِ یکپارچه — همهٔ پنل‌ها (مرتب‌سازی/استان/شهر) دقیقاً همین هدر را
+            دارند: برچسبِ کوچکِ کارکرد + دکمهٔ بستن در موبایل. نوارِ گرادیانِ
+            قبلی حذف شد چون در پنلِ جست‌وجو‌دار (که هدرِ جست‌وجو زیرش می‌آمد)
+            باریک‌تر و ناهماهنگ دیده می‌شد. */}
+        <div
+          className={cn(
+            'flex items-center gap-2 px-3.5 pb-2 pt-3',
+            isMobile ? 'justify-between' : 'justify-between',
+          )}
+        >
+          <span className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-wide text-ink-400">
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-brand-500/70" />
+            {ariaLabel}
+          </span>
+          {isMobile && (
             <button
               type="button"
               onClick={() => close()}
@@ -300,11 +310,11 @@ export function KindnessSelect({
             >
               <X className="h-4 w-4" />
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {searchable && (
-          <div className="flex items-center gap-2 border-b border-ink-100 px-3 py-2.5">
+          <div className="mx-2.5 mb-1.5 flex items-center gap-2 rounded-xl bg-ink-50 px-3 py-2 ring-1 ring-inset ring-ink-100 transition-colors focus-within:bg-white focus-within:ring-brand-300">
             <Search className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
             <input
               ref={searchRef}
@@ -329,7 +339,7 @@ export function KindnessSelect({
                   searchRef.current?.focus();
                 }}
                 aria-label="پاک‌کردن جست‌وجوی فهرست"
-                className="grid h-6 w-6 place-items-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"
+                className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-ink-400 transition-colors hover:bg-ink-200 hover:text-ink-700"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -337,7 +347,7 @@ export function KindnessSelect({
           </div>
         )}
 
-        <div className="kw-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain p-1.5">
+        <div className="kw-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 pb-1.5 pt-1">
           {visible.length === 0 && (
             <p className="px-3 py-5 text-center text-[12px] font-bold text-ink-400">
               چیزی پیدا نشد.
@@ -409,13 +419,17 @@ export function KindnessSelect({
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
         aria-label={ariaLabel}
+        aria-disabled={disabled || undefined}
+        disabled={disabled}
         onClick={() => (open ? close(false) : openPanel())}
         onKeyDown={onTriggerKey}
         data-testid={testId}
         data-open={open || undefined}
         className={cn(
           'group inline-flex h-[52px] w-full items-center gap-2 rounded-2xl border bg-white px-3 text-right transition-all duration-200',
-          'border-ink-200 hover:border-brand-300',
+          disabled
+            ? 'cursor-not-allowed border-ink-100 bg-ink-50/60'
+            : 'border-ink-200 hover:border-brand-300 hover:shadow-[0_2px_8px_-4px_rgba(13,128,116,.25)]',
           open
             ? 'border-brand-500 shadow-[0_0_0_4px_rgba(13,128,116,.10)]'
             : 'shadow-[0_1px_2px_rgba(15,20,32,.04)]',
@@ -456,7 +470,8 @@ export function KindnessSelect({
         <ChevronDown
           aria-hidden="true"
           className={cn(
-            'h-4 w-4 shrink-0 text-ink-400 transition-transform duration-200 group-hover:text-brand-500',
+            'h-4 w-4 shrink-0 transition-transform duration-200',
+            disabled ? 'text-ink-300' : 'text-ink-400 group-hover:text-brand-500',
             open && 'rotate-180 text-brand-600',
           )}
         />

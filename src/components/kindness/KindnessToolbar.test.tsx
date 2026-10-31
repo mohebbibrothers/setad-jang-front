@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 /**
  * KindnessToolbar — نوارِ ابزارِ زندهٔ هاب:
@@ -24,14 +24,22 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+const geoCitiesMock = vi.fn();
+
+/* لیستِ وابستهٔ شهر از APIِ geo می‌آید؛ در تست deterministc می‌شود. */
+vi.mock('@/lib/kindness-wall', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/kindness-wall')>();
+  return { ...actual, fetchGeoCities: (province: string) => geoCitiesMock(province) };
+});
+
 import { KindnessToolbar } from './KindnessToolbar';
 import { DEFAULT_KINDNESS_FILTERS, type KindnessFilters } from '@/lib/kindness-wall';
 
 const BASE = DEFAULT_KINDNESS_FILTERS;
-const FACETS = { provinces: ['تهران', 'اصفهان'], cities: ['شوش', 'ری'] };
+const PROVINCES = ['تهران', 'اصفهان', 'قم'];
 
 function renderToolbar(f: KindnessFilters = BASE, hasFilters = false) {
-  return render(<KindnessToolbar filters={f} hasFilters={hasFilters} facets={FACETS} />);
+  return render(<KindnessToolbar filters={f} hasFilters={hasFilters} provinces={PROVINCES} />);
 }
 
 describe('KindnessToolbar', () => {
@@ -39,6 +47,8 @@ describe('KindnessToolbar', () => {
     vi.useFakeTimers();
     replaceMock.mockReset();
     pushMock.mockReset();
+    geoCitiesMock.mockReset();
+    geoCitiesMock.mockResolvedValue([]);
   });
   afterEach(() => {
     cleanup();
@@ -67,7 +77,9 @@ describe('KindnessToolbar', () => {
       vi.advanceTimersByTime(450);
     });
     /* سرور همان مقداری را برمی‌گرداند که خودمان فرستادیم */
-    rerender(<KindnessToolbar filters={{ ...BASE, search: 'نیاز' }} hasFilters facets={FACETS} />);
+    rerender(
+      <KindnessToolbar filters={{ ...BASE, search: 'نیاز' }} hasFilters provinces={PROVINCES} />,
+    );
     expect(input.value).toBe('نیاز');
     fireEvent.change(input, { target: { value: 'نیاز فوری' } });
     expect(input.value).toBe('نیاز فوری');
@@ -113,15 +125,46 @@ describe('KindnessToolbar', () => {
     );
   });
 
-  it('شهر: عبارتِ آزادِ بیرون از فهرست هم قابلِ اعمال است (iexact بک‌اند)', () => {
+  it('شهر وابسته است: تا استان انتخاب نشود فیلدِ شهر غیرفعال است', () => {
     renderToolbar();
+    const city = screen.getByLabelText('فیلتر شهر') as HTMLButtonElement;
+    expect(city.disabled).toBe(true);
+    expect(city.textContent).toContain('ابتدا استان را انتخاب کنید');
+  });
+
+  it('شهر: با انتخاب استان، شهرهای رسمی از APIِ geo می‌آیند و قابلِ انتخاب‌اند', async () => {
+    /* این تست به microtask/await واقعی نیاز دارد (fetch واپیچیدهٔ ماک) */
+    vi.useRealTimers();
+    geoCitiesMock.mockResolvedValue(['شوش', 'ری', 'ورامین']);
+    renderToolbar({ ...BASE, province: 'تهران' }, true);
+
+    const city = screen.getByLabelText('فیلتر شهر') as HTMLButtonElement;
+    expect(city.disabled).toBe(false);
+    await waitFor(() => expect(geoCitiesMock).toHaveBeenCalledWith('تهران'));
+
+    fireEvent.click(city);
+    await waitFor(() => expect(screen.getAllByRole('option').length).toBeGreaterThan(1));
+    fireEvent.click(screen.getByRole('option', { name: 'شوش' }));
+    expect(replaceMock).toHaveBeenCalledWith(
+      `/kindness-wall?province=${encodeURIComponent('تهران')}&city=${encodeURIComponent('شوش')}`,
+      { scroll: false },
+    );
+  });
+
+  it('شهر: عبارتِ آزاد هم وقتی در فهرست نبود قابلِ اعمال است', async () => {
+    vi.useRealTimers();
+    geoCitiesMock.mockResolvedValue(['شوش']);
+    renderToolbar({ ...BASE, province: 'تهران' }, true);
+    await waitFor(() => expect(geoCitiesMock).toHaveBeenCalled());
+
     fireEvent.click(screen.getByLabelText('فیلتر شهر'));
-    const box = screen.getByLabelText('فیلتر شهر — جست‌وجو در فهرست');
+    const box = await screen.findByLabelText('فیلتر شهر — جست‌وجو در فهرست');
     fireEvent.change(box, { target: { value: 'قزوین' } });
     fireEvent.click(screen.getByRole('option', { name: /اعمال «قزوین»/ }));
-    expect(replaceMock).toHaveBeenCalledWith(`/kindness-wall?city=${encodeURIComponent('قزوین')}`, {
-      scroll: false,
-    });
+    expect(replaceMock).toHaveBeenCalledWith(
+      `/kindness-wall?province=${encodeURIComponent('تهران')}&city=${encodeURIComponent('قزوین')}`,
+      { scroll: false },
+    );
   });
 
   it('استانِ فعالِ بیرون از فهرستِ رسمی هم در فیلد دیده می‌شود', () => {

@@ -115,3 +115,32 @@ describe('mapKindnessStats — همه‌شش‌کلید یا هیچ‌کدام',
     expect(mapKindnessStats({ open_listings: 1 })).toBeNull();
   });
 });
+
+describe('نگاشتِ موقعیتِ جغرافیایی (دیتاستِ رسمی)', () => {
+  it('locality و is_nationwide به مدلِ کارت منتقل می‌شوند', async () => {
+    const { mapKindnessListings } = await import('./home-data');
+    const [row] = mapKindnessListings([
+      {
+        slug: 'a',
+        title: 'نیاز',
+        excerpt: 'توضیح',
+        province: 'تهران',
+        city: 'ورامین',
+        locality: 'قلعه‌نو',
+        is_nationwide: false,
+      },
+    ]);
+    expect(row.locality).toBe('قلعه‌نو');
+    expect(row.isNationwide).toBe(false);
+  });
+
+  it('آگهیِ سراسری: is_nationwide=true و بدونِ استان/شهر', async () => {
+    const { mapKindnessListings } = await import('./home-data');
+    const [row] = mapKindnessListings([
+      { slug: 'b', title: 'ویلچر', excerpt: 'توضیح', is_nationwide: true },
+    ]);
+    expect(row.isNationwide).toBe(true);
+    expect(row.province).toBeUndefined();
+    expect(row.city).toBeUndefined();
+  });
+});

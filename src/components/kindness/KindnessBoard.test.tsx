@@ -143,3 +143,49 @@ describe('KindnessBoard', () => {
     ).toBeTruthy();
   });
 });
+
+describe('KindnessBoard — نمایشِ آگهیِ سراسر کشور', () => {
+  it('آگهیِ بدونِ استان، چیپِ «سراسر کشور» می‌گیرد (نه موقعیتِ خالی)', () => {
+    render(
+      <KindnessBoard
+        listings={[
+          {
+            slug: 'nationwide',
+            title: 'ویلچر سراسری',
+            excerpt: 'در هر نقطه',
+            urgency: 'normal',
+            isFeatured: false,
+            quantity: 1,
+            unit: 'دستگاه',
+            daysLeft: null,
+            isNationwide: true,
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText('سراسر کشور')).toBeTruthy();
+  });
+
+  it('آگهیِ نقطه‌ای، روستا/شهر/استان را نشان می‌دهد', () => {
+    render(
+      <KindnessBoard
+        listings={[
+          {
+            slug: 'point',
+            title: 'یخچال',
+            excerpt: 'توضیح',
+            urgency: 'normal',
+            isFeatured: false,
+            quantity: 1,
+            unit: 'عدد',
+            daysLeft: null,
+            province: 'تهران',
+            city: 'ورامین',
+            locality: 'قلعه‌نو',
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText('قلعه‌نو، ورامین، تهران')).toBeTruthy();
+  });
+});

@@ -51,6 +51,10 @@ export type KindListing = {
   unit: string;
   province?: string;
   city?: string;
+  /** روستا/محله (اختیاری) — از دیتاستِ رسمیِ ادمین. */
+  locality?: string;
+  /** آگهی بدونِ استان — در فیلترِ همهٔ استان‌ها/شهرها هم پیدا می‌شود. */
+  isNationwide?: boolean;
   viewCount?: number;
   openOffersCount?: number;
   coverImage?: string;

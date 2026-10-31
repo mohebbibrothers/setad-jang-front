@@ -40,6 +40,7 @@ export function KindnessSearchField({
   onNavigate,
   pending,
   placeholder = 'جست‌وجو در عنوان و شرح نیازها…',
+  mobilePlaceholder = 'جست‌وجو در نیازها…',
   label = 'جست‌وجو در آگهی‌های دیوار مهربانی',
 }: {
   /** مقدارِ فعلیِ فیلتر (از URL). */
@@ -49,9 +50,30 @@ export function KindnessSearchField({
   /** آیا ناوبری در جریان است؟ (useTransition) */
   pending: boolean;
   placeholder?: string;
+  /** نسخهٔ کوتاهِ placeholder برای فیلدهای باریک (جلوگیری از بریدگیِ زشت). */
+  mobilePlaceholder?: string;
   label?: string;
 }) {
   const [draft, setDraft] = useState(value);
+
+  /* عرضِ فیلد < 420px (موبایل/تبلتِ باریک) ⇒ placeholder کوتاه. با
+     ResizeObserver به‌جای حدسِ بریک‌پوینت، چون همین فیلد در گریدهای مختلف
+     عرضِ متفاوت می‌گیرد و باید همیشه «بدونِ بریدگی» بماند. */
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const measure = () => setCompact(el.clientWidth < 420);
+    measure();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }
+    const obs = new ResizeObserver(measure);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** آخرین مقداری که خودمان به URL فرستادیم — مبنای تشخیص «تغییرِ بیرونی». */
@@ -106,6 +128,7 @@ export function KindnessSearchField({
 
   return (
     <div
+      ref={rootRef}
       className={cn(
         'group flex h-[52px] w-full min-w-0 items-center gap-1.5 rounded-2xl border bg-white pe-1.5 ps-3 transition-all duration-200',
         'border-ink-200 shadow-[0_1px_2px_rgba(15,20,32,.04)]',
@@ -140,11 +163,13 @@ export function KindnessSearchField({
             commit('');
           }
         }}
-        placeholder={placeholder}
+        placeholder={compact ? mobilePlaceholder : placeholder}
         aria-label={label}
         autoComplete="off"
         spellCheck={false}
-        className="h-full min-w-0 flex-1 bg-transparent text-[13px] font-bold text-ink-900 placeholder:font-medium placeholder:text-ink-400 focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+        /* overflow-hidden + text-ellipsis: اگر placeholder از عرضِ فیلد بلندتر
+           شد، مرورگر «…» می‌گذارد نه بریدگیِ خام. */
+        className="h-full min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap bg-transparent text-[13px] font-bold text-ink-900 placeholder:font-medium placeholder:text-ink-400 focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
       />
 
       {/* جایگاهِ ثابتِ اسپینر — همیشه رزرو، فقط شفافیت عوض می‌شود (بدون پرش) */}

@@ -7,6 +7,7 @@ import {
   Clock,
   Eye,
   Flame,
+  Globe2,
   Handshake,
   MapPin,
   Package,
@@ -55,7 +56,12 @@ export function KindnessCard({
 }) {
   const urgent = l.urgency === 'urgent';
   const expiringSoon = l.daysLeft !== null && l.daysLeft <= 14;
-  const location = [l.city, l.province].filter(Boolean).join('، ') || 'سراسر کشور';
+  /* موقعیت: روستا/شهر، استان — یا نشانِ «سراسر کشور» (آگهیِ بدونِ استان که
+     در فیلترِ همهٔ شهرها/استان‌ها هم دیده می‌شود). */
+  const location =
+    [l.locality, l.city, l.province].filter(Boolean).join('، ') ||
+    (l.isNationwide ? 'سراسر کشور' : 'نامشخص');
+  const nationwide = l.isNationwide === true || (!l.province && !l.city);
 
   /* اشتراک‌گذاری — share بومی اگر دارد، وگرنه کپی + بازخورد سبز */
   const [shared, setShared] = useState(false);
@@ -165,10 +171,20 @@ export function KindnessCard({
             <Package className="h-3.5 w-3.5 text-brand-500" />
             <span className="tabular-nums">{`${fa(l.quantity)} ${l.unit}`}</span>
           </span>
-          <span className="inline-flex min-w-0 items-center gap-1">
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-500" />
-            <span className="truncate">{location}</span>
-          </span>
+          {nationwide ? (
+            <span
+              className="inline-flex min-w-0 items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-brand-700 ring-1 ring-brand-100"
+              title="این نیاز در هر نقطه از کشور قابلِ برآورده‌شدن است"
+            >
+              <Globe2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+              <span className="truncate">سراسر کشور</span>
+            </span>
+          ) : (
+            <span className="inline-flex min-w-0 items-center gap-1">
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-500" />
+              <span className="truncate">{location}</span>
+            </span>
+          )}
         </div>
 
         {/* اثبات اجتماعی + بازدید */}

@@ -10,6 +10,7 @@ import {
   IRAN_PROVINCES,
   KINDNESS_BOARD_PATH,
   KINDNESS_SORT_OPTIONS,
+  fetchGeoCities,
   kindnessHubHref,
   type KindnessFilters,
 } from '@/lib/kindness-wall';
@@ -26,9 +27,11 @@ import { cn } from '@/lib/utils';
  *   صفحه نپرد (مرتب‌سازی با `#board` می‌نشیند تا چشم جای نتیجه بماند).
  * • دراپ‌دان‌ها کامپوننتِ ساختهٔ دستِ KindnessSelect‌اند (پورتالی، کیبورد،
  *   اسکرول‌بارِ سایت، موبایل‌باتم‌شیت) — هیچ selectِ بومی‌ای در صفحه نیست.
- * • گزینه‌های استان/شهر از دادهٔ واقعیِ تخته ساخته می‌شوند (`facets`) و
- *   جست‌وجوی درونِ پنل + اعمالِ عبارتِ آزاد دارند؛ چون بک‌اند این دو را
- *   iexact روی رشتهٔ آزادِ ادمین فیلتر می‌کند، شهرِ دلخواه هم معتبر است.
+ * • استان‌ها از دیتاستِ رسمیِ بک‌اند می‌آیند (`provinces` prop = /geo/provinces/)
+ *   و **شهرها به‌صورتِ وابسته** با انتخابِ استان از `/geo/cities/?province=…`
+ *   بارگذاری می‌شوند؛ همان دیتاستی که ادمین در پنل از آن انتخاب می‌کند، پس
+ *   هر شهری که ادمین برگزیند قطعاً در فیلترِ کاربر هم هست. تا استان انتخاب
+ *   نشود، فیلدِ شهر غیرفعال است (شهر بدونِ استان در بک‌اند معنا ندارد).
  * • نوارِ پیشرفتِ برند در لبهٔ پایین هنگامِ pending؛ رعایتِ
  *   prefers-reduced-motion در globals.css.
  * ───────────────────────────────────────────────────────────────────────────
@@ -43,12 +46,12 @@ const SORT_OPTIONS: KindnessOption[] = KINDNESS_SORT_OPTIONS.map((o) => ({
 export function KindnessToolbar({
   filters,
   hasFilters,
-  facets,
+  provinces,
 }: {
   filters: KindnessFilters;
   hasFilters: boolean;
-  /** مقادیرِ موجود در تخته (برای پیشنهادِ استان/شهر). */
-  facets: { provinces: string[]; cities: string[] };
+  /** فهرستِ رسمیِ استان‌ها (از /geo/provinces/ با fallback ثابتِ فرانت). */
+  provinces?: string[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -84,12 +87,35 @@ export function KindnessToolbar({
      کرده باشد یا کاربر با لینکِ اشتراکیِ استانی بیاید، فیلد خالی («همهٔ
      استان‌ها») نشان می‌داد درحالی‌که فیلتر فعال بود. */
   const provinceOptions: KindnessOption[] = Array.from(
-    new Set([...IRAN_PROVINCES, ...facets.provinces, ...(pv ? [pv] : [])]),
+    new Set([...(provinces?.length ? provinces : IRAN_PROVINCES), ...(pv ? [pv] : [])]),
   ).map((p) => ({ value: p, label: p }));
 
-  const cityOptions: KindnessOption[] = Array.from(
-    new Set([...facets.cities, ...(ct ? [ct] : [])]),
-  ).map((c) => ({ value: c, label: c }));
+  /* ── شهرهای وابسته: هر بار که استان عوض شود از APIِ geo می‌آیند ──────── */
+  const [cityList, setCityList] = useState<string[]>([]);
+  const [citiesLoading, setCitiesLoading] = useState(false);
+  useEffect(() => {
+    const province = pv.trim();
+    if (!province) {
+      setCityList([]);
+      return;
+    }
+    let alive = true;
+    setCitiesLoading(true);
+    fetchGeoCities(province)
+      .then((list) => {
+        if (alive) setCityList(list);
+      })
+      .finally(() => {
+        if (alive) setCitiesLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [pv]);
+
+  const cityOptions: KindnessOption[] = Array.from(new Set([...cityList, ...(ct ? [ct] : [])])).map(
+    (c) => ({ value: c, label: c }),
+  );
 
   return (
     <div
@@ -161,7 +187,14 @@ export function KindnessToolbar({
                 navigate({ ...filters, city, page: 1 });
               }}
               options={cityOptions}
-              placeholder="همهٔ شهرها"
+              placeholder={
+                !pv
+                  ? 'ابتدا استان را انتخاب کنید'
+                  : citiesLoading
+                    ? 'در حال بارگذاری…'
+                    : 'همهٔ شهرها'
+              }
+              disabled={!pv}
               searchable
               searchPlaceholder="نامِ شهر…"
               clearLabel="همهٔ شهرها"
