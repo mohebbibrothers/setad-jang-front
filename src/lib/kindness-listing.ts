@@ -31,6 +31,7 @@ import { mapKindnessListings } from '@/lib/home-data';
 import type { KindListing } from '@/components/home/KindnessSection';
 import type { KindContactChannel } from '@/components/home/KindnessContactSheet';
 import { KINDNESS_BOARD_PATH } from '@/lib/kindness-wall';
+import { getViewerId } from '@/lib/viewer-id';
 
 /* ── تایپ‌ها ──────────────────────────────────────────────────────── */
 
@@ -430,10 +431,19 @@ export type ViewBeaconResult = { counted: boolean; viewCount: number };
  */
 export async function registerListingView(slug: string): Promise<ViewBeaconResult | null> {
   const key = canonicalApiLookup(slug);
+  /* شناسهٔ پایدارِ مرورگر: dedupe را از IP/پروکسی مستقل می‌کند (ریشهٔ
+     شمارشِ چندگانه پشتِ لبهٔ Vercel). اگر در دسترس نبود، هدر فرستاده نمی‌شود
+     و سرور به مسیرِ پشتیبانِ خودش برمی‌گردد. */
+  const viewerId = getViewerId();
   try {
     const data = await apiFetch<{ counted?: boolean; view_count?: number }>(
       `/kindness-wall/listings/${key}/view/`,
-      { method: 'POST', skipRefresh: true, cache: 'no-store' },
+      {
+        method: 'POST',
+        skipRefresh: true,
+        cache: 'no-store',
+        headers: viewerId ? { 'X-Viewer-Id': viewerId } : undefined,
+      },
     );
     if (!data || typeof data.view_count !== 'number') return null;
     return { counted: data.counted === true, viewCount: data.view_count };

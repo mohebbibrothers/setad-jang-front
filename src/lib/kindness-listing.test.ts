@@ -283,6 +283,16 @@ describe('fetcherها', () => {
     expect(await fetchRelatedKindnessListings(BASE)).toEqual([]);
   });
 
+  it('beacon بازدید: هدرِ X-Viewer-Id را می‌فرستد (dedupe مستقل از IP)', async () => {
+    const { registerListingView } = await import('./kindness-listing');
+    const { getViewerId } = await import('./viewer-id');
+    apiFetchMock.mockResolvedValue({ counted: true, view_count: 4 });
+    await registerListingView(BASE.slug);
+    const [, init] = apiFetchMock.mock.calls[0];
+    const headers = (init as { headers?: Record<string, string> })?.headers;
+    expect(headers?.['X-Viewer-Id']).toBe(getViewerId());
+  });
+
   it('beacon بازدید: POST به /view/ و نگاشتِ پاسخ', async () => {
     const { registerListingView } = await import('./kindness-listing');
     apiFetchMock.mockResolvedValue({ counted: true, view_count: 9 });
