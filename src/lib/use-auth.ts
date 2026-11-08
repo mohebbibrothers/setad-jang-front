@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useState, useCallback, useSyncExternalStore } from 'react';
-import { hasSession, onAuthChange, clearTokens } from './auth-tokens';
+import { hasSession, onAuthChange, clearTokens, dropDeadTokens } from './auth-tokens';
 import { getMe, logout as apiLogout, type AuthUser } from './auth';
 import {
   getCachedUser,
@@ -89,6 +89,9 @@ export function useAuth() {
 
   useEffect(() => {
     if (isAuthenticated) {
+      // توکنِ مرده (منقضی/بدشکل) همان ابتدا دور ریخته شود تا اولین درخواست
+      // ۴۰۱ نخورد و زنجیرهٔ «refresh → clear → بیرون‌انداختن» شکل نگیرد.
+      dropDeadTokens();
       if (!getCachedUser()) refresh();
     } else {
       setCachedUser(null);

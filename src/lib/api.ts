@@ -33,8 +33,13 @@
  * ───────────────────────────────────────────────────────────────────────────
  */
 
-import { siteConfig } from './site';
-import { getAccessToken, refreshAccessToken, clearTokens } from './auth-tokens';
+import {
+  getAccessToken,
+  refreshAccessToken,
+  clearTokens,
+  lastRefreshFailureWasDefinitive,
+} from './auth-tokens';
+import { resolveBrowserApiBaseUrl, resolveServerApiBaseUrl } from './api-base';
 
 /* ───────────────────────────────────────────────────────────────────────── */
 /*  Types                                                                     */
@@ -123,27 +128,10 @@ function isServer(): boolean {
  *      which sidesteps CORS by forwarding server-side.
  */
 function resolveBaseUrl(absolute: boolean): string {
-  if (isServer() || absolute) {
-    return `${siteConfig.apiUrl.replace(/\/+$/, '')}/api/v1`;
-  }
-  // Browser: pick between "direct same-origin" and "Next-proxy hop".
-  try {
-    const configured = (siteConfig.apiUrl || '').trim();
-    if (!configured) {
-      // No API host configured → treat as same-origin.
-      return '/api/v1';
-    }
-    const apiHost = new URL(configured, window.location.origin).host;
-    const pageHost = window.location.host;
-    if (apiHost === pageHost) {
-      // Same origin — go direct, no proxy hop needed.
-      return '/api/v1';
-    }
-  } catch {
-    // If the URL isn't parseable for any reason, fall through to the
-    // proxy path — it's the safer of the two branches.
-  }
-  return '/api/proxy';
+  // آدرس‌دهی فقط در lib/api-base.ts تصمیم گرفته می‌شود (یک منبعِ حقیقت برای
+  // همهٔ مصرف‌کننده‌ها، از جمله refresh در auth-tokens).
+  if (isServer() || absolute) return resolveServerApiBaseUrl();
+  return resolveBrowserApiBaseUrl();
 }
 
 /**
@@ -155,9 +143,7 @@ function resolveBaseUrl(absolute: boolean): string {
  * `/api/proxy/...` never reaches the Next.js rewrite and dies as a 404
  * inside Django URLconf (this was the production upload-404 bug).
  */
-export function resolveBrowserApiBaseUrl(): string {
-  return resolveBaseUrl(false);
-}
+export { resolveBrowserApiBaseUrl };
 
 /* ───────────────────────────────────────────────────────────────────────── */
 /*  Header helpers                                                            */
@@ -250,10 +236,13 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
     const refreshed = await refreshAccessToken().catch(() => null);
     if (refreshed) {
       ({ res, payload } = await runOnce());
-    } else {
-      // Refresh failed → hard sign-out so subsequent calls don't loop
+    } else if (lastRefreshFailureWasDefinitive()) {
+      // فقط شکستِ قطعی (۴۰۱/۴۰۳ از endpointِ refresh) یعنی توکن مرده است.
       clearTokens();
     }
+    // شکستِ گذرا (شبکه، ۵۰۲، …) → نشست دست‌نخورده می‌ماند؛ درخواست با همان
+    // ۴۰۱ به بالا می‌رود و کاربر پیامِ خطا می‌بیند، نه «بیرون‌انداختن».
+    // این تفکیک در auth-tokens هم مستند شده است.
   }
 
   if (!res.ok || (payload && payload.success === false)) {
