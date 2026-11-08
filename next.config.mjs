@@ -150,6 +150,21 @@ const nextConfig = {
       // توسعه‌ی محلی (بدون تراشِ پلتفرم) از مسیر /api/proxy و api.ts عبور می‌کند.
       ...(process.env.API_UPSTREAM_URL
         ? [
+            // ─── the bare-prefix trap (why /admin answered 404) ──────────
+            // `:path*` also matches ZERO segments, so `/admin` produced
+            // `<upstream>/admin//` (destination keeps its own trailing slash).
+            // Django redirected to `next=/admin//` and after a successful login
+            // the browser landed on that double-slashed path, which no route
+            // matches → the plain "Not Found" page while the login itself had
+            // worked. These two exact rules must stay ABOVE the wildcard.
+            {
+              source: '/admin',
+              destination: `${process.env.API_UPSTREAM_URL}/admin/`,
+            },
+            {
+              source: '/api/v1',
+              destination: `${process.env.API_UPSTREAM_URL}/api/v1/`,
+            },
             {
               source: '/api/v1/:path*',
               destination: `${process.env.API_UPSTREAM_URL}/api/v1/:path*/`,
