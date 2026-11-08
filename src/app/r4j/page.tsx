@@ -200,6 +200,8 @@ export default async function R4JHubPage({
 
   const totalProfiles = top?.count ?? count;
   const topBounty = top?.results?.[0]?.total_bounty_toman ?? 0;
+  // آیا هنوز هیچ تعهدی روی هیچ پرونده‌ای ثبت نشده؟ (پرونده هست، جایزه نیست)
+  const noPledgesYet = totalProfiles > 0 && topBounty === 0;
 
   const hasFilter = Boolean(f.search || f.city || f.province || f.country || f.gender);
 
@@ -263,6 +265,30 @@ export default async function R4JHubPage({
                 <div className="mt-1 text-[12px] font-bold text-white/70">حداقل مبلغِ هر تعهد</div>
               </div>
             </div>
+            {/* دعوتِ صریح وقتی پرونده هست ولی هنوز هیچ تعهدی ثبت نشده.
+                بدونِ این نوار، عددِ «—» تنها چیزی بود که کاربر می‌دید و برداشتش
+                این بود که «بخشِ جایزه کار نمی‌کند»؛ در حالی که واقعیت این است
+                که هنوز کسی تعهدی ثبت نکرده. */}
+            {noPledgesYet ? (
+              <div className="mt-8 flex flex-wrap items-center gap-3 rounded-2xl border border-accent-400/30 bg-accent-500/10 px-4 py-3.5 backdrop-blur-sm">
+                <Trophy className="h-5 w-5 shrink-0 text-accent-300" aria-hidden="true" />
+                <p className="min-w-0 flex-1 text-[12.5px] leading-6 text-white/85">
+                  <span className="font-extrabold text-white">
+                    هنوز هیچ تعهدی روی هیچ پرونده‌ای ثبت نشده است.
+                  </span>{' '}
+                  جایزه‌ها را مردم تعیین می‌کنند؛ اولین نفری باشید که برای اجرای عدالت روی یک
+                  پرونده جایزه می‌گذارد — از {bountyFa(50_000)} شروع می‌شود.
+                </p>
+                <a
+                  href="#cases"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-accent-500 px-3.5 py-2 text-[12px] font-extrabold text-white transition-colors hover:bg-accent-400"
+                >
+                  اولین تعهد را ثبت کنید
+                  <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                </a>
+              </div>
+            ) : null}
+
             <div className="mt-8">
               <a
                 href="#cases"
