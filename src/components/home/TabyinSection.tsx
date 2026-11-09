@@ -10,6 +10,7 @@ import { Icon } from '@/components/icons/Icon';
 import { EmptyState } from './EmptyState';
 import { TabyinManageMenu } from './TabyinManageMenu';
 import { isDirectTabyinImage } from '@/lib/tabyin-image';
+import { TabyinSourceImage } from './TabyinSourceImage';
 
 /**
  * ───────────────────────────────────────────────────────────────────────────
@@ -824,12 +825,17 @@ function TabyinTile({
               }}
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
+          ) : isDirectTabyinImage(it.coverUrl) ? (
+            <TabyinSourceImage
+              key={it.coverUrl}
+              src={it.coverUrl}
+              alt={it.title || 'محتوای تبیینی'}
+            />
           ) : (
             <SmartImage
               src={it.coverUrl}
               alt={it.title || 'محتوای تبیینی'}
               variant="tabyin"
-              unoptimized={isDirectTabyinImage(it.coverUrl)}
               fill
               sizes="(max-width: 768px) 45vw, 22vw"
               className="object-cover transition-transform duration-500 group-hover:scale-105"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isDirectTabyinImage } from './tabyin-image';
+import { isDirectTabyinImage, tabyinImageThumbnailUrl } from './tabyin-image';
 
 describe('Tabyin public image transport', () => {
   it('requests the Mohtavanegar media host directly, without the remote optimizer', () => {
@@ -18,5 +18,21 @@ describe('Tabyin public image transport', () => {
     undefined,
   ])('keeps normal image handling for %s', (src) => {
     expect(isDirectTabyinImage(src)).toBe(false);
+  });
+});
+
+describe('source image thumbnails', () => {
+  it('maps only known public image paths and retains the query string', () => {
+    expect(tabyinImageThumbnailUrl('https://app-media.armansky.ir/org/uploads/a.jpg?v=2')).toBe(
+      'https://app-media.armansky.ir/thumbnail/uploads/a.jpg?v=2',
+    );
+  });
+  it.each([
+    'https://evil.test/org/uploads/a.png',
+    'https://app-media.armansky.ir/private/a.jpg',
+    'https://app-media.armansky.ir/org/uploads/a.mp4',
+    '/media/a.png',
+  ])('does not construct a thumbnail for %s', (src) => {
+    expect(tabyinImageThumbnailUrl(src)).toBeUndefined();
   });
 });

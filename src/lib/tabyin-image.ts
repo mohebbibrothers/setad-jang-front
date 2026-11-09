@@ -12,3 +12,17 @@ export function isDirectTabyinImage(src: string | null | undefined): boolean {
     return false;
   }
 }
+
+/** Build the image thumbnail URL only for the verified public media path. */
+export function tabyinImageThumbnailUrl(src: string | null | undefined): string | undefined {
+  if (!src || !isDirectTabyinImage(src)) return undefined;
+  try {
+    const url = new URL(src);
+    if (!url.pathname.startsWith('/org/uploads/')) return undefined;
+    if (!/\.(png|jpe?g|webp|gif)$/i.test(url.pathname)) return undefined;
+    url.pathname = url.pathname.replace(/^\/org\/uploads\//, '/thumbnail/uploads/');
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}

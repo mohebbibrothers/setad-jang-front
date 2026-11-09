@@ -12,7 +12,10 @@ describe('Tabyin homepage cover delivery', () => {
         ]}
       />,
     );
-    expect(html).toContain(`src="${source}"`);
+    expect(html).toContain(
+      'src="https://app-media.armansky.ir/thumbnail/uploads/2026/example.png"',
+    );
+    expect(html).not.toContain(`src="${source}"`);
     expect(html).not.toContain('url=https%3A%2F%2Fapp-media.armansky.ir');
   });
 });
