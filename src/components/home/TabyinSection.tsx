@@ -9,6 +9,7 @@ import { SectionTitle } from './SectionTitle';
 import { Icon } from '@/components/icons/Icon';
 import { EmptyState } from './EmptyState';
 import { TabyinManageMenu } from './TabyinManageMenu';
+import { isDirectTabyinImage } from '@/lib/tabyin-image';
 
 /**
  * ───────────────────────────────────────────────────────────────────────────
@@ -828,6 +829,7 @@ function TabyinTile({
               src={it.coverUrl}
               alt={it.title || 'محتوای تبیینی'}
               variant="tabyin"
+              unoptimized={isDirectTabyinImage(it.coverUrl)}
               fill
               sizes="(max-width: 768px) 45vw, 22vw"
               className="object-cover transition-transform duration-500 group-hover:scale-105"
