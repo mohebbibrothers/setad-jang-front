@@ -19,7 +19,7 @@ describe('homepage counts are not capped to the preview card window', () => {
       />,
     );
     expect(html).toContain('۶٬۱۰۱');
-    expect(html).toContain('نمایش تازه‌ترین ۱۰۰ مورد');
+    expect(html).not.toContain('نمایش تازه‌ترین ۱۰۰ مورد');
     expect(html).toContain('مشاهده همه محتواها');
   });
   it('never treats legacy raw counts as verified full display totals', () => {

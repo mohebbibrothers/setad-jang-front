@@ -593,12 +593,6 @@ export function TabyinSection({
           )}
         </AnimatePresence>
 
-        {!unavailable && counts[filter] > PAGE_SIZE * MAX_PAGES && (
-          <p className="mt-5 text-center text-xs font-semibold text-ink-500">
-            نمایش تازه‌ترین ۱۰۰ مورد این فیلتر؛ برای مرور کامل، «مشاهده همه محتواها» را انتخاب کنید.
-          </p>
-        )}
-
         {/* Pager (brand PNG arrows — disabled when there's a single page) */}
         <div className="mt-8 flex items-center justify-center gap-4">
           <button
