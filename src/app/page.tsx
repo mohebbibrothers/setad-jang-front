@@ -14,8 +14,7 @@ import {
   loadCourses,
   loadLmsCategories,
   loadKindnessBoard,
-  loadTabyinItems,
-  loadTabyinCounts,
+  loadTabyinSection,
   loadReportSubjects,
 } from '@/lib/home-data';
 import { siteConfig } from '@/lib/site';
@@ -141,25 +140,16 @@ function buildHomeItemList() {
 }
 
 export default async function HomePage() {
-  const [
-    campaigns,
-    criminals,
-    lmsCategories,
-    courses,
-    kindnessBoard,
-    tabyin,
-    tabyinCounts,
-    reportSubjects,
-  ] = await Promise.all([
-    loadCampaigns(),
-    loadCriminals(),
-    loadLmsCategories(),
-    loadCourses(),
-    loadKindnessBoard(),
-    loadTabyinItems(),
-    loadTabyinCounts(),
-    loadReportSubjects(),
-  ]);
+  const [campaigns, criminals, lmsCategories, courses, kindnessBoard, tabyin, reportSubjects] =
+    await Promise.all([
+      loadCampaigns(),
+      loadCriminals(),
+      loadLmsCategories(),
+      loadCourses(),
+      loadKindnessBoard(),
+      loadTabyinSection(),
+      loadReportSubjects(),
+    ]);
 
   const itemListLd = buildHomeItemList();
 
@@ -195,7 +185,7 @@ export default async function HomePage() {
         categories={kindnessBoard.categories}
         stats={kindnessBoard.stats}
       />
-      <TabyinSection items={tabyin} counts={tabyinCounts} />
+      <TabyinSection items={tabyin.items} counts={tabyin.counts} unavailable={tabyin.unavailable} />
       <PublicReportSection subjects={reportSubjects} />
 
       {/*

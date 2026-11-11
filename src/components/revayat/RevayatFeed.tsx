@@ -27,12 +27,10 @@
  *     درخواستِ قبلی abort می‌شود — تندتایپ‌کردن هرگز فید را نمی‌شکند؛
  *   • نخستین بارگذاری از SSR نفوذ می‌کند و هیچ واکشیِ دوبلای رخ نمی‌دهد؛
  *   • چسباندنِ صفحات با dedupe روی external_id؛
- *   • شمارنده‌ی «واقعیِ قابل‌نمایش»: SSR برای دیدگاهِ اولیه و سرویسِ
- *     سبکِ /api/tabyin-count برای تعویضِ فیلتر، عدد را از اسکنِ کاملِ
- *     کرپوس (سمتِ سرور) می‌آورند — دقیقاً «تعدادِ کارت‌هایی که کاربر
- *     می‌بیند» (نه سطرهای پوچ، نه نسخه‌های تکراری). عدد فقط با جفت‌شدنِ
- *     scope نمایش داده می‌شود؛ تا آن لحظه اسکلتِ نرمِ «در حال محاسبه»
- *     و در شکست، شمارِ خامِ پاکت — هرگز عددِ اشتباهِ مطمئن.
+ *   • کارت‌ها و شمار کامل از یک پاسخ display می‌آیند؛ اسکن کل مجموعه
+ *     در فرانت نداریم. ادامهٔ صفحه‌بندی به revision مقید است؛ تغییر
+ *     نسخه باعث بارگذاری محدود صفحهٔ اول می‌شود، نه چسباندن دو مجموعه.
+ *   • شکست شمارش به عدد خام یا صفر تبدیل نمی‌شود.
  * ═══════════════════════════════════════════════════════════════════
  */
 
@@ -50,12 +48,11 @@ import {
   Video,
   X,
 } from 'lucide-react';
-import { apiFetch, type Paginated } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
+import { displayFeedPath, parseDisplayPage } from '@/lib/tabyin-display';
 import { cn, formatPersianNumber } from '@/lib/utils';
 import {
-  buildFeedCountQuery,
   buildFeedPath,
-  buildFeedQuery,
   dedupeFeed,
   dedupeFeedContent,
   FEED_TYPE_TABS,
@@ -103,20 +100,20 @@ function SkeletonCard() {
 export function RevayatFeed({
   initialItems,
   initialCount,
+  initialRevision,
+  initialUnavailable = false,
   uniqueCount,
   countScope,
   initialHasNext,
   initialFilters,
 }: {
   initialItems: RevayatItem[];
-  initialCount: number;
-  /** شمارِ «واقعیِ قابل‌نمایش» (پس از حذفِ پوسته‌ها و نسخه‌های تکراری)
-      برای دیدگاه‌ای که countScope توصیف‌اش می‌کند — چه پیش‌فرض چه
-      فیلتردار. فقط وقتی به‌جای شمارِ خامِ پاکت نمایش داده می‌شود که
-      دامنه‌اش با فیلترهای فعلی دقیقاً برابر باشد؛ وگرنه عددی که با
-      کارت‌های روی صفحه نمی‌خواند، بدتر از نبودِ عدد است. */
+  initialCount?: number;
+  initialRevision?: string;
+  initialUnavailable?: boolean;
+  /** @deprecated Compatibility only; production passes the exact page count. */
   uniqueCount?: number;
-  /** feedScopeKeyِ فیلترهایی که uniqueCount برایشان محاسبه شده است. */
+  /** @deprecated Prevent accepting a legacy count for a different filter. */
   countScope?: string;
   initialHasNext: boolean;
   initialFilters: FeedFilters;
@@ -130,27 +127,21 @@ export function RevayatFeed({
   const [items, setItems] = useState<RevayatItem[]>(() =>
     dedupeFeedContent(visibleContents(initialItems)),
   );
-  const [count, setCount] = useState(initialCount);
+  const initialTotal =
+    typeof uniqueCount === 'number' && (!countScope || countScope === feedScopeKey(initialFilters))
+      ? uniqueCount
+      : initialCount;
+  const [count, setCount] = useState<number | undefined>(initialTotal);
+  const revisionRef = useRef(initialRevision);
+  const totalRef = useRef(initialTotal);
+  const dataScopeRef = useRef(feedScopeKey(initialFilters));
   const [page, setPage] = useState(1);
   const [hasNext, setHasNext] = useState(initialHasNext);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<'load' | 'more' | null>(null);
+  const [error, setError] = useState<'load' | 'more' | null>(initialUnavailable ? 'load' : null);
 
-  /* ── شمارنده‌ی «واقعیِ قابل‌نمایش» ── مقدارِ اولیه از SSR می‌آید
-     (اسکنِ کاملِ سرور)، و بعد از هر تعویضِ فیلتر، سرویسِ سبکِ
-     /api/tabyin-count همین عدد را برای دیدگاهِ تازه اسکن می‌کند.
-     عدد فقط وقتی نمایش داده می‌شود که scopeاش دقیقاً برابرِ فیلترهای
-     فعلی باشد — در غیر این صورت، به‌جای عددیِ مطمئنِ غلط، اسکلتِ نرمِ
-     «در حال محاسبه» دیده می‌شود و اگر اسکن شکست بخورد، شمارِ خامِ
-     پاکت آخرین پناه است. */
-  const [scanned, setScanned] = useState<{ scope: string; count: number } | null>(() =>
-    typeof uniqueCount === 'number'
-      ? { scope: countScope ?? feedScopeKey(initialFilters), count: uniqueCount }
-      : null,
-  );
-  const [scanPending, setScanPending] = useState(false);
-
+  // Count and cards come from the same validated page response, not a second scan.
   const [qInput, setQInput] = useState(initialFilters.q);
   const [filters, setFilters] = useState<FeedFilters>(initialFilters);
 
@@ -158,81 +149,96 @@ export function RevayatFeed({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const seqRef = useRef(0);
-  /* کانالِ مستقلِ اسکنِ شمار — از کانالِ واکشیِ صفحات جدا تا ابطالِ
-     یکی، دیگری را نخورد (رقابت‌گریز با seq token و AbortController). */
-  const scanAbortRef = useRef<AbortController | null>(null);
-  const scanSeqRef = useRef(0);
   /* فیلترِ «اعمال‌شده‌ی قبلی» — برای تشخیصِ تغییرِ واقعی (نه mount). */
   const prevFiltersRef = useRef<FeedFilters>(initialFilters);
 
-  /* ── واکشیِ یک صفحه — رقابت‌گریز + abort ── */
-  const fetchPage = useCallback(async (f: FeedFilters, pageNo: number, append: boolean) => {
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-    const seq = ++seqRef.current;
-
-    setError(null);
-    if (append) setLoadingMore(true);
-    else setLoading(true);
-
-    try {
-      const data = await apiFetch<Paginated<RevayatItem>>(
-        `/tabyin/contents/?${buildFeedQuery(f, pageNo)}`,
-        { signal: ctrl.signal, skipAuth: true } as never,
-      );
-      if (seq !== seqRef.current) return; // پاسخِ «ازرده»
-      setItems((prev) =>
-        dedupeFeedContent(visibleContents(append ? dedupeFeed(prev, data.results) : data.results)),
-      );
-      setCount(data.count);
-      setPage(pageNo);
-      setHasNext(Boolean(data.next));
-    } catch (e) {
-      if ((e as { name?: string } | null | undefined)?.name === 'AbortError') return;
-      if (seq !== seqRef.current) return;
-      setError(append ? 'more' : 'load');
-    } finally {
-      if (seq === seqRef.current) {
-        setLoading(false);
-        setLoadingMore(false);
+  /* One bounded request per page; a revision conflict restarts once at page one. */
+  const fetchPage = useCallback(
+    async (f: FeedFilters, pageNo: number, append: boolean): Promise<void> => {
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      const seq = ++seqRef.current;
+      const scope = feedScopeKey(f);
+      let shouldAppend = append && dataScopeRef.current === scope && Boolean(revisionRef.current);
+      let requestedPage = append && !shouldAppend ? 1 : pageNo;
+      const requestedRevision = shouldAppend ? revisionRef.current : undefined;
+      setError(null);
+      if (append) setLoadingMore(true);
+      else {
+        setLoading(true);
+        if (dataScopeRef.current !== scope) {
+          setItems([]);
+          setCount(undefined);
+          setHasNext(false);
+          setPage(1);
+        }
       }
-    }
-  }, []);
 
-  /* ── اسکنِ شمارِ واقعی برای یک دیدگاه — سرویسِ سبکِ /api/tabyin-count.
-     کلِ بارِ خواندنِ کرپوس سمتِ سرور می‌ماند و فقط یک عدد به گوشی
-     می‌رسد؛ پاسخِ «ازرده» (seq قدیمی‌تر) دور ریخته می‌شود و AbortError
-     بی‌صدا — همان نظمِ رقابت‌گریزیِ fetchPage. */
-  const fetchScan = useCallback(async (f: FeedFilters) => {
-    scanAbortRef.current?.abort();
-    const ctrl = new AbortController();
-    scanAbortRef.current = ctrl;
-    const seq = ++scanSeqRef.current;
-    const scope = feedScopeKey(f);
+      const read = async (number: number, revision?: string) => {
+        const raw = await apiFetch<unknown>(displayFeedPath(f, number, 12, revision), {
+          signal: ctrl.signal,
+          skipAuth: true,
+          cache: 'no-store',
+        });
+        const result = parseDisplayPage(raw, { page: number, pageSize: 12 });
+        if (!result) throw new Error('Verified display page unavailable');
+        return result;
+      };
 
-    setScanPending(true);
-    try {
-      const res = await fetch(`/api/tabyin-count?${buildFeedCountQuery(f)}`, {
-        signal: ctrl.signal,
-        headers: { accept: 'application/json' },
-      });
-      if (!res.ok) throw new Error(`tabyin-count ${res.status}`);
-      const payload = (await res.json()) as { success?: boolean; count?: unknown };
-      if (seq !== scanSeqRef.current) return;
-      if (payload.success && typeof payload.count === 'number') {
-        setScanned({ scope, count: payload.count });
+      try {
+        let data;
+        try {
+          data = await read(requestedPage, requestedRevision);
+        } catch (err) {
+          if (!shouldAppend || (err as { status?: number })?.status !== 409) throw err;
+          if (seq !== seqRef.current) return;
+          setCount(undefined);
+          requestedPage = 1;
+          shouldAppend = false;
+          data = await read(1);
+        }
+        if (
+          shouldAppend &&
+          (data.revision !== requestedRevision || data.count !== totalRef.current)
+        ) {
+          if (seq !== seqRef.current) return;
+          setCount(undefined);
+          requestedPage = 1;
+          shouldAppend = false;
+          data = await read(1);
+        }
+        if (seq !== seqRef.current) return;
+        dataScopeRef.current = scope;
+        revisionRef.current = data.revision;
+        totalRef.current = data.count;
+        setItems((prev) => (shouldAppend ? dedupeFeed(prev, data.results) : data.results));
+        setCount(data.count);
+        setPage(requestedPage);
+        setHasNext(Boolean(data.next));
+      } catch (err) {
+        if ((err as { name?: string })?.name === 'AbortError' || seq !== seqRef.current) return;
+        setError(append ? 'more' : 'load');
+      } finally {
+        if (seq === seqRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
-    } catch {
-      /* سکوتِ آگاهانه: با شکستِ اسکن، شمارِ خامِ پاکت می‌ماند و
-         اسکلتِ «در حال محاسبه» جمع می‌شود — عددِ اشتباهِ مطمئن هرگز. */
-    } finally {
-      if (seq === scanSeqRef.current) setScanPending(false);
-    }
-  }, []);
+    },
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      seqRef.current++;
+      abortRef.current?.abort();
+    },
+    [],
+  );
 
   const loadMore = useCallback(() => {
-    if (loading || loadingMore || !hasNext || error === 'load') return;
+    if (loading || loadingMore || !hasNext || error !== null) return;
     void fetchPage(filters, page + 1, true);
   }, [error, fetchPage, filters, hasNext, loading, loadingMore, page]);
 
@@ -242,13 +248,13 @@ export function RevayatFeed({
   /* ── جست‌وجوی زنده با debounce ── */
   useEffect(() => {
     const t = setTimeout(() => {
-      const q = qInput.trim();
+      const q = qInput.trim().slice(0, 200);
       setFilters((f) => (f.q === q ? f : { ...f, q }));
     }, 450);
     return () => clearTimeout(t);
   }, [qInput]);
 
-  /* ── فیلتر عوض شد → صفحه‌ی یک + اسکنِ شمار + سینکِ URL ──
+  /* ── فیلتر عوض شد → صفحه‌ی یک با شمار کامل + سینکِ URL ──
      فقط وقتی مجموعه‌ی اعمال‌شده واقعاً عوض شود (mount=SSR هرگز واکشیِ
      دوباره نمی‌کند؛ برگشتن به وضعیتِ اولیه هم «تغییر» حساب می‌شود). */
   useEffect(() => {
@@ -258,7 +264,6 @@ export function RevayatFeed({
     }
     prevFiltersRef.current = filters;
     void fetchPage(filters, 1, false);
-    void fetchScan(filters);
     router.replace(buildFeedPath(filters), { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
@@ -295,15 +300,9 @@ export function RevayatFeed({
     [filters],
   );
 
-  /* عددِ سربرگ — قراردادِ «دقیقاً همان چیزی که کاربر می‌بیند»:
-     شمارِ اسکن‌شده فقط وقتی که دامنه‌اش با فیلترهای فعلی جفت باشد
-     (نه عددِ مانده از دیدگاهِ قبلی، نه شمارِ خامِ سرور). تا لحظه‌ی
-     جفت‌شدن، اسکلتِ نرمِ «در حال محاسبه» نشان داده می‌شود؛ شکستِ
-     اسکن → شمارِ خامِ پاکت به‌عنوان آخرین پناه. */
   const currentScope = feedScopeKey(filters);
-  const scopeMatched = scanned !== null && scanned.scope === currentScope;
-  const displayCount = scopeMatched ? scanned.count : count;
-  const countIsPending = !scopeMatched && scanPending;
+  const displayCount = dataScopeRef.current === currentScope ? count : undefined;
+  const countIsPending = displayCount === undefined && (loading || loadingMore);
 
   const clearAll = () => {
     setQInput('');
@@ -314,7 +313,7 @@ export function RevayatFeed({
     setFilters((f) => (f.type === type ? f : { ...f, type }));
 
   const pickLocation = useCallback((location: string) => {
-    setFilters((f) => ({ ...f, author: location }));
+    setFilters((f) => ({ ...f, author: location.slice(0, 200) }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
@@ -338,6 +337,7 @@ export function RevayatFeed({
               onChange={(e) => setQInput(e.target.value)}
               placeholder="جست‌وجو در روایت‌ها… (کپشن، نویسنده، شهر)"
               aria-label="جست‌وجو در روایت‌ها"
+              maxLength={200}
               className="h-12 w-full rounded-2xl border border-ink-200 bg-ink-50/70 pe-11 ps-11 text-[13.5px] font-semibold text-ink-900 outline-none transition placeholder:text-ink-400 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
             />
             {qInput ? (
@@ -405,7 +405,9 @@ export function RevayatFeed({
                 />
               ) : (
                 <span key={displayCount} className="count-pop inline-block">
-                  {formatPersianNumber(displayCount)} روایت
+                  {displayCount === undefined
+                    ? 'شمارش در دسترس نیست'
+                    : `${formatPersianNumber(displayCount)} روایت`}
                 </span>
               )}
             </span>

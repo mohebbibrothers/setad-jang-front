@@ -280,102 +280,49 @@ export type TabyinCounts = {
   /** Everything else (audio / other / no-media). Optional so older
    *  loaders that don't populate it still typecheck. */
   text?: number;
+  /** Only the validated display API may assert full-corpus counts. */
+  exact?: boolean;
 };
 
 /* ───────────────────────────────────────────────────────────────────────── */
 /*  Section                                                                  */
 /* ───────────────────────────────────────────────────────────────────────── */
 
-/**
- * ── TabyinSection ──────────────────────────────────────────────
- *
- *  The `counts` prop is DELIBERATELY IGNORED here — every badge
- *  number is derived locally from the `items` array via the
- *  `renderableItems` corpus. Rationale: the backend-supplied
- *  counts (all / image / video / text) don't know which rows the
- *  client is going to filter out as hollow (no cover, no video
- *  URL, no readable text). If we rendered a backend count while
- *  the tab actually showed a smaller filtered set, the badge and
- *  the tile count would disagree — exactly the "همه = 3301 but
- *  تصویر+ویدئو+سایر = 3297" mismatch users kept reporting.
- *
- *  We accept `counts` in the signature so `page.tsx` can keep
- *  passing it without a compile error, but we shadow it with an
- *  underscore-prefixed unused binding so future readers of this
- *  file understand at a glance that it's intentionally dead.
- */
+/** Full display counts are independent of the bounded homepage card window. */
 export function TabyinSection({
   items,
-  counts: _ignored,
+  counts: verifiedCounts,
+  unavailable = false,
 }: {
   items: TabyinItem[];
   counts?: TabyinCounts;
+  unavailable?: boolean;
 }) {
-  void _ignored;
   const [filter, setFilter] = useState<FilterKey>('all');
   const [page, setPage] = useState(0);
 
-  /*
-   * ── "سایر" tab definition ────────────────────────────────────
-   *
-   *  Contract with the client:
-   *    text ≡ all − image − video
-   *
-   *  Both the badge count AND the tab contents must respect this
-   *  identity so the number the user sees on the pill matches the
-   *  number of tiles they scroll through — no more "35 in the badge
-   *  but 8 items on screen".
-   *
-   *  On the counts side: the backend loader now supplies
-   *  `backendCounts.text` computed as `all - image - video`, so the
-   *  badge always reads that exact figure (currently 35 on prod).
-   *
-   *  On the items side: `isTextItem` matches ANY item that is neither
-   *  visibly an image tile nor visibly a video tile — evaluated by
-   *  the client's own tile-rendering criteria (has a valid cover URL
-   *  → image, has a video URL → video, otherwise → text). That's
-   *  exactly the set-complement of image ∪ video from the wall's
-   *  perspective, and it produces the same 35-item count on the
-   *  current corpus (the ~33 rows with cross-typed / null
-   *  primary_media_type still lack a usable cover URL and correctly
-   *  land under سایر).
-   */
-  /*
-   * ── Content sanity helpers ──────────────────────────────────
-   *
-   *  `hasReadableText` normalises Persian zero-width joiner
-   *  (ZWNJ, U+200C), no-break space, BOM and other invisible-
-   *  glyph whitespace BEFORE the length check, so a description
-   *  that is technically non-empty ("‌" or "   ") still counts as
-   *  empty and gets filtered out.
-   *
-   *  `hasRenderableContent` is the universal "should we show this
-   *  tile at all?" predicate. A tile is renderable when it has
-   *  EITHER something to display in a media slot (cover / video
-   *  URL) OR readable text for the quote-card fallback. Rows that
-   *  fail both checks are hollow — they'd render as a blank card
-   *  regardless of tab — and are excluded from every filter,
-   *  including "همه", so the four badge numbers add up cleanly.
-   */
-
-  /*
-   * ── Renderable corpus ───────────────────────────────────────
-   *  All badge counts AND the paginated slice are computed from
-   *  the SAME filtered array: items minus the hollow ones. That
-   *  guarantees the four badge numbers add up:
-   *      همه = تصویر + ویدئو + سایر
-   *  and every tab's tile count matches its badge exactly.
-   */
+  // The API supplies a bounded preview plus full, exclusive bucket counts.
+  // Retain the local rendering gate defensively; verified totals must not be
+  // recomputed from this subset. Legacy callers without verified counts still
+  // receive local preview counts rather than trusting a raw row total.
   const renderableItems = useMemo(() => items.filter(hasRenderableContent), [items]);
 
   const counts = useMemo(
-    () => ({
-      all: renderableItems.length,
-      image: renderableItems.filter((i) => i.mediaType === 'image').length,
-      video: renderableItems.filter((i) => i.mediaType === 'video').length,
-      text: renderableItems.filter(isTextItem).length,
-    }),
-    [renderableItems],
+    () =>
+      verifiedCounts?.exact === true
+        ? {
+            all: verifiedCounts.all,
+            image: verifiedCounts.image,
+            video: verifiedCounts.video,
+            text: verifiedCounts.text ?? 0,
+          }
+        : {
+            all: renderableItems.length,
+            image: renderableItems.filter((i) => i.mediaType === 'image').length,
+            video: renderableItems.filter((i) => i.mediaType === 'video').length,
+            text: renderableItems.filter(isTextItem).length,
+          },
+    [renderableItems, verifiedCounts],
   );
 
   const filtered = useMemo(
@@ -425,7 +372,7 @@ export function TabyinSection({
   // Reset to first page when filter changes
   useEffect(() => {
     setPage(0);
-  }, [filter]);
+  }, [filter, items]);
 
   // ── Sparse-mode detection ───────────────────────────────────────────
   // When the visible set is smaller than ONE full row at the current
@@ -548,14 +495,14 @@ export function TabyinSection({
                     <span
                       className={`hidden h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-extrabold tabular-nums sm:inline-flex ${isActive ? 'bg-white/25 text-white' : 'bg-ink-100 text-ink-500'}`}
                     >
-                      {c.toLocaleString('fa-IR')}
+                      {unavailable ? '—' : c.toLocaleString('fa-IR')}
                     </span>
                     {/* Compact corner badge on phones */}
                     {c > 0 && (
                       <span
                         className={`absolute -left-1 -top-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1 text-[9.5px] font-extrabold tabular-nums sm:hidden ${isActive ? 'bg-white text-ink-900' : 'bg-ink-200 text-ink-600'} ring-2 ring-ink-50`}
                       >
-                        {c.toLocaleString('fa-IR')}
+                        {unavailable ? '—' : c.toLocaleString('fa-IR')}
                       </span>
                     )}
                   </button>
@@ -586,12 +533,18 @@ export function TabyinSection({
             >
               <EmptyState
                 title={
-                  items.length === 0 ? 'هنوز محتوایی منتشر نشده' : 'محتوایی در این فیلتر یافت نشد'
+                  unavailable
+                    ? 'دریافت روایت‌ها موقتاً در دسترس نیست'
+                    : items.length === 0
+                      ? 'هنوز محتوایی منتشر نشده'
+                      : 'محتوایی در این فیلتر یافت نشد'
                 }
                 description={
-                  items.length === 0
-                    ? 'به‌محض انتشار اولین روایت‌های جهاد تبیین، اینجا قابل مشاهده خواهد بود.'
-                    : 'فیلتر دیگری را امتحان کن یا «همه» را انتخاب کن.'
+                  unavailable
+                    ? 'کمی بعد دوباره صفحه را بارگذاری کنید؛ شمارش ناقص نمایش داده نمی‌شود.'
+                    : items.length === 0
+                      ? 'به‌محض انتشار اولین روایت‌های جهاد تبیین، اینجا قابل مشاهده خواهد بود.'
+                      : 'فیلتر دیگری را امتحان کن یا «همه» را انتخاب کن.'
                 }
                 iconPath="m3 11 18-5v12L3 14v-3z M11.6 16.8a3 3 0 1 1-5.8-1.6"
               />
@@ -639,6 +592,12 @@ export function TabyinSection({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {!unavailable && counts[filter] > PAGE_SIZE * MAX_PAGES && (
+          <p className="mt-5 text-center text-xs font-semibold text-ink-500">
+            نمایش تازه‌ترین ۱۰۰ مورد این فیلتر؛ برای مرور کامل، «مشاهده همه محتواها» را انتخاب کنید.
+          </p>
+        )}
 
         {/* Pager (brand PNG arrows — disabled when there's a single page) */}
         <div className="mt-8 flex items-center justify-center gap-4">

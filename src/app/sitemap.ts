@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { siteConfig } from '@/lib/site';
 import { fetchCriminalsPage } from '@/lib/r4j';
 import { fetchCampaignsList } from '@/lib/madadkar';
-import { fetchTabyinAllComplete } from '@/lib/home-data';
+import { readTabyinSitemapWindow } from '@/lib/tabyin-data';
 import { safeApiFetch, type Paginated } from '@/lib/api';
 
 /**
@@ -105,7 +105,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // روایت‌های «جهاد تبیین» — صدها صفحه‌ی خبری که بدون این لیست هرگز
   // کراول نمی‌شدند. آخرین ۴۰۰ مورد (سقفِ سبکی برای فایل)؛ شناسهٔ عمومی
   // همان external_id است که کارت‌های جلویی نیز با آن لینک می‌سازند.
-  const tabyinRows = await fetchTabyinAllComplete(400);
+  const tabyinRows = await readTabyinSitemapWindow(400);
   for (const row of tabyinRows) {
     if (!row.external_id) continue;
     entries.push({

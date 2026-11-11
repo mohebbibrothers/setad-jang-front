@@ -29,7 +29,7 @@ export interface RevayatItem {
   description?: string;
   author_username?: string;
   origin?: 'external' | 'user_submitted';
-  source_created_at?: string;
+  source_created_at?: string | null;
   primary_media_type?: 'image' | 'video' | 'audio' | 'other';
   attachments?: unknown;
 }
@@ -183,13 +183,13 @@ export function feedFiltersFromSearchParams(
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? '';
   const type = one(sp.type);
   return {
-    q: one(sp.q),
+    q: one(sp.q).slice(0, 200),
     type: (['', 'video', 'image', 'audio', 'other'] as const).includes(
       type as '' | 'video' | 'image' | 'audio' | 'other',
     )
       ? (type as FeedTypeFilter)
       : '',
-    author: one(sp.author),
+    author: one(sp.author).slice(0, 200),
   };
 }
 

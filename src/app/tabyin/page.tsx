@@ -1,15 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Newspaper, PenLine, Sparkles } from 'lucide-react';
-import { safeApiFetch, type Paginated } from '@/lib/api';
 import { formatPersianNumber } from '@/lib/utils';
-import { countVisibleFeedTotal } from '@/lib/home-data';
-import {
-  buildFeedQuery,
-  feedFiltersFromSearchParams,
-  feedScopeKey,
-  type RevayatItem,
-} from '@/lib/revayat';
+import { readDisplayFeedPage } from '@/lib/tabyin-data';
+import { feedFiltersFromSearchParams } from '@/lib/revayat';
 import { RevayatFeed } from '@/components/revayat/RevayatFeed';
 
 /**
@@ -47,32 +41,9 @@ export default async function TabyinIndexPage({
 }) {
   const sp = await searchParams;
   const filters = feedFiltersFromSearchParams(sp);
-  const data = await safeApiFetch<Paginated<RevayatItem>>(
-    `/tabyin/contents/?${buildFeedQuery(filters, 1)}`,
-    { revalidate: 120, tags: ['tabyin'] },
-  );
+  const data = await readDisplayFeedPage(filters);
   const items = data?.results ?? [];
-  const serverCount = data?.count ?? items.length;
-
-  /* ── شمارِ «واقعیِ قابل‌نمایش» — برای هر دیدگاه، نه فقط پیش‌فرض ──
-     قراردادِ کاربر: «شمارنده باید همون تعداد محتوایی رو نشون بده که
-     کاربر می‌بینه». پس عددِ سربرگ باید دقیقاً برابرِ کارت‌هایی باشد
-     که زیرِ فیلترِ فعلی رندر می‌شوند — نه سطرهای پوچ (بدون کاور/
-     ویدئو/متنِ خواندنی — tabyin-visibility) و نه نسخه‌های همسانِ
-     سندیکا (dedupeFeedContentِ keep-first). برای هر دیدگاه (پیش‌فرض
-     یا فیلتردار) کرپوسِ کاملِ همان فیلتر سمتِ سرور اسکن می‌شود و دو
-     گِیتِ مشترک با فید، به‌همان ترتیبِ فید، اعمال می‌شوند؛ نتیجه برای
-     فیلترِ «متن» به‌جای ۳۹ سطرِ خام دقیقاً ۳۲ است — همان ۳۲ کارتی که
-     کاربر می‌بیند و با شمارنده‌ی «همه»ی دیوارِ صفحه‌ی اصلی هم
-     هم‌قرارداد است. اگر اسکن شکست بخورد (بک‌اند در دسترس نباشد) به
-     شمارِ خامِ پاکت فرو می‌افتیم. فید هم هنگام جابه‌جایی فیلترها از
-     سرویسِ سبکِ /api/tabyin-count همین عدد را تازه می‌کند و scope
-     مشخص می‌کند این عدد برای کدام مجموعه‌فیلتر معتبر است. */
-  let visibleTotal: number | undefined;
-  if (data) {
-    visibleTotal = await countVisibleFeedTotal(filters);
-  }
-  const displayTotal = visibleTotal ?? serverCount;
+  const displayTotal = data?.count;
 
   return (
     <main className="min-h-screen bg-white">
@@ -103,7 +74,9 @@ export default async function TabyinIndexPage({
             >
               <Sparkles className="h-3 w-3 text-mint-400" />
               <span key={displayTotal} className="count-pop inline-block">
-                {formatPersianNumber(displayTotal)} روایت
+                {displayTotal === undefined
+                  ? 'شمارش موقتاً در دسترس نیست'
+                  : `${formatPersianNumber(displayTotal)} روایت`}
               </span>
             </span>
             <span className="rounded-full bg-white/70 px-3 py-1.5 text-[11.5px] font-bold text-ink-500 ring-1 ring-inset ring-ink-100">
@@ -123,9 +96,9 @@ export default async function TabyinIndexPage({
       {/* ── فید (کلاینت): سرچ‌بارِ چسبان + اسکرولِ بی‌پایان ── */}
       <RevayatFeed
         initialItems={items}
-        initialCount={serverCount}
-        uniqueCount={visibleTotal}
-        countScope={feedScopeKey(filters)}
+        initialCount={displayTotal}
+        initialRevision={data?.revision}
+        initialUnavailable={!data}
         initialHasNext={Boolean(data?.next)}
         initialFilters={filters}
       />

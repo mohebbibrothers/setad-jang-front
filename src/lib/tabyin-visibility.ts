@@ -18,7 +18,7 @@ import type { TabyinStageAttachment } from '@/components/tabyin/TabyinStage';
  * دقیقاً همان جهانِ قابل‌نمایش را پایه بگیرد — یک منبعِ واحد برای
  * هر دو صفحه، بنابراین عددِ دیوار و عددِ فید دیگر هیچ‌وقت از هم نمی‌افتند.
  *
- * نگاشتِ دقیق از کدِ دیوار (home-data.loadTabyinItems +
+ * نگاشتِ دقیق از کدِ دیوار (home-data.mapTabyinItems +
  * TabyinSection.hasRenderableContent):
  *
  *   دیوار (روی TabyinItem نگاشت‌شده)      این فایل (روی سطرِ خام)

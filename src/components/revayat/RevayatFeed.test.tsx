@@ -33,6 +33,7 @@ vi.mock('@/lib/api', () => ({
 
 import { RevayatFeed } from './RevayatFeed';
 import { feedScopeKey, type FeedFilters, type RevayatItem } from '@/lib/revayat';
+import { displayPage, notes } from '@/test-utils/tabyin-display';
 
 /* ── داده‌ی نمونه: از هر نوع یک روایت ── */
 const FILM: RevayatItem = {
@@ -90,8 +91,8 @@ const FILM2: RevayatItem = { ...FILM, external_id: 'film-2', title: 'روایت�
 
 const EMPTY_FILTERS: FeedFilters = { q: '', type: '', author: '' };
 
-function page<T>(results: T[], next: string | null = null) {
-  return { count: results.length, next, previous: null, results };
+function page(results: RevayatItem[]) {
+  return displayPage(results);
 }
 
 beforeAll(() => {
@@ -235,11 +236,12 @@ describe('RevayatFeed', () => {
   });
 
   it('«روایت‌های بیشتر» صفحه‌ی دوم را می‌چسباند', async () => {
-    apiFetchMock.mockResolvedValue(page([FILM2]));
+    apiFetchMock.mockResolvedValue(displayPage([FILM2], { count: 13, page: 2 }));
     render(
       <RevayatFeed
         initialItems={[FILM]}
-        initialCount={2}
+        initialCount={13}
+        initialRevision="r1"
         initialHasNext={true}
         initialFilters={EMPTY_FILTERS}
       />,
@@ -322,29 +324,100 @@ describe('RevayatFeed', () => {
     expect(screen.queryByText(/۳۳۳۷ روایت/)).toBeNull();
   });
 
-  it('تعویضِ فیلتر → اسکنِ /api/tabyin-count و جان‌گرفتنِ شمارنده با عددِ واقعی', async () => {
-    apiFetchMock.mockResolvedValue(page([NOTE]));
-    const scanFetchMock = vi.fn(
-      async (_input: RequestInfo | URL) =>
-        new Response(JSON.stringify({ success: true, status_code: 200, count: 32 }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
-    );
+  it('تعویض فیلتر، کارت‌ها و شمارش را از یک پاسخ display می‌گیرد؛ بدون اسکن شمار جداگانه', async () => {
+    apiFetchMock.mockResolvedValue(displayPage([NOTE, ...notes(11, 10000)], { count: 32 }));
+    const scanFetchMock = vi.fn(async (_input: unknown) => new Response('{}', { status: 503 }));
     vi.stubGlobal('fetch', scanFetchMock);
     render(
       <RevayatFeed
         initialItems={[FILM]}
         initialCount={1}
-        uniqueCount={1}
-        countScope={feedScopeKey(EMPTY_FILTERS)}
+        initialHasNext={false}
+        initialFilters={EMPTY_FILTERS}
+        initialRevision="r1"
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'متن' }));
+    await waitFor(() => expect(screen.getByText('۳۲ روایت')).toBeTruthy());
+    expect(String(apiFetchMock.mock.calls[0]?.[0])).toContain('/tabyin/display/');
+    expect(String(apiFetchMock.mock.calls[0]?.[0])).toContain('media_type=other');
+    expect(scanFetchMock.mock.calls.some((c) => String(c[0]).includes('/api/tabyin-count'))).toBe(
+      false,
+    );
+  });
+
+  it('تعارض نسخه در صفحه بعد، فقط یک بار از صفحه یک تازه بارگذاری می‌کند', async () => {
+    apiFetchMock.mockRejectedValueOnce({ status: 409 });
+    apiFetchMock.mockResolvedValueOnce(displayPage(notes(12), { count: 13, revision: 'r2' }));
+    render(
+      <RevayatFeed
+        initialItems={[FILM]}
+        initialCount={13}
+        initialRevision="r1"
+        initialHasNext
+        initialFilters={EMPTY_FILTERS}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /روایت‌های بیشتر/ }));
+    await waitFor(() => expect(screen.getByText('روایت 0')).toBeTruthy());
+    expect(apiFetchMock).toHaveBeenCalledTimes(2);
+    const first = new URL(String(apiFetchMock.mock.calls[0][0]), 'http://local');
+    const second = new URL(String(apiFetchMock.mock.calls[1][0]), 'http://local');
+    expect(first.searchParams.get('page')).toBe('2');
+    expect(first.searchParams.get('revision')).toBe('r1');
+    expect(second.searchParams.get('page')).toBe('1');
+    expect(second.searchParams.has('revision')).toBe(false);
+    expect(screen.queryByText('بوستان پیرا')).toBeNull();
+  });
+
+  it('پاسخ ۲۰۰ با نسخه متفاوت نیز هرگز به صفحات قبلی چسبانده نمی‌شود', async () => {
+    apiFetchMock.mockResolvedValueOnce(
+      displayPage([FILM2], { count: 13, page: 2, revision: 'r2' }),
+    );
+    apiFetchMock.mockResolvedValueOnce(displayPage(notes(12), { count: 13, revision: 'r2' }));
+    render(
+      <RevayatFeed
+        initialItems={[FILM]}
+        initialCount={13}
+        initialRevision="r1"
+        initialHasNext
+        initialFilters={EMPTY_FILTERS}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /روایت‌های بیشتر/ }));
+    await waitFor(() => expect(screen.getByText('روایت 0')).toBeTruthy());
+    expect(apiFetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('روایتِ صفحه‌ی دوم')).toBeNull();
+  });
+
+  it('خطای بارگذاری اولیه، حالت خالی یا شمار صفرِ تأییدشده نیست', () => {
+    render(
+      <RevayatFeed
+        initialItems={[]}
+        initialUnavailable
+        initialHasNext={false}
+        initialFilters={EMPTY_FILTERS}
+      />,
+    );
+    expect(screen.getByText('ارتباط برقرار نشد')).toBeTruthy();
+    expect(screen.getByText('شمارش در دسترس نیست')).toBeTruthy();
+    expect(screen.queryByText('روایتی پیدا نشد')).toBeNull();
+    expect(screen.queryByText('۰ روایت')).toBeNull();
+  });
+
+  it('متادیتای ناقص به عدد دقیق تبدیل نمی‌شود', async () => {
+    apiFetchMock.mockResolvedValue({ count: 6101, results: [NOTE], next: null });
+    render(
+      <RevayatFeed
+        initialItems={[FILM]}
+        initialCount={1}
+        initialRevision="r1"
         initialHasNext={false}
         initialFilters={EMPTY_FILTERS}
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'متن' }));
-    await waitFor(() => expect(scanFetchMock).toHaveBeenCalled(), { timeout: 2000 });
-    expect(String(scanFetchMock.mock.calls[0]?.[0])).toContain('/api/tabyin-count?type=other');
-    await waitFor(() => expect(screen.getByText('۳۲ روایت')).toBeTruthy(), { timeout: 2000 });
+    await waitFor(() => expect(screen.getByText('ارتباط برقرار نشد')).toBeTruthy());
+    expect(screen.queryByText('۶٬۱۰۱ روایت')).toBeNull();
   });
 });
