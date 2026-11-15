@@ -28,6 +28,7 @@ export interface RevayatItem {
   title?: string;
   description?: string;
   author_username?: string;
+  author_avatar_id?: string | null;
   origin?: 'external' | 'user_submitted';
   source_created_at?: string | null;
   primary_media_type?: 'image' | 'video' | 'audio' | 'other';

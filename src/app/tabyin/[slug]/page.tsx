@@ -26,6 +26,7 @@ import {
 import { cn, canonicalApiLookup, formatPersianNumber } from '@/lib/utils';
 import { asText, normalizeTabyinAttachments } from '@/lib/tabyin-attachments';
 import { TabyinStage, type TabyinStageAttachment } from '@/components/tabyin/TabyinStage';
+import { PseudonymAvatar } from '@/components/revayat/PseudonymAvatar';
 import { normalizeRouteSlug } from '@/lib/route-slug';
 
 /**
@@ -49,6 +50,7 @@ type TabyinContent = {
   title?: string;
   description?: string;
   author_username?: string;
+  author_avatar_id?: string | null;
   origin?: 'external' | 'user_submitted';
   source_created_at?: string;
   primary_media_type?: 'image' | 'video' | 'audio' | 'other';
@@ -234,9 +236,13 @@ export default async function TabyinDetailPage({ params }: { params: Promise<{ s
             <div className="mt-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] font-semibold text-ink-500">
               {authorName ? (
                 <span className="inline-flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-700">
-                    <UserRound className="h-3.5 w-3.5" />
-                  </span>
+                  {item.origin === 'external' && item.author_avatar_id ? (
+                    <PseudonymAvatar avatarId={item.author_avatar_id} size="detail" />
+                  ) : (
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-700">
+                      <UserRound className="h-3.5 w-3.5" />
+                    </span>
+                  )}
                   <span className="text-ink-700">{authorName}</span>
                   <span className="text-ink-400">پدیدآورنده</span>
                 </span>

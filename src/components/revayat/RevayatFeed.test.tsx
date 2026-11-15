@@ -131,6 +131,33 @@ afterEach(() => {
 });
 
 describe('RevayatFeed', () => {
+  it('برای محتوای خارجی از آواتار گرد مجاز استفاده می‌کند و نام مستعار را نشان می‌دهد', () => {
+    render(
+      <RevayatFeed
+        initialItems={[{ ...FILM, author_username: 'سپهر 313', author_avatar_id: 'm-001' }]}
+        initialCount={1}
+        initialHasNext={false}
+        initialFilters={EMPTY_FILTERS}
+      />,
+    );
+    expect(screen.getAllByText('سپهر 313').length).toBeGreaterThan(0);
+    const avatar = document.querySelector('[data-avatar-frame="uniform-v1"] img');
+    expect(avatar?.getAttribute('src')).toBe('/tabyin-avatars/m-001.webp');
+  });
+
+  it('آواتار مستعار برای کاربران مردمی جایگزین هویت خودشان نمی‌شود', () => {
+    render(
+      <RevayatFeed
+        initialItems={[{ ...FILM, origin: 'user_submitted', author_avatar_id: 'f-001' }]}
+        initialCount={1}
+        initialHasNext={false}
+        initialFilters={EMPTY_FILTERS}
+      />,
+    );
+    expect(document.querySelector('[data-avatar-frame="uniform-v1"]')).toBeNull();
+    expect(screen.getByText('مردمی')).toBeTruthy();
+  });
+
   it('چهار نوع با تگ‌های قراردادی — و «صوت همیشه می‌برد» حتی با کاورِ ویدئویی', () => {
     render(
       <RevayatFeed

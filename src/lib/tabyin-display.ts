@@ -42,6 +42,12 @@ function row(value: unknown): value is RevayatItem {
     value.origin !== 'user_submitted'
   )
     return false;
+  if (
+    value.author_avatar_id !== undefined &&
+    value.author_avatar_id !== null &&
+    typeof value.author_avatar_id !== 'string'
+  )
+    return false;
   if (value.primary_media_type !== undefined && !kinds.has(String(value.primary_media_type)))
     return false;
   if (

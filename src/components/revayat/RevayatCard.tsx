@@ -57,6 +57,7 @@ import {
   type RevayatItem,
 } from '@/lib/revayat';
 import { bustUrl, FadeImg, StageUnavailable } from '@/components/tabyin/TabyinStage';
+import { PseudonymAvatar } from './PseudonymAvatar';
 
 /* ── آیکون و لحنِ هر نوع ── */
 const KIND_META: Record<ContentKind, { Glyph: typeof Video; chip: string }> = {
@@ -279,12 +280,16 @@ export function RevayatCard({
     >
       {/* ── سربرگِ پست ── */}
       <header className="flex items-center gap-3 px-4 py-3 sm:px-5">
-        <span
-          aria-hidden="true"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700 text-[15px] font-black text-white shadow-[0_6px_16px_-6px_rgba(13,128,116,.5)] ring-2 ring-white"
-        >
-          {initialOf(name)}
-        </span>
+        {item.origin === 'external' && item.author_avatar_id ? (
+          <PseudonymAvatar avatarId={item.author_avatar_id} />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700 text-[15px] font-black text-white shadow-[0_6px_16px_-6px_rgba(13,128,116,.5)] ring-2 ring-white"
+          >
+            {initialOf(name)}
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <p className="truncate text-[13.5px] font-extrabold text-ink-900">
