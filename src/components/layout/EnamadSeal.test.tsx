@@ -12,6 +12,11 @@ import { EnamadSeal, ENAMAD_CODE, ENAMAD_ID } from './EnamadSeal';
 describe('EnamadSeal — قرارداد صحت‌سنجی اینماد', () => {
   const html = renderToStaticMarkup(createElement(EnamadSeal));
 
+  it('شناسه و کد جدید صادرشده را استفاده می‌کند', () => {
+    expect(ENAMAD_ID).toBe('8773324');
+    expect(ENAMAD_CODE).toBe('EIBrW6hJPxVrNJnKUMRFTZ94HrjSpM8u');
+  });
+
   it('لینک به نشانی راستی‌آزمایی با id و Code یکتا اشاره می‌کند', () => {
     expect(html).toContain(
       `href='https://trustseal.enamad.ir/?id=${ENAMAD_ID}&Code=${ENAMAD_CODE}'`,

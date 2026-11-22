@@ -43,8 +43,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { RotateCcw, ShieldCheck } from 'lucide-react';
 
-export const ENAMAD_ID = '7301940';
-export const ENAMAD_CODE = 'MQ8Pd8Sa8h43BR2H7rwU9uGXcZDIRbXC';
+export const ENAMAD_ID = '8773324';
+export const ENAMAD_CODE = 'EIBrW6hJPxVrNJnKUMRFTZ94HrjSpM8u';
 export const ENAMAD_VERIFY_URL = `https://trustseal.enamad.ir/?id=${ENAMAD_ID}&Code=${ENAMAD_CODE}`;
 export const ENAMAD_LOGO_URL = `https://trustseal.enamad.ir/logo.aspx?id=${ENAMAD_ID}&Code=${ENAMAD_CODE}`;
 
